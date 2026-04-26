@@ -44,7 +44,7 @@ export default function LoginForm() {
       if (mode === 'signup') {
         const result = await signup(formData)
         if (result && !result.success) {
-          setError(result.error)
+          setError(result.error ?? '')
         } else if (result?.message) {
           setSuccessMsg(result.message)
           setMode('login')
