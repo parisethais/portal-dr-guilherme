@@ -28,6 +28,12 @@ export default function LoginForm() {
     setSuccessMsg('')
   }
 
+  function handleModeToggle() {
+    setMode((currentMode) => (currentMode === 'login' ? 'signup' : 'login'))
+    setError('')
+    setSuccessMsg('')
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
@@ -61,17 +67,21 @@ export default function LoginForm() {
   }
 
   return (
-    <div>
+    <div className="relative z-20 isolate pointer-events-auto">
       {/* Tabs */}
       <div className="flex">
         <button
           type="button"
           onClick={() => handleTabChange('paciente')}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            handleTabChange('paciente')
+          }}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+            'relative z-20 flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors rounded-tl-2xl cursor-pointer touch-manipulation pointer-events-auto select-none',
             tab === 'paciente'
               ? 'border-primary text-primary bg-blue-50'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
           )}
         >
           <UserRound className="w-4 h-4" />
@@ -80,11 +90,15 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={() => handleTabChange('medico')}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            handleTabChange('medico')
+          }}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+            'relative z-20 flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors rounded-tr-2xl cursor-pointer touch-manipulation pointer-events-auto select-none',
             tab === 'medico'
               ? 'border-primary text-primary bg-blue-50'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
           )}
         >
           <Stethoscope className="w-4 h-4" />
@@ -189,12 +203,12 @@ export default function LoginForm() {
             {mode === 'login' ? 'Ainda não tem conta?' : 'Já tem conta?'}{' '}
             <button
               type="button"
-              onClick={() => {
-                setMode(mode === 'login' ? 'signup' : 'login')
-                setError('')
-                setSuccessMsg('')
+              onClick={handleModeToggle}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                handleModeToggle()
               }}
-              className="text-primary font-medium hover:underline"
+              className="relative z-20 text-primary font-medium hover:underline cursor-pointer touch-manipulation pointer-events-auto select-none"
             >
               {mode === 'login' ? 'Cadastre-se' : 'Entrar'}
             </button>

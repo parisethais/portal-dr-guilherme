@@ -1,36 +1,48 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, Document, ContactRequest } from '@/lib/types'
+import type { Profile, Document, ContactRequest, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta } from '@/lib/types'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import SendMessageForm from './SendMessageForm'
 import ContactRequests from './ContactRequests'
 import MedicoDocumentList from './MedicoDocumentList'
-import { Users, Upload, MessageSquare, Phone } from 'lucide-react'
+import AgendaTab from './AgendaTab'
+import { Users, Upload, MessageSquare, Phone, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MedicoDashboardProps {
   patients: Profile[]
   requests: ContactRequest[]
   documents: Document[]
+  patientExams: PatientExam[]
+  carePlans: CarePlan[]
+  carePlanAttachments: CarePlanAttachment[]
+  invoices: Invoice[]
+  consultas: Consulta[]
   pendingCount: number
 }
 
-type Tab = 'pacientes' | 'documentos' | 'mensagem' | 'solicitacoes'
+type Tab = 'pacientes' | 'agenda' | 'documentos' | 'mensagem' | 'solicitacoes'
 
 export default function MedicoDashboard({
   patients,
   requests,
   documents,
+  patientExams,
+  carePlans,
+  carePlanAttachments,
+  invoices,
+  consultas,
   pendingCount,
 }: MedicoDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('pacientes')
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'pacientes', label: 'Pacientes', icon: <Users className="w-4 h-4" /> },
-    { id: 'documentos', label: 'Documentos', icon: <Upload className="w-4 h-4" /> },
-    { id: 'mensagem', label: 'Mensagem', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'pacientes',    label: 'Pacientes',    icon: <Users className="w-4 h-4" /> },
+    { id: 'agenda',       label: 'Agenda',        icon: <CalendarDays className="w-4 h-4" /> },
+    { id: 'documentos',   label: 'Documentos',   icon: <Upload className="w-4 h-4" /> },
+    { id: 'mensagem',     label: 'Mensagem',     icon: <MessageSquare className="w-4 h-4" /> },
     {
       id: 'solicitacoes',
       label: 'Solicitações',
@@ -70,7 +82,17 @@ export default function MedicoDashboard({
         {activeTab === 'pacientes' && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Lista de Pacientes</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Todos os pacientes cadastrados no portal.</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Clique em um paciente para ver exames e gerenciar o plano de cuidados.
+            </p>
+          </div>
+        )}
+        {activeTab === 'agenda' && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Agenda</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Clique em um horário para agendar uma consulta. Clique em uma consulta para ver detalhes.
+            </p>
           </div>
         )}
         {activeTab === 'documentos' && (
@@ -99,7 +121,18 @@ export default function MedicoDashboard({
 
       {/* Content */}
       <div className="p-6 pt-4">
-        {activeTab === 'pacientes' && <PatientList patients={patients} />}
+        {activeTab === 'pacientes' && (
+          <PatientList
+            patients={patients}
+            patientExams={patientExams}
+            carePlans={carePlans}
+            carePlanAttachments={carePlanAttachments}
+            invoices={invoices}
+          />
+        )}
+        {activeTab === 'agenda' && (
+          <AgendaTab consultas={consultas} patients={patients} />
+        )}
         {activeTab === 'documentos' && (
           <div className="grid lg:grid-cols-2 gap-8">
             <div>

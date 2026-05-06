@@ -29,3 +29,75 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   @apply bg-gray-300 rounded-full;
 }
+
+/* FullCalendar — visual overrides */
+:root {
+  --fc-border-color: #e5e7eb;
+  --fc-button-bg-color: #1a3a5c;
+  --fc-button-active-bg-color: #122840;
+  --fc-button-border-color: #1a3a5c;
+  --fc-button-hover-bg-color: #2d5986;
+  --fc-button-hover-border-color: #2d5986;
+  --fc-button-active-border-color: #122840;
+  --fc-today-bg-color: rgba(59, 130, 246, 0.06);
+  --fc-page-bg-color: #ffffff;
+  --fc-neutral-bg-color: #f9fafb;
+  --fc-small-font-size: 0.78rem;
+}
+
+.fc .fc-button {
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 0.85rem !important;
+  font-family: 'Inter', sans-serif !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.fc .fc-col-header-cell {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6b7280;
+  padding: 0.5rem 0;
+}
+
+.fc .fc-timegrid-slot-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: #f3f4f6;
+}
+
+.fc-event-cancelada .fc-event-title {
+  text-decoration: line-through !important;
+  opacity: 0.75;
+}
+
+.fc .fc-daygrid-event {
+  border-radius: 4px !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+}
+
+.fc .fc-timegrid-event {
+  border-radius: 6px !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 0.8rem;
+  color: #374151;
+  padding: 4px 8px;
+}

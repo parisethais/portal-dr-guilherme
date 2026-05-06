@@ -2,38 +2,35 @@ import LoginForm from '@/components/auth/LoginForm'
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo / Cabeçalho */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
-            <svg
-              className="w-8 h-8 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
+    <main className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex flex-col">
+      {/* Área de conteúdo centralizada — rola se o card crescer (signup) */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-6 pb-16 sm:py-6">
+        <div className="w-full max-w-md">
+          {/* Logo / Cabeçalho */}
+          <div className="flex items-center justify-center mb-6 sm:mb-8" style={{ gap: 20 }}>
+            <div className="flex items-center justify-center bg-white rounded-full shadow-lg flex-shrink-0" style={{ width: 64, height: 64 }}>
+              <img src="/logogui.svg" alt="Logo Dr. Guilherme" className="object-contain" style={{ width: 38, height: 38 }} />
+            </div>
+
+            <div className="flex-shrink-0" style={{ width: 1, height: 48, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+
+            <div>
+              <p className="uppercase" style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.5)' }}>Portal</p>
+              <p className="text-white font-medium text-base sm:text-xl">Dr. Guilherme Santa Catharina</p>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">Portal Dr. Guilherme</h1>
-          <p className="text-blue-200 text-sm mt-1">Acesse sua área com segurança</p>
-        </div>
 
-        {/* Formulário de login */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <LoginForm />
+          {/* Formulário de login */}
+          <div className="bg-white rounded-2xl shadow-2xl mx-4 sm:mx-0">
+            <LoginForm />
+          </div>
         </div>
-
-        <p className="text-center text-blue-200 text-xs mt-6">
-          © {new Date().getFullYear()} Portal Dr. Guilherme. Todos os direitos reservados.
-        </p>
       </div>
+
+      {/* Footer fixo na base, dentro do fundo azul */}
+      <p className="shrink-0 text-center text-blue-200 text-xs pb-4 px-4">
+        © {new Date().getFullYear()} Portal Dr. Guilherme. Todos os direitos reservados.
+      </p>
     </main>
   )
 }
