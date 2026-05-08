@@ -103,9 +103,10 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     const colors    = STATUS_COLORS[c.status]
     const patientName = c.patient?.full_name ?? patientMap[c.patient_id] ?? 'Paciente'
 
+    const hora = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     return {
       id:              c.id,
-      title:           `${patientName} · ${TIPO_LABEL[c.tipo]}`,
+      title:           `${hora} · ${patientName}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
       backgroundColor: colors.bg,

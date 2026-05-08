@@ -54,6 +54,7 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
       nowIndicator={true}
       expandRows={true}
       eventDisplay="block"
+      displayEventTime={false}
       dayMaxEvents={3}
     />
   )
