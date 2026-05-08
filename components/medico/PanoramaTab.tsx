@@ -464,23 +464,25 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       <div className="grid lg:grid-cols-2 gap-4">
 
         {/* Consultas por mês */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col" style={{ minHeight: 300 }}>
+          <div className="flex items-center gap-2 mb-3 flex-shrink-0">
             <TrendingUp className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-gray-800">Consultas realizadas</h3>
             <span className="text-xs text-gray-400 ml-auto">últimos 6 meses</span>
           </div>
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={dadosConsultasMes} barSize={42} margin={{ top: 20, right: 8, left: -28, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#f1f5f9' }} />
-              <Bar dataKey="total" fill={PRIMARY} radius={[6, 6, 0, 0]}>
-                <LabelList dataKey="total" position="top" style={{ fontSize: 11, fontWeight: 700, fill: PRIMARY }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosConsultasMes} barSize={42} margin={{ top: 20, right: 8, left: -28, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#f1f5f9' }} />
+                <Bar dataKey="total" fill={PRIMARY} radius={[6, 6, 0, 0]}>
+                  <LabelList dataKey="total" position="top" style={{ fontSize: 11, fontWeight: 700, fill: PRIMARY }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Como conheceu */}
