@@ -480,28 +480,63 @@ export default function CadastroForm() {
 
                 {/* Texto completo — aparece ao clicar */}
                 {termoAberto && (
-                  <div className="ml-8 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-[12px] text-gray-600 leading-relaxed space-y-3">
-                    <p className="font-semibold text-gray-800">Termos de Uso e Política de Privacidade</p>
+                  <div className="ml-8 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-[12px] text-gray-600 leading-relaxed space-y-4">
+                    <div>
+                      <p className="font-bold text-gray-900 text-[13px]">Termos de Uso e Política de Privacidade</p>
+                      <p className="font-semibold text-gray-700">Portal Dr. Guilherme</p>
+                      <p className="text-gray-400 mt-0.5">Última atualização: 08/05/2025</p>
+                    </div>
 
-                    <p><strong>1. Finalidade do Portal</strong><br />
-                    O Portal Dr. Guilherme Santa Catharina é uma plataforma digital exclusiva para comunicação entre o consultório e seus pacientes. Não substitui consultas médicas e não deve ser usado em situações de urgência ou emergência.</p>
+                    <p>O presente documento reúne os Termos de Uso e a Política de Privacidade do Portal Dr. Guilherme, plataforma digital de apoio ao atendimento médico, destinada exclusivamente à comunicação entre o consultório e seus pacientes.</p>
+                    <p>Ao acessar e utilizar o Portal, o paciente declara estar ciente das condições abaixo, especialmente quanto ao tratamento de seus dados pessoais e dados pessoais sensíveis de saúde, nos termos da Lei Geral de Proteção de Dados Pessoais — LGPD.</p>
 
-                    <p><strong>2. Dados coletados</strong><br />
-                    Coletamos dados pessoais (nome, CPF, data de nascimento, contato, endereço) e dados de saúde (diagnósticos, exames, planos de cuidado) necessários para a prestação dos serviços médicos.</p>
+                    <p><strong className="text-gray-800">1. Sobre o Portal</strong><br />
+                    O Portal Dr. Guilherme é uma plataforma digital de apoio ao atendimento médico, criada para facilitar a comunicação entre o consultório e seus pacientes. Por meio do Portal, poderão ser disponibilizados documentos médicos, orientações, receitas, laudos, solicitações de contato, mensagens e demais informações relacionadas ao acompanhamento do paciente.<br /><br />
+                    O Portal não substitui consulta médica, atendimento presencial, avaliação clínica, serviços de urgência ou emergência. Em caso de urgência, procure atendimento presencial imediato.</p>
 
-                    <p><strong>3. Base legal (LGPD — Lei 13.709/2018)</strong><br />
-                    O tratamento dos seus dados ocorre com base no consentimento (art. 7º, I) e na tutela da saúde (art. 7º, VIII e art. 11, II, f). Seus dados de saúde são tratados com sigilo médico.</p>
+                    <p><strong className="text-gray-800">2. Controlador dos Dados</strong><br />
+                    Dr. Guilherme Parise Santa Catharina / Consultório Dr. Guilherme<br />
+                    E-mail: guilherme@santacatharina.com.br<br />
+                    WhatsApp: +55 11 93454-4550<br />
+                    Endereço: Rua Barata Ribeiro, 190, Cj 32/33 · Cerqueira César · São Paulo, SP</p>
 
-                    <p><strong>4. Compartilhamento</strong><br />
-                    Seus dados não são vendidos ou compartilhados com terceiros para fins comerciais. Podemos compartilhá-los com outros profissionais de saúde envolvidos no seu atendimento, com seu consentimento.</p>
+                    <p><strong className="text-gray-800">3. Dados Pessoais Tratados</strong><br />
+                    Nome completo, e-mail, telefone, CPF, data de nascimento, dados de identificação, mensagens, solicitações, documentos médicos (receitas, laudos, exames, orientações), registros de acesso e uso do Portal. Alguns desses dados são classificados como dados pessoais sensíveis de saúde.</p>
 
-                    <p><strong>5. Seus direitos</strong><br />
-                    Você pode solicitar acesso, correção, exclusão ou portabilidade dos seus dados a qualquer momento, entrando em contato com o consultório.</p>
+                    <p><strong className="text-gray-800">4. Finalidades do Tratamento</strong><br />
+                    Identificação do paciente; comunicação com o consultório; envio de documentos médicos; organização administrativa; continuidade do cuidado; cumprimento de obrigações legais, regulatórias, éticas e profissionais; segurança da informação e exercício regular de direitos.</p>
 
-                    <p><strong>6. Segurança</strong><br />
-                    Os dados são armazenados com criptografia e protegidos por medidas técnicas e organizacionais adequadas.</p>
+                    <p><strong className="text-gray-800">5. Bases Legais</strong><br />
+                    Consentimento do titular; cumprimento de obrigação legal ou regulatória; execução de serviço médico; exercício regular de direitos; tutela da saúde por profissional de saúde ou serviço de saúde; legítimo interesse, quando aplicável.</p>
 
-                    <p className="text-gray-400">Dúvidas: contato@consultorioguilherme.com.br</p>
+                    <p><strong className="text-gray-800">6. Compartilhamento de Dados</strong><br />
+                    Os dados não são comercializados. Poderão ser compartilhados apenas para prestação do atendimento, operação do Portal, cumprimento de obrigações legais ou exercício regular de direitos.</p>
+
+                    <p><strong className="text-gray-800">7. Segurança da Informação</strong><br />
+                    São adotadas medidas técnicas e organizacionais razoáveis: controle de acesso, criptografia, registro de acessos e armazenamento em ambientes protegidos. O paciente deve manter suas credenciais em sigilo.</p>
+
+                    <p><strong className="text-gray-800">8. Guarda e Retenção</strong><br />
+                    Os dados serão mantidos pelo período necessário para cumprir as finalidades descritas, incluindo obrigações legais, regulatórias, éticas e profissionais. Prontuários médicos observam prazo mínimo de 20 anos (Resolução CFM nº 1.821/2007).</p>
+
+                    <p><strong className="text-gray-800">9. Direitos do Titular</strong><br />
+                    Nos termos da LGPD, você pode solicitar: confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, informação sobre compartilhamento, revogação de consentimento e revisão de decisões automatizadas.</p>
+
+                    <p><strong className="text-gray-800">10. Comunicações</strong><br />
+                    O consultório poderá utilizar o Portal, e-mail, telefone ou WhatsApp para comunicações relacionadas ao atendimento médico.</p>
+
+                    <p><strong className="text-gray-800">11. Responsabilidades do Paciente</strong><br />
+                    Fornecer informações verdadeiras; manter credenciais em sigilo; não compartilhar senha; usar o Portal apenas para seu atendimento; comunicar ao consultório qualquer acesso indevido.</p>
+
+                    <p><strong className="text-gray-800">12. Limitações do Portal</strong><br />
+                    O Portal não se destina a urgências, emergências ou substituição de consulta médica. Pode haver indisponibilidades temporárias por manutenção ou motivos técnicos.</p>
+
+                    <p><strong className="text-gray-800">13. Alterações nesta Política</strong><br />
+                    Esta Política poderá ser atualizada periodicamente. A versão vigente estará sempre disponível no Portal, com a data de atualização indicada.</p>
+
+                    <p><strong className="text-gray-800">14. Canal de Contato</strong><br />
+                    E-mail: guilherme@santacatharina.com.br<br />
+                    WhatsApp: +55 11 93454-4550<br />
+                    Responsável: Consultório Dr. Guilherme</p>
 
                     <button
                       type="button"

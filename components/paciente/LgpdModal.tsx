@@ -5,7 +5,7 @@ import { acceptLgpd } from '@/app/actions/lgpd'
 import Button from '@/components/ui/Button'
 import { ShieldCheck, AlertTriangle } from 'lucide-react'
 
-const LGPD_UPDATED_AT = '07 de maio de 2025'
+const LGPD_UPDATED_AT = '08 de maio de 2025'
 
 export default function LgpdModal() {
   const [acceptedTerms, setAcceptedTerms]  = useState(false)
