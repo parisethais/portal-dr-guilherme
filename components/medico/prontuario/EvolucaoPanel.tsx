@@ -55,7 +55,7 @@ export default function EvolucaoPanel({ consulta, isFinalized }: Props) {
         <div className="space-y-1.5">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Conduta</p>
           {conduta ? (
-            <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-mono">
+            <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
               {conduta}
             </div>
           ) : (
@@ -99,7 +99,7 @@ export default function EvolucaoPanel({ consulta, isFinalized }: Props) {
           onChange={e => { setConduta(e.target.value); setSaved(false) }}
           rows={6}
           placeholder={`1. Manter losartana 50mg 1x/dia\n2. Solicitar creatinina, ureia e potássio\n3. Retorno em 3 meses`}
-          className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+          className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
 
