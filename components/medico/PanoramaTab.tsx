@@ -4,21 +4,78 @@ import { useState, useTransition } from 'react'
 import { resetPatientPassword } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts'
 
+// ── Cores ────────────────────────────────────────────────────
+const PRIMARY    = '#1a3a5c'
+const COLORS_PIE = ['#1a3a5c', '#2d5986', '#3b6fa8', '#64b5f6', '#90caf9']
+
+// ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<StatusPaciente, { label: string; className: string }> = {
   ativo:   { label: 'Ativo',   className: 'bg-green-100 text-green-700' },
   inativo: { label: 'Inativo', className: 'bg-gray-100 text-gray-600' },
   obito:   { label: 'Óbito',   className: 'bg-red-100 text-red-700' },
 }
 
+// ── Helpers ───────────────────────────────────────────────────
 function calcIdade(dataNasc: string | null): string {
   if (!dataNasc) return '—'
   const diff = Date.now() - new Date(dataNasc).getTime()
   return `${Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))} anos`
 }
 
+function normalizarComoConheceu(raw: string | null): string {
+  if (!raw) return 'Não informado'
+  const s = raw.trim()
+  if (s.toLowerCase().startsWith('indicaç')) return 'Indicação'
+  if (s.toLowerCase() === 'google') return 'Google'
+  if (s.toLowerCase() === 'instagram') return 'Instagram'
+  if (s.toLowerCase().startsWith('outro')) return 'Outro'
+  return 'Outro'
+}
+
+// Retorna os últimos N meses no formato { key: 'YYYY-MM', label: 'Mai/25' }
+function ultimosMeses(n: number) {
+  const result = []
+  const now = new Date()
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+      .replace('.', '').replace(' ', '/')
+    result.push({ key, label })
+  }
+  return result
+}
+
+// ── Tooltip customizado para o BarChart ───────────────────────
+function CustomBarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2 text-xs">
+      <p className="font-semibold text-gray-700 mb-1">{label}</p>
+      <p className="text-primary">{payload[0].value} consulta{payload[0].value !== 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
+// ── Tooltip customizado para o PieChart ───────────────────────
+function CustomPieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2 text-xs">
+      <p className="font-semibold text-gray-700">{payload[0].name}</p>
+      <p className="text-gray-500">{payload[0].value} paciente{payload[0].value !== 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
+// ── Linha da tabela ───────────────────────────────────────────
 interface RowProps {
   patient: Profile
   ultimaConsulta: string | null
@@ -31,8 +88,6 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
   const [newPassword, setNewPassword] = useState<string | null>(null)
   const [copiedPwd, setCopiedPwd]     = useState(false)
 
-  // Exibe dados atualizados localmente após fechar o modal
-  // (revalidatePath cuida do refresh no servidor)
   const statusCfg = STATUS_CONFIG[patient.status_paciente ?? 'ativo']
 
   function handleResetPassword() {
@@ -59,7 +114,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
 
       <tr className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${patient.status_paciente === 'obito' ? 'opacity-60' : ''}`}>
 
-        {/* Ações — primeira coluna, botões empilhados */}
+        {/* Ações */}
         <td className="px-3 py-3">
           <div className="flex flex-col gap-1 items-center">
             <button
@@ -82,13 +137,9 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
           </div>
         </td>
 
-        {/* Nome — clicável abre modal */}
+        {/* Nome */}
         <td className="px-4 py-3">
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="text-left group"
-          >
+          <button type="button" onClick={() => setModalOpen(true)} className="text-left group">
             <p className="font-semibold text-gray-900 text-sm group-hover:text-primary transition-colors">
               {patient.full_name ?? '—'}
             </p>
@@ -149,10 +200,8 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
         <td className="px-4 py-3 text-xs text-gray-500">
           <span className="line-clamp-2">{patient.obs_secretaria || <span className="text-gray-300">—</span>}</span>
         </td>
-
       </tr>
 
-      {/* Card de nova senha */}
       {newPassword && (
         <tr>
           <td colSpan={9} className="px-4 pb-3">
@@ -181,6 +230,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
   )
 }
 
+// ── Componente principal ──────────────────────────────────────
 interface PanoramaTabProps {
   patients: Profile[]
   consultas: Consulta[]
@@ -190,120 +240,313 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<StatusPaciente | 'todos'>('todos')
   const [search, setSearch] = useState('')
 
-  const now = new Date().toISOString()
+  const now      = new Date()
+  const nowISO   = now.toISOString()
+  const em7Dias  = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
+  // ── Helpers por paciente ──────────────────────────────────
+  function getUltima(patientId: string) {
+    return consultas
+      .filter(c => c.patient_id === patientId && c.data_hora < nowISO && c.status === 'realizada')
+      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))[0]?.data_hora ?? null
+  }
+
+  function getProxima(patientId: string) {
+    return consultas
+      .filter(c => c.patient_id === patientId && c.data_hora >= nowISO && ['agendada', 'confirmada'].includes(c.status))
+      .sort((a, b) => a.data_hora.localeCompare(b.data_hora))[0]?.data_hora ?? null
+  }
+
+  // ── Totais / cards ────────────────────────────────────────
+  const totais = {
+    ativo:      patients.filter(p => p.status_paciente === 'ativo').length,
+    inativo:    patients.filter(p => p.status_paciente === 'inativo').length,
+    obito:      patients.filter(p => p.status_paciente === 'obito').length,
+    semRetorno: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id)).length,
+    consultasMes: consultas.filter(c =>
+      c.data_hora.startsWith(mesAtual) && c.status === 'realizada'
+    ).length,
+    novosMes: patients.filter(p =>
+      p.created_at?.startsWith(mesAtual)
+    ).length,
+  }
+
+  // ── Gráfico: consultas por mês (últimos 6) ─────────────────
+  const meses = ultimosMeses(6)
+  const dadosConsultasMes = meses.map(({ key, label }) => ({
+    label,
+    total: consultas.filter(c =>
+      c.data_hora.startsWith(key) && c.status === 'realizada'
+    ).length,
+  }))
+
+  // ── Gráfico: como conheceu (pizza) ─────────────────────────
+  const comoMap: Record<string, number> = {}
+  patients.forEach(p => {
+    const cat = normalizarComoConheceu(p.como_conheceu)
+    comoMap[cat] = (comoMap[cat] ?? 0) + 1
+  })
+  const dadosComo = Object.entries(comoMap)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }))
+
+  // ── Lista: próximas consultas (7 dias) ─────────────────────
+  const proximasConsultas = consultas
+    .filter(c => c.data_hora >= nowISO && c.data_hora <= em7Dias && ['agendada', 'confirmada'].includes(c.status))
+    .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
+    .slice(0, 8)
+    .map(c => ({
+      ...c,
+      patient: patients.find(p => p.id === c.patient_id),
+    }))
+
+  // ── Lista: ativos sem retorno ──────────────────────────────
+  const semRetornoLista = patients
+    .filter(p => p.status_paciente === 'ativo' && !getProxima(p.id))
+    .sort((a, b) => {
+      const ua = getUltima(a.id) ?? ''
+      const ub = getUltima(b.id) ?? ''
+      return ua.localeCompare(ub) // mais antigos primeiro
+    })
+    .slice(0, 6)
+
+  // ── Tabela filtrada ────────────────────────────────────────
   const filtered = patients.filter(p => {
     const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = filterStatus === 'todos' || p.status_paciente === filterStatus
     return matchSearch && matchStatus
   })
 
-  function getUltima(patientId: string) {
-    const past = consultas
-      .filter(c => c.patient_id === patientId && c.data_hora < now && c.status === 'realizada')
-      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
-    return past[0]?.data_hora ?? null
-  }
-
-  function getProxima(patientId: string) {
-    const future = consultas
-      .filter(c => c.patient_id === patientId && c.data_hora >= now && ['agendada', 'confirmada'].includes(c.status))
-      .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
-    return future[0]?.data_hora ?? null
-  }
-
-  const totais = {
-    ativo:      patients.filter(p => p.status_paciente === 'ativo').length,
-    inativo:    patients.filter(p => p.status_paciente === 'inativo').length,
-    obito:      patients.filter(p => p.status_paciente === 'obito').length,
-    semRetorno: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id)).length,
-  }
-
+  // ── Render ─────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
 
-      {/* Cards resumo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ── 1. Cards resumo ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Ativos',      value: totais.ativo,      color: 'bg-green-50 text-green-700' },
-          { label: 'Inativos',    value: totais.inativo,    color: 'bg-gray-50 text-gray-600' },
-          { label: 'Óbitos',      value: totais.obito,      color: 'bg-red-50 text-red-700' },
-          { label: 'Sem retorno', value: totais.semRetorno, color: 'bg-amber-50 text-amber-700' },
+          { label: 'Ativos',          value: totais.ativo,          color: 'bg-green-50  text-green-700',  sub: 'pacientes' },
+          { label: 'Inativos',        value: totais.inativo,        color: 'bg-gray-50   text-gray-600',   sub: 'pacientes' },
+          { label: 'Óbitos',          value: totais.obito,          color: 'bg-red-50    text-red-700',    sub: 'registros' },
+          { label: 'Sem retorno',     value: totais.semRetorno,     color: 'bg-amber-50  text-amber-700',  sub: 'ativos' },
+          { label: 'Consultas / mês', value: totais.consultasMes,   color: 'bg-blue-50   text-blue-700',   sub: 'realizadas' },
+          { label: 'Novos / mês',     value: totais.novosMes,       color: 'bg-purple-50 text-purple-700', sub: 'cadastros' },
         ].map(card => (
           <div key={card.label} className={`rounded-xl p-3 ${card.color}`}>
             <p className="text-2xl font-bold">{card.value}</p>
-            <p className="text-xs opacity-80 mt-0.5">{card.label}</p>
+            <p className="text-xs font-medium mt-0.5">{card.label}</p>
+            <p className="text-[11px] opacity-60">{card.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-2 flex-wrap">
-        <input
-          type="text"
-          placeholder="Buscar paciente..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-        {(['todos', 'ativo', 'inativo', 'obito'] as const).map(s => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterStatus === s
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {s === 'todos' ? 'Todos' : s === 'ativo' ? 'Ativos' : s === 'inativo' ? 'Inativos' : 'Óbitos'}
-          </button>
-        ))}
+      {/* ── 2. Gráficos ── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Consultas por mês */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-gray-800">Consultas realizadas</h3>
+            <span className="text-xs text-gray-400 ml-auto">últimos 6 meses</span>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={dadosConsultasMes} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#f1f5f9' }} />
+              <Bar dataKey="total" fill={PRIMARY} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Como conheceu */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <UserCheck className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-gray-800">Como conheceram o consultório</h3>
+          </div>
+          {dadosComo.length === 0 || (dadosComo.length === 1 && dadosComo[0].name === 'Não informado') ? (
+            <div className="h-[180px] flex items-center justify-center text-sm text-gray-400">
+              Nenhum dado disponível ainda
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={dadosComo}
+                  cx="40%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {dadosComo.map((_, i) => (
+                    <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value) => <span style={{ fontSize: 11, color: '#6b7280' }}>{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
-      {/* Tabela */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm" style={{ minWidth: 1100 }}>
-          <colgroup>
-            <col style={{ width:  60 }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 140 }} />
-            <col style={{ width: 110 }} />
-            <col style={{ width: 150 }} />
-            <col style={{ width: 110 }} />
-            <col style={{ width: 110 }} />
-            <col style={{ width: 100 }} />
-            <col style={{ width: 150 }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              {['', 'Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
-                  Nenhum paciente encontrado.
-                </td>
+      {/* ── 3. Próximas consultas + Sem retorno ── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Próximas consultas — 7 dias */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-gray-800">Próximas consultas</h3>
+            <span className="text-xs text-gray-400 ml-auto">próximos 7 dias</span>
+          </div>
+          {proximasConsultas.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta nos próximos 7 dias</p>
+          ) : (
+            <div className="space-y-2">
+              {proximasConsultas.map(c => {
+                const d = new Date(c.data_hora)
+                const dataStr = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+                const hora    = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
+                    <div className="text-center min-w-[54px]">
+                      <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
+                      <p className="text-[11px] text-gray-400 capitalize">{dataStr}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">
+                        {c.patient?.full_name ?? '—'}
+                      </p>
+                      <p className="text-[11px] text-gray-400 capitalize">{c.tipo.replace('_', ' ')}</p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                      c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Pacientes ativos sem retorno */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-semibold text-gray-800">Ativos sem retorno agendado</h3>
+            <span className="text-xs text-gray-400 ml-auto">{totais.semRetorno} total</span>
+          </div>
+          {semRetornoLista.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Todos os pacientes têm retorno agendado 🎉</p>
+          ) : (
+            <div className="space-y-2">
+              {semRetornoLista.map(p => {
+                const ultima = getUltima(p.id)
+                return (
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50/60">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{p.full_name ?? '—'}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {ultima ? `Última: ${formatDate(ultima)}` : 'Sem consultas registradas'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0">
+                      Sem retorno
+                    </span>
+                  </div>
+                )
+              })}
+              {totais.semRetorno > 6 && (
+                <p className="text-xs text-gray-400 text-center pt-1">
+                  + {totais.semRetorno - 6} outros pacientes
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 4. Filtros + Tabela ── */}
+      <div className="space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            placeholder="Buscar paciente..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {(['todos', 'ativo', 'inativo', 'obito'] as const).map(s => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilterStatus(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {s === 'todos' ? 'Todos' : s === 'ativo' ? 'Ativos' : s === 'inativo' ? 'Inativos' : 'Óbitos'}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm" style={{ minWidth: 1100 }}>
+            <colgroup>
+              <col style={{ width:  60 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 150 }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                {['', 'Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              filtered.map(p => (
-                <PanoramaRow
-                  key={p.id}
-                  patient={p}
-                  ultimaConsulta={getUltima(p.id)}
-                  proximaConsulta={getProxima(p.id)}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
+                    Nenhum paciente encontrado.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(p => (
+                  <PanoramaRow
+                    key={p.id}
+                    patient={p}
+                    ultimaConsulta={getUltima(p.id)}
+                    proximaConsulta={getProxima(p.id)}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
