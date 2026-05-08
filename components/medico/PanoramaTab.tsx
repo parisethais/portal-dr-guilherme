@@ -470,7 +470,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             <h3 className="text-sm font-semibold text-gray-800">Consultas realizadas</h3>
             <span className="text-xs text-gray-400 ml-auto">últimos 6 meses</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={185}>
             <BarChart data={dadosConsultasMes} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -494,7 +494,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               Nenhum dado disponível ainda
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={225}>
               <PieChart margin={{ top: 28, right: 28, bottom: 28, left: 28 }}>
                 <Pie
                   data={dadosComo}
