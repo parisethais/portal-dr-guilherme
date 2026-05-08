@@ -8,7 +8,8 @@ import SendMessageForm from './SendMessageForm'
 import ContactRequests from './ContactRequests'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import { Users, Upload, MessageSquare, Phone, CalendarDays } from 'lucide-react'
+import PanoramaTab from './PanoramaTab'
+import { Users, Upload, MessageSquare, Phone, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MedicoDashboardProps {
@@ -23,7 +24,7 @@ interface MedicoDashboardProps {
   pendingCount: number
 }
 
-type Tab = 'pacientes' | 'agenda' | 'documentos' | 'mensagem' | 'solicitacoes'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'mensagem' | 'solicitacoes'
 
 export default function MedicoDashboard({
   patients,
@@ -36,9 +37,10 @@ export default function MedicoDashboard({
   consultas,
   pendingCount,
 }: MedicoDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('pacientes')
+  const [activeTab, setActiveTab] = useState<Tab>('panorama')
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { id: 'panorama',     label: 'Panorama',     icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'pacientes',    label: 'Pacientes',    icon: <Users className="w-4 h-4" /> },
     { id: 'agenda',       label: 'Agenda',        icon: <CalendarDays className="w-4 h-4" /> },
     { id: 'documentos',   label: 'Documentos',   icon: <Upload className="w-4 h-4" /> },
@@ -79,6 +81,12 @@ export default function MedicoDashboard({
 
       {/* Tab headers */}
       <div className="px-6 pt-6 pb-2">
+        {activeTab === 'panorama' && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Panorama</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Visão geral de todos os pacientes. Clique no lápis para editar clínica, diagnóstico e status.</p>
+          </div>
+        )}
         {activeTab === 'pacientes' && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Lista de Pacientes</h2>
@@ -121,6 +129,9 @@ export default function MedicoDashboard({
 
       {/* Content */}
       <div className="p-6 pt-4">
+        {activeTab === 'panorama' && (
+          <PanoramaTab patients={patients} consultas={consultas} />
+        )}
         {activeTab === 'pacientes' && (
           <PatientList
             patients={patients}

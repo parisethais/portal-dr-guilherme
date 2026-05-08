@@ -1,15 +1,34 @@
 export type UserRole = 'paciente' | 'medico'
 
+export type StatusPaciente = 'ativo' | 'inativo' | 'obito'
+
 export interface Profile {
   id: string
   role: UserRole
   full_name: string | null
+  email: string | null
   cpf: string | null
   phone: string | null
   lgpd_accepted: boolean
   lgpd_accepted_at: string | null
   created_at: string
   updated_at: string
+  // Campos preenchidos pelo paciente
+  data_nascimento: string | null
+  sexo: 'M' | 'F' | null
+  como_conheceu: string | null
+  cep: string | null
+  endereco: string | null
+  cidade_estado: string | null
+  nome_mae: string | null
+  profissao: string | null
+  cns: string | null
+  perfil_completo: boolean
+  // Campos preenchidos pela secretaria
+  clinica: string | null
+  diagnostico: string | null
+  status_paciente: StatusPaciente
+  obs_secretaria: string | null
 }
 
 export interface Document {
