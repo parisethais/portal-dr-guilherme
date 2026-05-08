@@ -59,6 +59,29 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
 
       <tr className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${patient.status_paciente === 'obito' ? 'opacity-60' : ''}`}>
 
+        {/* Ações — primeira coluna, botões empilhados */}
+        <td className="px-3 py-3">
+          <div className="flex flex-col gap-1 items-center">
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+              title="Editar cadastro completo"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={isPending}
+              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+              title="Gerar nova senha"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+
         {/* Nome */}
         <td className="px-4 py-3">
           <p className="font-medium text-gray-900 text-sm">{patient.full_name ?? '—'}</p>
@@ -113,28 +136,6 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
           <span className="line-clamp-2">{patient.obs_secretaria || <span className="text-gray-300">—</span>}</span>
         </td>
 
-        {/* Ações */}
-        <td className="px-4 py-3">
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
-              title="Editar cadastro completo"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleResetPassword}
-              disabled={isPending}
-              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-              title="Gerar nova senha"
-            >
-              <KeyRound className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
       </tr>
 
       {/* Card de nova senha */}
@@ -251,6 +252,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm" style={{ minWidth: 1100 }}>
           <colgroup>
+            <col style={{ width:  60 }} />
             <col style={{ width: 170 }} />
             <col style={{ width: 140 }} />
             <col style={{ width: 110 }} />
@@ -259,11 +261,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             <col style={{ width: 110 }} />
             <col style={{ width: 100 }} />
             <col style={{ width: 150 }} />
-            <col style={{ width:  70 }} />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              {['Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações', ''].map(h => (
+              {['', 'Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
