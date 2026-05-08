@@ -82,22 +82,36 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
           </div>
         </td>
 
-        {/* Nome */}
+        {/* Nome — clicável abre modal */}
         <td className="px-4 py-3">
-          <p className="font-medium text-gray-900 text-sm">{patient.full_name ?? '—'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {patient.sexo ?? '—'} · {calcIdade(patient.data_nascimento)}
-          </p>
-          {!patient.perfil_completo && (
-            <span className="text-[11px] text-amber-500 inline-flex items-center gap-0.5 mt-0.5">
-              <AlertCircle className="w-3 h-3" /> incompleto
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="text-left group"
+          >
+            <p className="font-semibold text-gray-900 text-sm group-hover:text-primary transition-colors">
+              {patient.full_name ?? '—'}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {patient.sexo ?? '—'} · {calcIdade(patient.data_nascimento)}
+            </p>
+            {patient.phone && (
+              <p className="text-xs text-gray-400 mt-0.5 font-mono">{patient.phone}</p>
+            )}
+            {!patient.perfil_completo && (
+              <span className="text-[11px] text-amber-500 inline-flex items-center gap-0.5 mt-0.5">
+                <AlertCircle className="w-3 h-3" /> incompleto
+              </span>
+            )}
+          </button>
         </td>
 
         {/* Como conheceu */}
         <td className="px-4 py-3 text-xs text-gray-600">
-          <span className="line-clamp-2">{patient.como_conheceu ?? '—'}</span>
+          {patient.como_conheceu
+            ? <span className="line-clamp-2">{patient.como_conheceu}</span>
+            : <span className="text-gray-300">—</span>
+          }
         </td>
 
         {/* Clínica */}

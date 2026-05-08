@@ -162,19 +162,41 @@ export default function CadastroForm() {
   const [outroTexto, setOutroTexto]         = useState('')
   const formRef                       = useRef<HTMLFormElement>(null)
 
+  function copyText(text: string, onSuccess: () => void) {
+    // Tenta clipboard API moderna; fallback para execCommand (Safari desktop)
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopy(text, onSuccess))
+    } else {
+      fallbackCopy(text, onSuccess)
+    }
+  }
+
+  function fallbackCopy(text: string, onSuccess: () => void) {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+    document.body.appendChild(el)
+    el.focus()
+    el.select()
+    try { document.execCommand('copy'); onSuccess() } catch {}
+    document.body.removeChild(el)
+  }
+
   function handleCopy() {
     if (!result) return
-    navigator.clipboard.writeText(result.password)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    copyText(result.password, () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   function handleCopyAll() {
     if (!result) return
     const texto = `Portal Dr. Guilherme\n\nSeu acesso foi criado! 🎉\n\nE-mail: ${result.email}\nSenha: ${result.password}\n\nAcesse em: ${APP_URL}`
-    navigator.clipboard.writeText(texto)
-    setCopiedAll(true)
-    setTimeout(() => setCopiedAll(false), 3000)
+    copyText(texto, () => {
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 3000)
+    })
   }
 
   function goNext() {

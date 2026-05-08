@@ -84,7 +84,7 @@ export default function MedicoDashboard({
         {activeTab === 'panorama' && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Panorama</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Visão geral de todos os pacientes. Clique no lápis para editar clínica, diagnóstico e status.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Clique no nome ou no lápis para editar o cadastro completo do paciente.</p>
           </div>
         )}
         {activeTab === 'pacientes' && (
