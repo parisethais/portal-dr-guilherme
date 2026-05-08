@@ -494,14 +494,14 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               Nenhum dado disponível ainda
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart margin={{ top: 24, right: 24, bottom: 8, left: 24 }}>
                 <Pie
                   data={dadosComo}
                   cx="40%"
                   cy="50%"
                   innerRadius={50}
-                  outerRadius={75}
+                  outerRadius={72}
                   paddingAngle={3}
                   dataKey="value"
                   labelLine={false}
