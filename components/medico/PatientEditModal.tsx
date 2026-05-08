@@ -99,7 +99,7 @@ export default function PatientEditModal({ patient, onClose }: Props) {
     startTransition(async () => {
       const res = await updatePatientFull(patient.id, {
         full_name:       form.full_name       || undefined,
-        email:           form.email           || undefined,
+        // email não é atualizado aqui — gerenciado pelo Supabase Auth
         cpf:             form.cpf             || undefined,
         phone:           form.phone           || undefined,
         data_nascimento: form.data_nascimento || null,
