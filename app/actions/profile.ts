@@ -135,3 +135,23 @@ export async function resetPatientPassword(
 
   return { success: true, data: { password: newPassword } }
 }
+
+// ── Atualiza só o status do paciente (para uso rápido no Panorama) ─
+export async function updatePatientStatus(
+  patientId: string,
+  status: StatusPaciente,
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ status_paciente: status, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}

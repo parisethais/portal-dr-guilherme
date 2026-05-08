@@ -63,6 +63,8 @@ export interface ContactRequest {
   subject: string
   message: string
   status: 'pendente' | 'em_andamento' | 'resolvido'
+  response: string | null
+  responded_at: string | null
   created_at: string
   updated_at: string
   patient?: Profile

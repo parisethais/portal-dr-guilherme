@@ -1,19 +1,35 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { resetPatientPassword } from '@/app/actions/profile'
+import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  LabelList, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
 // ── Cores ────────────────────────────────────────────────────
 const PRIMARY    = '#1a3a5c'
-const COLORS_PIE = ['#1a3a5c', '#2d5986', '#3b6fa8', '#64b5f6', '#90caf9']
+// Cores bem distintas para o donut
+const COLORS_PIE = ['#1e3a8a', '#0891b2', '#7c3aed', '#be185d', '#059669']
+
+// Label customizado fora do donut
+const RADIAN = Math.PI / 180
+function PieLabel({ cx, cy, midAngle, outerRadius, value, percent }: any) {
+  if (!value || percent < 0.04) return null
+  const r  = outerRadius + 22
+  const x  = cx + r * Math.cos(-midAngle * RADIAN)
+  const y  = cy + r * Math.sin(-midAngle * RADIAN)
+  return (
+    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central" fontSize={12} fontWeight={700}>
+      {value}
+    </text>
+  )
+}
 
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<StatusPaciente, { label: string; className: string }> = {
@@ -230,6 +246,110 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
   )
 }
 
+// ── Painel: sem retorno com CTAs ─────────────────────────────
+interface SemRetornoPanelProps {
+  lista: Profile[]
+  total: number
+  getUltima: (id: string) => string | null
+}
+
+function SemRetornoRow({ patient, ultima }: { patient: Profile; ultima: string | null }) {
+  const [isPending, startTransition] = useTransition()
+  const [localStatus, setLocalStatus] = useState<StatusPaciente>(patient.status_paciente ?? 'ativo')
+  const [statusSaved, setStatusSaved] = useState(false)
+
+  const firstName  = patient.full_name?.split(' ')[0] ?? 'paciente'
+  const phone      = patient.phone?.replace(/\D/g, '')
+  const waMessage  = encodeURIComponent(
+    `Olá, ${firstName}! Aqui é a equipe do consultório do Dr. Guilherme. Percebemos que você está sem consulta de retorno agendada e gostaríamos de marcar um horário para continuarmos seu acompanhamento. Quando seria melhor para você? 😊`
+  )
+  const waUrl = phone ? `https://wa.me/55${phone}?text=${waMessage}` : null
+
+  function handleStatusChange(s: StatusPaciente) {
+    setLocalStatus(s)
+    startTransition(async () => {
+      const res = await updatePatientStatus(patient.id, s)
+      if (res.success) { setStatusSaved(true); setTimeout(() => setStatusSaved(false), 2000) }
+    })
+  }
+
+  return (
+    <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2.5 space-y-2">
+      {/* Nome + última consulta */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-800 truncate">{patient.full_name ?? '—'}</p>
+          <p className="text-[11px] text-gray-400">
+            {ultima ? `Última consulta: ${formatDate(ultima)}` : 'Sem consultas registradas'}
+          </p>
+        </div>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0 mt-0.5">
+          Sem retorno
+        </span>
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* WhatsApp */}
+        {waUrl ? (
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[11px] font-semibold transition-colors"
+          >
+            <MessageCircle className="w-3 h-3" />
+            WhatsApp
+          </a>
+        ) : (
+          <span className="text-[11px] text-gray-300 italic">sem telefone</span>
+        )}
+
+        {/* Status inline */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          {statusSaved && <Check className="w-3 h-3 text-green-500" />}
+          <select
+            value={localStatus}
+            disabled={isPending}
+            onChange={e => handleStatusChange(e.target.value as StatusPaciente)}
+            className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+            <option value="obito">Óbito</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SemRetornoPanel({ lista, total, getUltima }: SemRetornoPanelProps) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <AlertTriangle className="w-4 h-4 text-amber-500" />
+        <h3 className="text-sm font-semibold text-gray-800">Ativos sem retorno agendado</h3>
+        <span className="text-xs text-gray-400 ml-auto">{total} total</span>
+      </div>
+      {lista.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-6">Todos os pacientes têm retorno agendado 🎉</p>
+      ) : (
+        <div className="space-y-2">
+          {lista.map(p => (
+            <SemRetornoRow key={p.id} patient={p} ultima={getUltima(p.id)} />
+          ))}
+          {total > 6 && (
+            <p className="text-xs text-gray-400 text-center pt-1">
+              + {total - 6} outros pacientes
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Componente principal ──────────────────────────────────────
 interface PanoramaTabProps {
   patients: Profile[]
@@ -356,7 +476,9 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#f1f5f9' }} />
-              <Bar dataKey="total" fill={PRIMARY} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="total" fill={PRIMARY} radius={[6, 6, 0, 0]}>
+                <LabelList dataKey="total" position="top" style={{ fontSize: 11, fontWeight: 700, fill: PRIMARY }} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -382,6 +504,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                   outerRadius={75}
                   paddingAngle={3}
                   dataKey="value"
+                  labelLine={false}
+                  label={<PieLabel />}
                 >
                   {dadosComo.map((_, i) => (
                     <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
@@ -445,40 +569,11 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
         </div>
 
         {/* Pacientes ativos sem retorno */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <h3 className="text-sm font-semibold text-gray-800">Ativos sem retorno agendado</h3>
-            <span className="text-xs text-gray-400 ml-auto">{totais.semRetorno} total</span>
-          </div>
-          {semRetornoLista.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Todos os pacientes têm retorno agendado 🎉</p>
-          ) : (
-            <div className="space-y-2">
-              {semRetornoLista.map(p => {
-                const ultima = getUltima(p.id)
-                return (
-                  <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50/60">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{p.full_name ?? '—'}</p>
-                      <p className="text-[11px] text-gray-400">
-                        {ultima ? `Última: ${formatDate(ultima)}` : 'Sem consultas registradas'}
-                      </p>
-                    </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0">
-                      Sem retorno
-                    </span>
-                  </div>
-                )
-              })}
-              {totais.semRetorno > 6 && (
-                <p className="text-xs text-gray-400 text-center pt-1">
-                  + {totais.semRetorno - 6} outros pacientes
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        <SemRetornoPanel
+          lista={semRetornoLista}
+          total={totais.semRetorno}
+          getUltima={getUltima}
+        />
       </div>
 
       {/* ── 4. Filtros + Tabela ── */}
