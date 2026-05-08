@@ -452,10 +452,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           { label: 'Consultas / mês', value: totais.consultasMes,   color: 'bg-blue-50   text-blue-700',   sub: 'realizadas' },
           { label: 'Novos / mês',     value: totais.novosMes,       color: 'bg-purple-50 text-purple-700', sub: 'cadastros' },
         ].map(card => (
-          <div key={card.label} className={`rounded-xl p-3 ${card.color}`}>
-            <p className="text-2xl font-bold">{card.value}</p>
-            <p className="text-xs font-medium mt-0.5">{card.label}</p>
-            <p className="text-[11px] opacity-60">{card.sub}</p>
+          <div key={card.label} className={`rounded-xl p-4 ${card.color}`}>
+            <p className="text-3xl font-bold">{card.value}</p>
+            <p className="text-sm font-medium mt-1">{card.label}</p>
+            <p className="text-xs opacity-60 mt-0.5">{card.sub}</p>
           </div>
         ))}
       </div>
@@ -494,8 +494,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               Nenhum dado disponível ainda
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart margin={{ top: 24, right: 24, bottom: 8, left: 24 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart margin={{ top: 28, right: 28, bottom: 28, left: 28 }}>
                 <Pie
                   data={dadosComo}
                   cx="40%"
