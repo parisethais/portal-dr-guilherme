@@ -28,8 +28,13 @@ export async function submitCadastro(
 
   // Validação
   const required = { email, full_name, cpf, phone, data_nasc, sexo, como_conheceu, cep, endereco, cidade_estado, nome_mae, profissao }
-  for (const [, val] of Object.entries(required)) {
-    if (!val) return { success: false, error: 'Preencha todos os campos obrigatórios.' }
+  for (const [campo, val] of Object.entries(required)) {
+    if (!val) return { success: false, error: `Preencha todos os campos obrigatórios. (faltou: ${campo})` }
+  }
+
+  // Valida formato da data: deve ser YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data_nasc)) {
+    return { success: false, error: 'Selecione dia, mês e ano de nascimento.' }
   }
   if (!aceitouTermos || !aceitouComms) {
     return { success: false, error: 'Você precisa aceitar os termos para continuar.' }
@@ -55,14 +60,14 @@ export async function submitCadastro(
   }
 
   // Salva todos os dados no profile
-  await admin.from('profiles').upsert({
-    id:              data.user!.id,
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id:               data.user!.id,
     full_name,
     email,
-    role:            'paciente',
+    role:             'paciente',
     cpf,
     phone,
-    data_nascimento: data_nasc,
+    data_nascimento:  data_nasc,
     sexo,
     como_conheceu,
     cep,
@@ -71,10 +76,16 @@ export async function submitCadastro(
     nome_mae,
     profissao,
     cns,
-    perfil_completo: true,
-    lgpd_accepted:   true,
+    perfil_completo:  true,
+    lgpd_accepted:    true,
     lgpd_accepted_at: LGPD_ACCEPTED_AT(),
   }, { onConflict: 'id' })
+
+  if (profileError) {
+    // Usuário foi criado mas o perfil falhou — loga e retorna erro
+    console.error('[cadastro] upsert profile error:', profileError.message)
+    return { success: false, error: `Usuário criado mas erro ao salvar dados: ${profileError.message}` }
+  }
 
   return { success: true, data: { email, password: tempPassword } }
 }

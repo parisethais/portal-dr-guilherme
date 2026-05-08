@@ -335,7 +335,18 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm" style={{ minWidth: 1100 }}>
+          <colgroup>
+            <col style={{ width: 170 }} />{/* Paciente */}
+            <col style={{ width: 140 }} />{/* Como conheceu */}
+            <col style={{ width: 120 }} />{/* Clínica */}
+            <col style={{ width: 150 }} />{/* Diagnóstico */}
+            <col style={{ width: 110 }} />{/* Última consulta */}
+            <col style={{ width: 110 }} />{/* Próxima consulta */}
+            <col style={{ width: 110 }} />{/* Status */}
+            <col style={{ width: 180 }} />{/* Observações */}
+            <col style={{ width:  70 }} />{/* Ações */}
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               {['Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações', ''].map(h => (
