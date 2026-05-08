@@ -74,3 +74,24 @@ export async function updatePatientTracking(
   revalidatePath('/medico')
   return { success: true }
 }
+
+// ── Gera nova senha temporária para o paciente ────────────────
+export async function resetPatientPassword(
+  patientId: string
+): Promise<ActionResult<{ password: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const digits      = Math.floor(1000 + Math.random() * 9000)
+  const newPassword = `Portal${digits}`
+
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.updateUserById(patientId, {
+    password: newPassword,
+  })
+
+  if (error) return { success: false, error: error.message }
+
+  return { success: true, data: { password: newPassword } }
+}

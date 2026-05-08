@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updatePatientTracking } from '@/app/actions/profile'
+import { updatePatientTracking, resetPatientPassword } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy } from 'lucide-react'
 
 const STATUS_CONFIG: Record<StatusPaciente, { label: string; className: string }> = {
   ativo:   { label: 'Ativo',   className: 'bg-green-100 text-green-700' },
@@ -32,8 +32,10 @@ interface RowProps {
 }
 
 function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
-  const [editing, setEditing] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [editing, setEditing]         = useState(false)
+  const [isPending, startTransition]  = useTransition()
+  const [newPassword, setNewPassword] = useState<string | null>(null)
+  const [copiedPwd, setCopiedPwd]     = useState(false)
   const [form, setForm] = useState<EditState>({
     clinica:         patient.clinica         ?? 'MedRenal',
     diagnostico:     patient.diagnostico     ?? '',
@@ -53,9 +55,26 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
     })
   }
 
+  function handleResetPassword() {
+    if (!confirm(`Gerar nova senha para ${patient.full_name}?`)) return
+    startTransition(async () => {
+      const res = await resetPatientPassword(patient.id)
+      if (res.success && res.data) setNewPassword(res.data.password)
+    })
+  }
+
+  function handleCopyPassword() {
+    if (!newPassword || !patient.email) return
+    const texto = `Portal Dr. Guilherme\n\nOlá! Sua senha foi redefinida.\n\nE-mail: ${patient.email}\nNova senha: ${newPassword}\n\nAcesse: https://portal-dr-guilherme.vercel.app`
+    navigator.clipboard.writeText(texto)
+    setCopiedPwd(true)
+    setTimeout(() => setCopiedPwd(false), 2000)
+  }
+
   const statusCfg = STATUS_CONFIG[form.status_paciente]
 
   return (
+    <>
     <tr className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${form.status_paciente === 'obito' ? 'opacity-60' : ''}`}>
       {/* Nome + perfil */}
       <td className="px-4 py-3">
@@ -175,17 +194,60 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
-            title="Editar"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+              title="Editar"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={isPending}
+              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+              title="Gerar nova senha"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </td>
     </tr>
+
+    {/* Card de nova senha — aparece abaixo da linha */}
+    {newPassword && (
+      <tr>
+        <td colSpan={9} className="px-4 pb-3">
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <KeyRound className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-amber-700 font-medium">Nova senha gerada para {patient.full_name?.split(' ')[0]}</p>
+              <p className="text-sm font-bold text-amber-900 tracking-widest mt-0.5">{newPassword}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyPassword}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors flex-shrink-0"
+            >
+              {copiedPwd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedPwd ? 'Copiado!' : 'Copiar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewPassword(null)}
+              className="p-1 text-amber-400 hover:text-amber-600"
+              title="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   )
 }
 
