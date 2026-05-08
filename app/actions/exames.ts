@@ -2,14 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult } from '@/lib/types'
 
 export async function uploadExame(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const file = formData.get('file') as File
@@ -28,23 +27,33 @@ export async function uploadExame(formData: FormData): Promise<ActionResult> {
 
   if (storageError) return { success: false, error: `Erro ao enviar arquivo: ${storageError.message}` }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from('exames').getPublicUrl(fileName)
+  const { data: { publicUrl } } = supabase.storage.from('exames').getPublicUrl(fileName)
 
   const { error: dbError } = await supabase.from('patient_exams').insert({
     patient_id: user.id,
     title,
-    file_url: publicUrl,
-    file_name: file.name,
-    file_type: file.type,
-    file_size: file.size,
+    file_url:   publicUrl,
+    file_name:  file.name,
+    file_type:  file.type,
+    file_size:  file.size,
   })
 
   if (dbError) {
     await supabase.storage.from('exames').remove([fileName])
     return { success: false, error: `Erro ao salvar exame: ${dbError.message}` }
   }
+
+  // Notifica o copilot (fire and forget)
+  supabase.from('profiles').select('full_name, phone').eq('id', user.id).single()
+    .then(({ data: paciente }) => {
+      if (paciente) {
+        notificarCopilot({
+          evento: 'exame_enviado',
+          paciente: { nome: paciente.full_name ?? '', telefone: paciente.phone },
+          exame: { nome: title, url: publicUrl },
+        })
+      }
+    })
 
   revalidatePath('/paciente')
   return { success: true }
@@ -53,9 +62,7 @@ export async function uploadExame(formData: FormData): Promise<ActionResult> {
 export async function deleteExame(exameId: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const { data: exame, error: fetchError } = await supabase
@@ -75,7 +82,6 @@ export async function deleteExame(exameId: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message }
 
-  // Extrai o path do storage a partir da URL pública
   const urlParts = exame.file_url.split('/exames/')
   if (urlParts[1]) {
     await supabase.storage.from('exames').remove([urlParts[1]])

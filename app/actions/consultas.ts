@@ -2,7 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
+
+async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name, phone, email')
+    .eq('id', userId)
+    .single()
+  return data
+}
 
 export async function createConsulta(data: {
   patient_id:  string
@@ -35,6 +45,17 @@ export async function createConsulta(data: {
     .single()
 
   if (error) return { success: false, error: error.message }
+
+  // Notifica o copilot (fire and forget)
+  buscarPerfil(supabase, data.patient_id).then(paciente => {
+    if (paciente) {
+      notificarCopilot({
+        evento: 'consulta_agendada',
+        paciente: { nome: paciente.full_name ?? '', telefone: paciente.phone, email: (paciente as { email?: string }).email },
+        consulta: { data: data.data_hora, tipo: data.tipo },
+      })
+    }
+  })
 
   revalidatePath('/medico')
   revalidatePath('/paciente')
@@ -75,6 +96,27 @@ export async function updateConsulta(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
+
+  // Se mudou a data_hora, notifica como remarcação
+  if (data.data_hora) {
+    const { data: consulta } = await supabase
+      .from('consultas')
+      .select('data_hora, patient_id')
+      .eq('id', consultaId)
+      .single()
+
+    if (consulta) {
+      buscarPerfil(supabase, consulta.patient_id).then(paciente => {
+        if (paciente) {
+          notificarCopilot({
+            evento: 'consulta_remarcada',
+            paciente: { nome: paciente.full_name ?? '', telefone: paciente.phone },
+            consulta: { data_anterior: consulta.data_hora, data_nova: data.data_hora! },
+          })
+        }
+      })
+    }
+  }
 
   const { error } = await supabase
     .from('consultas')
