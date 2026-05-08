@@ -154,14 +154,23 @@ export default function CadastroForm() {
   const [aceitouTermos, setTermos]   = useState(false)
   const [aceitouComms, setComms]     = useState(false)
   const [result, setResult]          = useState<{ email: string; password: string } | null>(null)
-  const [copied, setCopied]          = useState(false)
-  const formRef                      = useRef<HTMLFormElement>(null)
+  const [copied, setCopied]           = useState(false)
+  const [copiedAll, setCopiedAll]     = useState(false)
+  const formRef                       = useRef<HTMLFormElement>(null)
 
   function handleCopy() {
     if (!result) return
     navigator.clipboard.writeText(result.password)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleCopyAll() {
+    if (!result) return
+    const texto = `Portal Dr. Guilherme\n\nSeu acesso foi criado! 🎉\n\nE-mail: ${result.email}\nSenha: ${result.password}\n\nAcesse em: ${APP_URL}`
+    navigator.clipboard.writeText(texto)
+    setCopiedAll(true)
+    setTimeout(() => setCopiedAll(false), 3000)
   }
 
   function goNext() {
@@ -212,24 +221,32 @@ export default function CadastroForm() {
   // ── Tela de sucesso ──────────────────────────────────────────
   if (result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-start justify-center p-4 pt-12">
-        <div className="w-full max-w-sm space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-start justify-center p-4 pt-10 pb-12">
+        <div className="w-full max-w-sm space-y-5">
+
+          {/* Ícone + título */}
           <div className="flex flex-col items-center gap-3 text-white text-center">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">Cadastro realizado!</h1>
-              <p className="text-white/80 text-sm mt-1">Guarde suas credenciais de acesso</p>
+              <p className="text-white/80 text-sm mt-1">Envie as credenciais para o paciente</p>
             </div>
           </div>
 
+          {/* Card credenciais */}
           <div className="bg-white rounded-3xl p-6 space-y-4 shadow-2xl">
+
+            {/* E-mail */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">E-mail</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">E-mail de acesso</p>
               <p className="text-[15px] font-medium text-gray-800 break-all">{result.email}</p>
             </div>
+
             <hr className="border-gray-100" />
+
+            {/* Senha */}
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Senha temporária</p>
               <div className="flex items-center gap-3">
@@ -239,32 +256,49 @@ export default function CadastroForm() {
                 <button
                   type="button"
                   onClick={handleCopy}
+                  title="Copiar senha"
                   className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-2xl text-gray-500 hover:bg-primary hover:text-white transition-all flex-shrink-0"
                 >
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-400 text-center">Você pode alterar a senha após o primeiro acesso</p>
+              <p className="text-xs text-gray-400 text-center">Pode ser alterada após o primeiro acesso</p>
             </div>
 
-            <div className="space-y-2 pt-2">
-              <a
-                href={`mailto:${result.email}?subject=${encodeURIComponent('Seu acesso ao Portal Dr. Guilherme')}&body=${encodeURIComponent(
-                  `Olá!\n\nSeu cadastro no Portal Dr. Guilherme foi realizado.\n\nE-mail: ${result.email}\nSenha temporária: ${result.password}\n\nAcesse em: ${APP_URL}\n\nAtenciosamente,\nConsultório Dr. Guilherme Santa Catharina`
-                )}`}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-2 border-primary text-primary rounded-2xl text-[15px] font-semibold hover:bg-blue-50 transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                Enviar credenciais por e-mail
-              </a>
-              <a
-                href={APP_URL}
+            <hr className="border-gray-100" />
+
+            {/* Botões de envio */}
+            <div className="space-y-2">
+              {/* Copiar tudo formatado — funciona em qualquer dispositivo */}
+              <button
+                type="button"
+                onClick={handleCopyAll}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary text-white rounded-2xl text-[15px] font-semibold hover:bg-primary-light transition-colors"
               >
-                Acessar o portal agora
+                {copiedAll ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiedAll ? 'Copiado! Cole no WhatsApp ou e-mail' : 'Copiar credenciais para enviar'}
+              </button>
+
+              {/* mailto como alternativa */}
+              <a
+                href={`mailto:${result.email}?subject=Seu%20acesso%20ao%20Portal%20Dr.%20Guilherme&body=Ol%C3%A1!%0A%0ASeu%20cadastro%20foi%20realizado.%0A%0AE-mail%3A%20${encodeURIComponent(result.email)}%0ASenha%3A%20${encodeURIComponent(result.password)}%0A%0AAccesse%3A%20${encodeURIComponent(APP_URL)}`}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 border-2 border-gray-200 text-gray-600 rounded-2xl text-[15px] font-semibold hover:border-primary hover:text-primary transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Abrir e-mail
               </a>
             </div>
           </div>
+
+          {/* Aviso sobre o link do portal */}
+          <div className="bg-white/10 rounded-2xl px-4 py-3 text-center">
+            <p className="text-white/80 text-xs leading-relaxed">
+              O paciente acessa o portal em{' '}
+              <span className="font-semibold text-white">portal-dr-guilherme.vercel.app</span>
+              {' '}com as credenciais acima.
+            </p>
+          </div>
+
         </div>
       </div>
     )
