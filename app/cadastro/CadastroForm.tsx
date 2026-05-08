@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { submitCadastro } from '@/app/actions/cadastro'
-import { CheckCircle2, Copy, Check, Mail, ShieldCheck, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, Copy, Check, Mail, ShieldCheck, AlertTriangle, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal-dr-guilherme.vercel.app'
 
@@ -156,6 +156,7 @@ export default function CadastroForm() {
   const [result, setResult]          = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied]           = useState(false)
   const [copiedAll, setCopiedAll]     = useState(false)
+  const [termoAberto, setTermoAberto] = useState(false)
   const formRef                       = useRef<HTMLFormElement>(null)
 
   function handleCopy() {
@@ -396,18 +397,64 @@ export default function CadastroForm() {
                 </p>
               </div>
 
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={aceitouTermos}
-                  onChange={e => { setTermos(e.target.checked); setError('') }}
-                  className="mt-1 w-5 h-5 accent-primary flex-shrink-0"
-                />
-                <span className="text-[13px] text-gray-600 leading-relaxed">
-                  Li e aceito os <strong>Termos de Uso e Política de Privacidade</strong> do Portal Dr. Guilherme,
-                  incluindo o tratamento dos meus dados de saúde conforme a LGPD.
-                </span>
-              </label>
+              {/* Checkbox termo 1 + dropdown com texto completo */}
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={aceitouTermos}
+                    onChange={e => { setTermos(e.target.checked); setError('') }}
+                    className="mt-1 w-5 h-5 accent-primary flex-shrink-0"
+                  />
+                  <span className="text-[13px] text-gray-600 leading-relaxed">
+                    Li e aceito os{' '}
+                    <button
+                      type="button"
+                      onClick={() => setTermoAberto(v => !v)}
+                      className="font-semibold text-primary underline underline-offset-2 inline-flex items-center gap-0.5"
+                    >
+                      Termos de Uso e Política de Privacidade
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${termoAberto ? 'rotate-180' : ''}`} />
+                    </button>{' '}
+                    do Portal Dr. Guilherme, incluindo o tratamento dos meus dados de saúde conforme a LGPD.
+                  </span>
+                </label>
+
+                {/* Texto completo — aparece ao clicar */}
+                {termoAberto && (
+                  <div className="ml-8 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-[12px] text-gray-600 leading-relaxed space-y-3">
+                    <p className="font-semibold text-gray-800">Termos de Uso e Política de Privacidade</p>
+
+                    <p><strong>1. Finalidade do Portal</strong><br />
+                    O Portal Dr. Guilherme Santa Catharina é uma plataforma digital exclusiva para comunicação entre o consultório e seus pacientes. Não substitui consultas médicas e não deve ser usado em situações de urgência ou emergência.</p>
+
+                    <p><strong>2. Dados coletados</strong><br />
+                    Coletamos dados pessoais (nome, CPF, data de nascimento, contato, endereço) e dados de saúde (diagnósticos, exames, planos de cuidado) necessários para a prestação dos serviços médicos.</p>
+
+                    <p><strong>3. Base legal (LGPD — Lei 13.709/2018)</strong><br />
+                    O tratamento dos seus dados ocorre com base no consentimento (art. 7º, I) e na tutela da saúde (art. 7º, VIII e art. 11, II, f). Seus dados de saúde são tratados com sigilo médico.</p>
+
+                    <p><strong>4. Compartilhamento</strong><br />
+                    Seus dados não são vendidos ou compartilhados com terceiros para fins comerciais. Podemos compartilhá-los com outros profissionais de saúde envolvidos no seu atendimento, com seu consentimento.</p>
+
+                    <p><strong>5. Seus direitos</strong><br />
+                    Você pode solicitar acesso, correção, exclusão ou portabilidade dos seus dados a qualquer momento, entrando em contato com o consultório.</p>
+
+                    <p><strong>6. Segurança</strong><br />
+                    Os dados são armazenados com criptografia e protegidos por medidas técnicas e organizacionais adequadas.</p>
+
+                    <p className="text-gray-400">Dúvidas: contato@consultorioguilherme.com.br</p>
+
+                    <button
+                      type="button"
+                      onClick={() => setTermoAberto(false)}
+                      className="text-primary font-semibold text-[12px]"
+                    >
+                      Fechar ↑
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
