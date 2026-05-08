@@ -29,6 +29,7 @@ export interface Profile {
   diagnostico: string | null
   status_paciente: StatusPaciente
   obs_secretaria: string | null
+  form_token: string | null
 }
 
 export interface Document {

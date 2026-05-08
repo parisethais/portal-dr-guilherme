@@ -21,9 +21,15 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS diagnostico      TEXT,
   ADD COLUMN IF NOT EXISTS status_paciente  TEXT NOT NULL DEFAULT 'ativo'
                                             CHECK (status_paciente IN ('ativo', 'inativo', 'obito')),
-  ADD COLUMN IF NOT EXISTS obs_secretaria   TEXT;
+  ADD COLUMN IF NOT EXISTS obs_secretaria   TEXT,
 
--- Permite que paciente atualize o próprio perfil
+  -- Token para o formulário público de cadastro
+  ADD COLUMN IF NOT EXISTS form_token       UUID DEFAULT gen_random_uuid();
+
+-- Índice no token para busca rápida
+CREATE INDEX IF NOT EXISTS idx_profiles_form_token ON public.profiles(form_token);
+
+-- Permite que paciente atualize o próprio perfil (quando logado)
 DROP POLICY IF EXISTS "Paciente atualiza próprio perfil" ON public.profiles;
 CREATE POLICY "Paciente atualiza próprio perfil"
   ON public.profiles FOR UPDATE

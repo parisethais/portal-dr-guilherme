@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LgpdModal from '@/components/paciente/LgpdModal'
-import ProfileCompleteForm from '@/components/paciente/ProfileCompleteForm'
 import PacienteDashboard from '@/components/paciente/PacienteDashboard'
 import ProximaConsulta from '@/components/paciente/ProximaConsulta'
 
@@ -77,9 +76,6 @@ export default async function PacientePage() {
   return (
     <>
       {!profile.lgpd_accepted && <LgpdModal />}
-      {profile.lgpd_accepted && !profile.perfil_completo && (
-        <ProfileCompleteForm fullName={profile.full_name} />
-      )}
 
       <div className="max-w-5xl mx-auto px-5 pt-8 pb-12 sm:px-4 sm:py-8">
         {/* Boas vindas */}
