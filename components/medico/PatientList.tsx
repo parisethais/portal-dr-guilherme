@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
 import InvitePatientModal from './InvitePatientModal'
 import { Search, UserRound, Users, ChevronRight, UserPlus } from 'lucide-react'
+import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
 
 interface PatientListProps {
   patients: Profile[]
@@ -29,10 +30,15 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
     if (!q) return true
     if (p.full_name?.toLowerCase().includes(q)) return true
     if (p.diagnostico?.toLowerCase().includes(q)) return true
-    // Search in consultas diagnosticos
+    // Busca dentro dos diagnósticos JSON de cada consulta (nome + nota de evolução)
     const hasDx = consultas
       .filter(c => c.patient_id === p.id)
-      .some(c => c.diagnosticos?.toLowerCase().includes(q))
+      .some(c => {
+        const entries = parseDiagnosticos(c.diagnosticos ?? null)
+        return entries.some(
+          e => e.nome.toLowerCase().includes(q) || e.evolucao.toLowerCase().includes(q)
+        )
+      })
     return hasDx
   })
 
