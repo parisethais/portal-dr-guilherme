@@ -117,18 +117,45 @@ export type ConsultaLocal  = 'consultorio' | 'telemedicina'
 export type ConsultaStatus = 'agendada' | 'confirmada' | 'realizada' | 'falta' | 'cancelada'
 
 export interface Consulta {
-  id:          string
-  patient_id:  string
-  tipo:        ConsultaTipo
-  local:       ConsultaLocal
-  data_hora:   string
-  duracao_min: number
-  status:      ConsultaStatus
-  observacoes: string | null
-  created_by:  string | null
-  created_at:  string
-  updated_at:  string
-  patient?:    Profile
+  id:           string
+  patient_id:   string
+  tipo:         ConsultaTipo
+  local:        ConsultaLocal
+  data_hora:    string
+  duracao_min:  number
+  status:       ConsultaStatus
+  observacoes:  string | null
+  // Prontuário
+  diagnosticos: string | null
+  evolucao:     string | null
+  conduta:      string | null
+  created_by:   string | null
+  created_at:   string
+  updated_at:   string
+  patient?:     Profile
+}
+
+// ── Prontuário ─────────────────────────────────────────────
+export interface LabResult {
+  id:           string
+  patient_id:   string
+  consulta_id:  string | null
+  exam_name:    string
+  value:        string
+  unit:         string | null
+  collected_at: string   // YYYY-MM-DD
+  created_at:   string
+}
+
+export type ImagingTipo = 'usg_rins' | 'eco' | 'tc_torax' | 'tc_abdomen' | 'ecg' | 'outro'
+
+export interface ImagingResult {
+  id:             string
+  patient_id:     string
+  tipo:           ImagingTipo
+  data_realizado: string   // YYYY-MM-DD
+  laudo_resumido: string | null
+  created_at:     string
 }
 
 export type ActionResult<T = void> =

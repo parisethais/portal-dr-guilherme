@@ -20,6 +20,8 @@ export default async function MedicoPage() {
     { data: carePlanAttachments },
     { data: invoices },
     { data: consultas },
+    { data: labResults },
+    { data: imagingResults },
   ] = await Promise.all([
     supabase
       .from('profiles')
@@ -53,6 +55,14 @@ export default async function MedicoPage() {
       .from('consultas')
       .select('*, patient:profiles!patient_id(*)')
       .order('data_hora', { ascending: true }),
+    supabase
+      .from('lab_results')
+      .select('*')
+      .order('collected_at', { ascending: false }),
+    supabase
+      .from('imaging_results')
+      .select('*')
+      .order('data_realizado', { ascending: false }),
   ])
 
   const pendingRequests = (requests ?? []).filter((r) => r.status === 'pendente').length
@@ -105,6 +115,8 @@ export default async function MedicoPage() {
         carePlanAttachments={carePlanAttachments ?? []}
         invoices={invoices ?? []}
         consultas={consultas ?? []}
+        labResults={labResults ?? []}
+        imagingResults={imagingResults ?? []}
         pendingCount={pendingRequests}
       />
     </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, Document, ContactRequest, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta } from '@/lib/types'
+import type { Profile, Document, ContactRequest, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import SendMessageForm from './SendMessageForm'
@@ -21,6 +21,8 @@ interface MedicoDashboardProps {
   carePlanAttachments: CarePlanAttachment[]
   invoices: Invoice[]
   consultas: Consulta[]
+  labResults: LabResult[]
+  imagingResults: ImagingResult[]
   pendingCount: number
 }
 
@@ -35,6 +37,8 @@ export default function MedicoDashboard({
   carePlanAttachments,
   invoices,
   consultas,
+  labResults,
+  imagingResults,
   pendingCount,
 }: MedicoDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('panorama')
@@ -139,6 +143,9 @@ export default function MedicoDashboard({
             carePlans={carePlans}
             carePlanAttachments={carePlanAttachments}
             invoices={invoices}
+            consultas={consultas}
+            labResults={labResults}
+            imagingResults={imagingResults}
           />
         )}
         {activeTab === 'agenda' && (

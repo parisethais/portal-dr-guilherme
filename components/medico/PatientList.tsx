@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice } from '@/lib/types'
+import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
@@ -14,22 +14,38 @@ interface PatientListProps {
   carePlans: CarePlan[]
   carePlanAttachments: CarePlanAttachment[]
   invoices: Invoice[]
+  consultas: Consulta[]
+  labResults: LabResult[]
+  imagingResults: ImagingResult[]
 }
 
-export default function PatientList({ patients, patientExams, carePlans, carePlanAttachments, invoices }: PatientListProps) {
+export default function PatientList({ patients, patientExams, carePlans, carePlanAttachments, invoices, consultas, labResults, imagingResults }: PatientListProps) {
   const [search, setSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<Profile | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
 
-  const filtered = patients.filter(
-    (p) => p.full_name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = patients.filter((p) => {
+    const q = search.toLowerCase()
+    if (!q) return true
+    if (p.full_name?.toLowerCase().includes(q)) return true
+    if (p.diagnostico?.toLowerCase().includes(q)) return true
+    // Search in consultas diagnosticos
+    const hasDx = consultas
+      .filter(c => c.patient_id === p.id)
+      .some(c => c.diagnosticos?.toLowerCase().includes(q))
+    return hasDx
+  })
 
   if (selectedPatient) {
     const exames = patientExams.filter((e) => e.patient_id === selectedPatient.id)
     const carePlan = carePlans.find((c) => c.patient_id === selectedPatient.id) ?? null
     const attachments = carePlanAttachments.filter((a) => a.patient_id === selectedPatient.id)
     const patientInvoices = invoices.filter((i) => i.patient_id === selectedPatient.id)
+    const patientConsultas = consultas
+      .filter(c => c.patient_id === selectedPatient.id)
+      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
+    const patientLabs = labResults.filter(r => r.patient_id === selectedPatient.id)
+    const patientImaging = imagingResults.filter(r => r.patient_id === selectedPatient.id)
     return (
       <PatientDetail
         patient={selectedPatient}
@@ -37,6 +53,9 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
         carePlan={carePlan}
         attachments={attachments}
         invoices={patientInvoices}
+        consultas={patientConsultas}
+        labResults={patientLabs}
+        imagingResults={patientImaging}
         onBack={() => setSelectedPatient(null)}
       />
     )
