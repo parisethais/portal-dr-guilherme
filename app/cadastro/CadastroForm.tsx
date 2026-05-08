@@ -156,7 +156,10 @@ export default function CadastroForm() {
   const [result, setResult]          = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied]           = useState(false)
   const [copiedAll, setCopiedAll]     = useState(false)
-  const [termoAberto, setTermoAberto] = useState(false)
+  const [termoAberto, setTermoAberto]       = useState(false)
+  const [comoConheceu, setComoConheceu]     = useState('')
+  const [indicadoPor, setIndicadoPor]       = useState('')
+  const [outroTexto, setOutroTexto]         = useState('')
   const formRef                       = useRef<HTMLFormElement>(null)
 
   function handleCopy() {
@@ -204,6 +207,10 @@ export default function CadastroForm() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
+    if (!comoConheceu) {
+      setError('Selecione como conheceu o Dr. Guilherme.')
+      return
+    }
     if (!aceitouTermos || !aceitouComms) {
       setError('Aceite os dois termos para continuar.')
       return
@@ -365,18 +372,69 @@ export default function CadastroForm() {
           {/* ── Etapa 2: Últimas informações + LGPD ── */}
           <div data-step="2" className={step === 2 ? 'space-y-5' : 'hidden'}>
             <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
-              <div className="space-y-2">
+              {/* Como conheceu */}
+              <div className="space-y-3">
                 <label className="block text-[15px] font-semibold text-gray-800">
                   Como conheceu o Dr. Guilherme? <span className="text-primary">*</span>
                 </label>
-                <textarea
+
+                {/* Opções em grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'indicacao', label: '🤝 Indicação' },
+                    { value: 'google',    label: '🔍 Google' },
+                    { value: 'instagram', label: '📸 Instagram' },
+                    { value: 'outro',     label: '💬 Outro' },
+                  ].map(op => (
+                    <button
+                      key={op.value}
+                      type="button"
+                      onClick={() => { setComoConheceu(op.value); setIndicadoPor(''); setOutroTexto('') }}
+                      className={`px-4 py-3 rounded-2xl text-[15px] font-medium border-2 transition-all text-left
+                        ${comoConheceu === op.value
+                          ? 'border-primary bg-blue-50 text-primary'
+                          : 'border-gray-200 bg-gray-50 text-gray-700'}`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sub-input: quem indicou */}
+                {comoConheceu === 'indicacao' && (
+                  <input
+                    autoFocus
+                    placeholder="Nome de quem indicou"
+                    value={indicadoPor}
+                    onChange={e => setIndicadoPor(e.target.value)}
+                    className="w-full px-4 py-3.5 border-2 border-primary rounded-2xl text-[16px] text-gray-900
+                               placeholder-gray-400 focus:outline-none bg-blue-50"
+                  />
+                )}
+
+                {/* Sub-input: outro */}
+                {comoConheceu === 'outro' && (
+                  <input
+                    autoFocus
+                    placeholder="Como foi? Pode descrever..."
+                    value={outroTexto}
+                    onChange={e => setOutroTexto(e.target.value)}
+                    className="w-full px-4 py-3.5 border-2 border-primary rounded-2xl text-[16px] text-gray-900
+                               placeholder-gray-400 focus:outline-none bg-blue-50"
+                  />
+                )}
+
+                {/* Campo hidden com o valor final montado */}
+                <input
+                  type="hidden"
                   name="como_conheceu"
-                  required
-                  rows={3}
-                  placeholder="Ex: Indicação do Dr. Octávio, pesquisa no Google, amigo..."
-                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900
-                             placeholder-gray-400 focus:outline-none focus:border-primary transition-colors
-                             bg-gray-50 focus:bg-white resize-none"
+                  value={
+                    comoConheceu === 'indicacao' ? `Indicação${indicadoPor ? `: ${indicadoPor}` : ''}` :
+                    comoConheceu === 'google'    ? 'Google' :
+                    comoConheceu === 'instagram' ? 'Instagram' :
+                    comoConheceu === 'outro'     ? (outroTexto || 'Outro') :
+                    ''
+                  }
                 />
               </div>
               <Field label="CNS — Cartão Nacional de Saúde" name="cns" inputMode="numeric" placeholder="000 0000 0000 0000" hint="Opcional" />
