@@ -205,7 +205,7 @@ export default function CadastroForm() {
 
       {/* Card do formulário */}
       <div className="px-4 pt-6 pb-32 flex justify-center">
-        <form ref={formRef} onSubmit={handleSubmit} className="w-full max-w-sm">
+        <form ref={formRef} id="cadastro-form" onSubmit={handleSubmit} className="w-full max-w-sm">
 
           {/* ── Etapa 0: Quem é você? ── */}
           <div data-step="0" className={step === 0 ? 'space-y-5' : 'hidden'}>
