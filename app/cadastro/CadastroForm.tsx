@@ -6,7 +6,7 @@ import { CheckCircle2, Copy, Check, Mail, ShieldCheck, AlertTriangle, ArrowRight
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal-dr-guilherme.vercel.app'
 
-// ── Input component otimizado pra mobile ───────────────────────
+// ── Input otimizado pra mobile ──────────────────────────────────
 function Field({
   label, name, type = 'text', placeholder, required, maxLength,
   inputMode, autoComplete, autoCapitalize, hint,
@@ -38,7 +38,7 @@ function Field({
   )
 }
 
-// ── Select component ────────────────────────────────────────────
+// ── Select genérico ─────────────────────────────────────────────
 function SelectField({ label, name, required, children }: {
   label: string; name: string; required?: boolean; children: React.ReactNode
 }) {
@@ -59,11 +59,92 @@ function SelectField({ label, name, required, children }: {
   )
 }
 
+// ── DatePicker com 3 selects (dia / mês / ano) ──────────────────
+const MESES = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+]
+
+function DatePicker({ required }: { required?: boolean }) {
+  const [dia, setDia]   = useState('')
+  const [mes, setMes]   = useState('')
+  const [ano, setAno]   = useState('')
+
+  // Formata como YYYY-MM-DD para o campo hidden
+  const valor = dia && mes && ano
+    ? `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`
+    : ''
+
+  const currentYear = new Date().getFullYear()
+  const anos = Array.from({ length: currentYear - 1919 }, (_, i) => currentYear - i)
+  const dias = Array.from({ length: 31 }, (_, i) => i + 1)
+
+  const selectClass = `flex-1 px-3 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900
+    focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white appearance-none
+    text-center`
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-[15px] font-semibold text-gray-800">
+        Data de nascimento{required && <span className="text-primary ml-1">*</span>}
+      </label>
+      <div className="flex gap-2">
+        {/* Dia */}
+        <select
+          value={dia}
+          onChange={e => setDia(e.target.value)}
+          className={selectClass}
+          aria-label="Dia"
+        >
+          <option value="">Dia</option>
+          {dias.map(d => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+
+        {/* Mês */}
+        <select
+          value={mes}
+          onChange={e => setMes(e.target.value)}
+          className={`${selectClass} flex-[2]`}
+          aria-label="Mês"
+        >
+          <option value="">Mês</option>
+          {MESES.map((m, i) => (
+            <option key={i} value={i + 1}>{m}</option>
+          ))}
+        </select>
+
+        {/* Ano */}
+        <select
+          value={ano}
+          onChange={e => setAno(e.target.value)}
+          className={selectClass}
+          aria-label="Ano"
+        >
+          <option value="">Ano</option>
+          {anos.map(a => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Campo hidden que vai no FormData */}
+      <input
+        type="hidden"
+        name="data_nascimento"
+        value={valor}
+        required={required}
+      />
+    </div>
+  )
+}
+
 // ── Steps config ────────────────────────────────────────────────
 const STEPS = [
-  { title: 'Quem é você?',         emoji: '👤' },
-  { title: 'Como te encontrar?',   emoji: '📍' },
-  { title: 'Últimas informações',  emoji: '✅' },
+  { title: 'Quem é você?',        emoji: '👤' },
+  { title: 'Como te encontrar?',  emoji: '📍' },
+  { title: 'Últimas informações', emoji: '✅' },
 ]
 
 export default function CadastroForm() {
@@ -84,14 +165,23 @@ export default function CadastroForm() {
   }
 
   function goNext() {
-    // Valida campos da etapa atual antes de avançar
     if (!formRef.current) return
-    const inputs = formRef.current.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
-      `[data-step="${step}"] input[required], [data-step="${step}"] select[required]`
+
+    // Valida campos visíveis da etapa atual
+    const section = formRef.current.querySelector<HTMLElement>(`[data-step="${step}"]`)
+    if (!section) { setStep(s => s + 1); return }
+
+    const fields = section.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+      'input[required], select[required]'
     )
-    for (const input of inputs) {
-      if (!input.value.trim()) {
-        input.focus()
+    for (const f of fields) {
+      // Ignora o hidden do DatePicker se ainda não tiver valor completo
+      if (f.type === 'hidden' && !f.value) {
+        setError('Preencha a data de nascimento completa.')
+        return
+      }
+      if (f.type !== 'hidden' && !f.value.trim()) {
+        f.focus()
         setError('Preencha todos os campos obrigatórios.')
         return
       }
@@ -124,7 +214,6 @@ export default function CadastroForm() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-start justify-center p-4 pt-12">
         <div className="w-full max-w-sm space-y-6">
-          {/* Ícone */}
           <div className="flex flex-col items-center gap-3 text-white text-center">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8 text-white" />
@@ -135,7 +224,6 @@ export default function CadastroForm() {
             </div>
           </div>
 
-          {/* Card credenciais */}
           <div className="bg-white rounded-3xl p-6 space-y-4 shadow-2xl">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">E-mail</p>
@@ -185,6 +273,7 @@ export default function CadastroForm() {
   // ── Formulário ───────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light">
+
       {/* Header fixo */}
       <div className="sticky top-0 z-10 bg-white/10 backdrop-blur-sm px-5 py-4">
         <div className="max-w-sm mx-auto">
@@ -203,7 +292,7 @@ export default function CadastroForm() {
         </div>
       </div>
 
-      {/* Card do formulário */}
+      {/* Conteúdo */}
       <div className="px-4 pt-6 pb-32 flex justify-center">
         <form ref={formRef} id="cadastro-form" onSubmit={handleSubmit} className="w-full max-w-sm">
 
@@ -211,14 +300,16 @@ export default function CadastroForm() {
           <div data-step="0" className={step === 0 ? 'space-y-5' : 'hidden'}>
             <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
               <Field label="Nome completo" name="full_name" autoComplete="name" autoCapitalize="words" placeholder="Ana Paula Vieira" required />
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Data de nascimento" name="data_nascimento" type="date" required />
-                <SelectField label="Sexo" name="sexo" required>
-                  <option value="">—</option>
-                  <option value="F">Feminino</option>
-                  <option value="M">Masculino</option>
-                </SelectField>
-              </div>
+
+              {/* Data de nascimento: 3 selects */}
+              <DatePicker required />
+
+              <SelectField label="Sexo" name="sexo" required>
+                <option value="">Selecione</option>
+                <option value="F">Feminino</option>
+                <option value="M">Masculino</option>
+              </SelectField>
+
               <Field label="CPF" name="cpf" inputMode="numeric" placeholder="00000000000" maxLength={11} hint="Somente números" required />
               <Field label="Nome completo da mãe" name="nome_mae" autoCapitalize="words" placeholder="Maria Silva Vieira" required />
               <Field label="Profissão" name="profissao" autoCapitalize="words" placeholder="Professora" required />
@@ -305,11 +396,18 @@ export default function CadastroForm() {
             )}
           </div>
 
+          {/* Exibe erro de validação nas etapas 0 e 1 também */}
+          {error && step < 2 && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
         </form>
       </div>
 
       {/* Botões fixos no rodapé */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/20 px-4 py-4 safe-area-inset-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/20 px-4 py-4">
         <div className="max-w-sm mx-auto flex gap-3">
           {step > 0 && (
             <button
