@@ -126,10 +126,12 @@ export interface Consulta {
   status:       ConsultaStatus
   observacoes:  string | null
   // Prontuário
-  diagnosticos: string | null
-  evolucao:     string | null
-  conduta:      string | null
-  created_by:   string | null
+  diagnosticos:              string | null
+  evolucao:                  string | null
+  conduta:                   string | null
+  prontuario_finalizado:     boolean
+  prontuario_finalizado_at:  string | null
+  created_by:                string | null
   created_at:   string
   updated_at:   string
   patient?:     Profile

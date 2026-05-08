@@ -13,9 +13,40 @@ export async function salvarConsultaFields(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  // Guard: prontuário já finalizado não pode ser editado
+  const { data: consulta } = await supabase
+    .from('consultas')
+    .select('prontuario_finalizado')
+    .eq('id', consultaId)
+    .single()
+  if (consulta?.prontuario_finalizado) {
+    return { success: false, error: 'Este prontuário já foi finalizado e não pode ser editado.' }
+  }
+
   const { error } = await supabase
     .from('consultas')
     .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq('id', consultaId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}
+
+// ── Finalizar prontuário (irreversível) ───────────────────────
+export async function finalizarProntuario(consultaId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const { error } = await supabase
+    .from('consultas')
+    .update({
+      prontuario_finalizado:    true,
+      prontuario_finalizado_at: new Date().toISOString(),
+      updated_at:               new Date().toISOString(),
+    })
     .eq('id', consultaId)
 
   if (error) return { success: false, error: error.message }
