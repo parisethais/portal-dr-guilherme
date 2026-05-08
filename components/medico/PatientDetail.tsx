@@ -10,9 +10,10 @@ import Card from '@/components/ui/Card'
 import {
   ArrowLeft, UserRound, FileText, Image, File, Video,
   Download, ClipboardList, Calendar, Save, CheckCircle,
-  Paperclip, Plus, X, Trash2, Upload,
+  Paperclip, Plus, X, Trash2, Upload, AlertTriangle,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
+import { deletePatient } from '@/app/actions/patients'
 import { cn } from '@/lib/utils'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
@@ -66,6 +67,23 @@ export default function PatientDetail({
   const [uploadError, setUploadError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isUploading, startUploadTransition] = useTransition()
+
+  // Delete patient state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const [isDeleting, startDeleteTransition] = useTransition()
+
+  function handleDeletePatient() {
+    setDeleteError('')
+    startDeleteTransition(async () => {
+      const result = await deletePatient(patient.id)
+      if (!result.success) {
+        setDeleteError(result.error)
+        return
+      }
+      onBack()
+    })
+  }
 
   function handleSave() {
     setSaveError('')
@@ -391,6 +409,56 @@ export default function PatientDetail({
       {/* Notas Fiscais — seção full-width */}
       <div className="border-t border-gray-100 pt-5">
         <InvoiceSection patient={patient} invoices={invoices} />
+      </div>
+
+      {/* Zona de perigo — deletar paciente */}
+      <div className="border-t border-red-100 pt-5 mt-2">
+        {!showDeleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Deletar paciente
+          </button>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">Deletar paciente permanentemente?</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Todos os dados serão removidos: documentos, exames, mensagens, consultas e notas fiscais.
+                  Esta ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <p className="text-xs text-red-700 bg-red-100 rounded-lg px-3 py-2">{deleteError}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }}
+                disabled={isDeleting}
+                className="flex-1 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePatient}
+                disabled={isDeleting}
+                className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? 'Deletando...' : 'Sim, deletar'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

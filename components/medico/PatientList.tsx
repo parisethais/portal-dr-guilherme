@@ -5,7 +5,8 @@ import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice } from
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
-import { Search, UserRound, Users, ChevronRight } from 'lucide-react'
+import InvitePatientModal from './InvitePatientModal'
+import { Search, UserRound, Users, ChevronRight, UserPlus } from 'lucide-react'
 
 interface PatientListProps {
   patients: Profile[]
@@ -18,6 +19,7 @@ interface PatientListProps {
 export default function PatientList({ patients, patientExams, carePlans, carePlanAttachments, invoices }: PatientListProps) {
   const [search, setSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<Profile | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   const filtered = patients.filter(
     (p) => p.full_name?.toLowerCase().includes(search.toLowerCase())
@@ -50,7 +52,17 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
             {patients.length === 1 ? '' : 's'}
           </span>
         </div>
+        <button
+          type="button"
+          onClick={() => setInviteOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light transition-colors"
+        >
+          <UserPlus className="w-4 h-4" />
+          Cadastrar paciente
+        </button>
       </div>
+
+      <InvitePatientModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
