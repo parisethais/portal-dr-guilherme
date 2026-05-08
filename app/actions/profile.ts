@@ -49,6 +49,46 @@ export async function completeProfile(formData: FormData): Promise<ActionResult>
   return { success: true }
 }
 
+// ── Médico/secretaria atualiza TODOS os dados do paciente ────
+export async function updatePatientFull(
+  patientId: string,
+  data: {
+    full_name?: string
+    email?: string
+    cpf?: string
+    phone?: string
+    data_nascimento?: string | null
+    sexo?: 'M' | 'F' | null
+    como_conheceu?: string
+    cep?: string
+    endereco?: string
+    cidade_estado?: string
+    nome_mae?: string
+    profissao?: string
+    cns?: string | null
+    clinica?: string
+    diagnostico?: string | null
+    status_paciente?: StatusPaciente
+    obs_secretaria?: string | null
+    perfil_completo?: boolean
+  }
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}
+
 // ── Secretaria/médico atualiza campos de acompanhamento ───────
 export async function updatePatientTracking(
   patientId: string,

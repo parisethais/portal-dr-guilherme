@@ -92,6 +92,7 @@ export default async function PacientePage() {
         <ProximaConsulta consulta={proximaConsulta} />
 
         <PacienteDashboard
+          profile={profile}
           documents={documents ?? []}
           messages={messages ?? []}
           exames={exames ?? []}

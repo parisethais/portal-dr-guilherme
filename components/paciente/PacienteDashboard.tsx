@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import type { Document, Message, PatientExam, CarePlan, CarePlanAttachment, Invoice } from '@/lib/types'
+import type { Document, Message, PatientExam, CarePlan, CarePlanAttachment, Invoice, Profile } from '@/lib/types'
 import DocumentList from './DocumentList'
 import MessageList from './MessageList'
 import ContactRequestForm from './ContactRequestForm'
 import CuidadosTab from './CuidadosTab'
 import InvoiceList from './InvoiceList'
-import { FileText, MessageSquare, Phone, ClipboardList, Receipt } from 'lucide-react'
+import MeuCadastroTab from './MeuCadastroTab'
+import { FileText, MessageSquare, Phone, ClipboardList, Receipt, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PacienteDashboardProps {
+  profile: Profile
   documents: Document[]
   messages: Message[]
   exames: PatientExam[]
@@ -20,9 +22,10 @@ interface PacienteDashboardProps {
   unreadCount: number
 }
 
-type Tab = 'documentos' | 'mensagens' | 'contato' | 'cuidados' | 'notas'
+type Tab = 'documentos' | 'mensagens' | 'contato' | 'cuidados' | 'notas' | 'cadastro'
 
 export default function PacienteDashboard({
+  profile,
   documents = [],
   messages = [],
   exames = [],
@@ -62,6 +65,11 @@ export default function PacienteDashboard({
       label: 'Solicitar Contato',
       icon: <Phone className="w-4 h-4" />,
     },
+    {
+      id: 'cadastro',
+      label: 'Meu Cadastro',
+      icon: <User className="w-4 h-4" />,
+    },
   ]
 
   return (
@@ -100,10 +108,11 @@ export default function PacienteDashboard({
       {/* Content */}
       <div className="p-6">
         {activeTab === 'documentos' && <DocumentList documents={documents} exames={exames} />}
-        {activeTab === 'cuidados' && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
-        {activeTab === 'notas' && <InvoiceList invoices={invoices} />}
-        {activeTab === 'mensagens' && <MessageList messages={messages} />}
-        {activeTab === 'contato' && <ContactRequestForm />}
+        {activeTab === 'cuidados'   && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
+        {activeTab === 'notas'      && <InvoiceList invoices={invoices} />}
+        {activeTab === 'mensagens'  && <MessageList messages={messages} />}
+        {activeTab === 'contato'    && <ContactRequestForm />}
+        {activeTab === 'cadastro'   && <MeuCadastroTab profile={profile} />}
       </div>
     </div>
   )
