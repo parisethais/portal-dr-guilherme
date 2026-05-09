@@ -2,34 +2,52 @@ import LoginForm from '@/components/auth/LoginForm'
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex flex-col">
-      {/* Área de conteúdo centralizada — rola se o card crescer (signup) */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-6 pb-16 sm:py-6">
-        <div className="w-full max-w-md">
-          {/* Logo / Cabeçalho */}
-          <div className="flex items-center justify-center mb-6 sm:mb-8" style={{ gap: 20 }}>
-            <div className="flex items-center justify-center bg-white rounded-full shadow-lg flex-shrink-0" style={{ width: 64, height: 64 }}>
-              <img src="/logogui.svg" alt="Logo Dr. Guilherme" className="object-contain" style={{ width: 38, height: 38 }} />
-            </div>
+    <main
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: '#1A1F2E' }}
+    >
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        {/* ── Identidade ── */}
+        <div className="text-center mb-8 select-none">
+          <p style={{
+            fontFamily: 'monospace',
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'rgba(255,255,255,0.38)',
+            marginBottom: 10,
+          }}>
+            Clinical Intelligence{' '}
+            <span style={{ color: '#7EB8D4' }}>OS</span>
+          </p>
+          <h1 style={{
+            color: '#F5F2EC',
+            fontWeight: 500,
+            fontSize: 20,
+            lineHeight: 1.3,
+          }}>
+            Consultório Dr. Guilherme Santa Catharina
+          </h1>
+        </div>
 
-            <div className="flex-shrink-0" style={{ width: 1, height: 48, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-
-            <div>
-              <p className="uppercase" style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.5)' }}>Portal</p>
-              <p className="text-white font-medium text-base sm:text-xl">Dr. Guilherme Santa Catharina</p>
-            </div>
-          </div>
-
-          {/* Formulário de login */}
-          <div className="bg-white rounded-2xl shadow-2xl mx-4 sm:mx-0">
-            <LoginForm />
-          </div>
+        {/* ── Card de login ── */}
+        <div
+          className="w-full max-w-md overflow-hidden"
+          style={{
+            backgroundColor: '#21273A',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 20,
+          }}
+        >
+          <LoginForm />
         </div>
       </div>
 
-      {/* Footer fixo na base, dentro do fundo azul */}
-      <p className="shrink-0 text-center text-blue-200 text-xs pb-4 px-4">
-        © {new Date().getFullYear()} Portal Dr. Guilherme. Todos os direitos reservados.
+      {/* ── Rodapé ── */}
+      <p
+        className="shrink-0 text-center text-xs pb-5 px-4"
+        style={{ color: 'rgba(255,255,255,0.2)' }}
+      >
+        © {new Date().getFullYear()} Clinical Intelligence OS · Todos os direitos reservados.
       </p>
     </main>
   )
