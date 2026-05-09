@@ -13,36 +13,37 @@ export default function HomePage() {
     }}>
 
       {/* ── Branding ── */}
-      <div style={{ textAlign: 'center', marginBottom: 36 }}>
+      <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        {/* Produto */}
         <h1 style={{
           fontFamily: 'var(--font-syne)',
-          fontSize: 38,
+          fontSize: 42,
           fontWeight: 800,
-          letterSpacing: '-0.03em',
+          letterSpacing: '-0.04em',
           color: '#F5F2EC',
-          margin: '0 0 10px',
+          margin: '0 0 14px',
           lineHeight: 1,
         }}>
           Clinical Intelligence{' '}
           <span style={{ color: '#7EB8D4' }}>OS</span>
         </h1>
+
+        {/* Separador */}
+        <div style={{
+          width: 32,
+          height: 1,
+          backgroundColor: 'rgba(126,184,212,0.35)',
+          margin: '0 auto 14px',
+        }} />
+
+        {/* Tenant — serif italic, contraste editorial */}
         <p style={{
-          fontFamily: 'var(--font-dm-mono)',
-          fontSize: 10,
-          letterSpacing: '0.22em',
-          color: 'rgba(255,255,255,0.28)',
-          textTransform: 'uppercase',
-          margin: '0 0 14px',
-        }}>
-          Sistema Operacional Clínico
-        </p>
-        <p style={{
-          fontFamily: 'var(--font-syne)',
-          fontSize: 15,
-          fontWeight: 700,
-          color: 'rgba(255,255,255,0.5)',
+          fontFamily: 'var(--font-dm-serif)',
+          fontStyle: 'italic',
+          fontSize: 17,
+          color: 'rgba(255,255,255,0.52)',
           margin: 0,
-          letterSpacing: '-0.01em',
+          letterSpacing: '0.01em',
         }}>
           Consultório Dr. Guilherme Santa Catharina
         </p>
