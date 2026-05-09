@@ -49,6 +49,32 @@ export async function completeProfile(formData: FormData): Promise<ActionResult>
   return { success: true }
 }
 
+// ── Paciente atualiza campos editáveis do próprio perfil ─────
+export async function updatePatientOwnProfile(data: {
+  phone?:         string | null
+  cep?:           string | null
+  endereco?:      string | null
+  cidade_estado?: string | null
+  nome_mae?:      string | null
+  profissao?:     string | null
+  cns?:           string | null
+  como_conheceu?: string | null
+}): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/paciente')
+  return { success: true }
+}
+
 // ── Médico/secretaria atualiza TODOS os dados do paciente ────
 export async function updatePatientFull(
   patientId: string,
