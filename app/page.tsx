@@ -65,7 +65,7 @@ export default function HomePage() {
         marginTop: 32,
         letterSpacing: '0.06em',
       }}>
-        © {new Date().getFullYear()} Clinical Intelligence OS · by MedEn
+        © {new Date().getFullYear()} Clinical Intelligence OS
       </p>
 
     </main>
