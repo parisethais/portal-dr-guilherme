@@ -6,8 +6,9 @@ import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
 import InvitePatientModal from './InvitePatientModal'
-import { Search, UserRound, Users, ChevronRight, UserPlus } from 'lucide-react'
+import { Search, UserRound, Users, ChevronRight, UserPlus, AlertTriangle, AlertCircle } from 'lucide-react'
 import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
+import { countLabAlerts } from '@/lib/lab-alerts'
 
 interface PatientListProps {
   patients: Profile[]
@@ -110,13 +111,23 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((patient) => {
-            const examCount = patientExams.filter((e) => e.patient_id === patient.id).length
+            const examCount   = patientExams.filter((e) => e.patient_id === patient.id).length
             const hasCarePlan = carePlans.some((c) => c.patient_id === patient.id)
+            const patientLabs = labResults.filter(r => r.patient_id === patient.id)
+            const alertCounts = countLabAlerts(patientLabs)
+            const hasCritical = alertCounts.critical > 0
+            const hasWarning  = alertCounts.warning > 0
             return (
               <Card
                 key={patient.id}
                 padding="sm"
-                className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30"
+                className={`hover:shadow-md transition-shadow cursor-pointer ${
+                  hasCritical
+                    ? 'border-red-300 hover:border-red-400'
+                    : hasWarning
+                    ? 'border-amber-200 hover:border-amber-300'
+                    : 'hover:border-primary/30'
+                }`}
                 onClick={() => setSelectedPatient(patient)}
               >
                 <div className="flex items-center gap-3">
@@ -155,6 +166,18 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
                   {hasCarePlan && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
                       Plano ativo
+                    </span>
+                  )}
+                  {hasCritical && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
+                      <AlertCircle className="w-3 h-3" />
+                      {alertCounts.critical} crítico{alertCounts.critical > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {!hasCritical && hasWarning && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                      <AlertTriangle className="w-3 h-3" />
+                      {alertCounts.warning} alerta{alertCounts.warning > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>
