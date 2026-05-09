@@ -1,0 +1,301 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { updatePatientFull, resetPatientPassword } from '@/app/actions/profile'
+import type { Profile, StatusPaciente } from '@/lib/types'
+import { Save, Loader2, CheckCircle, KeyRound, Copy, Check } from 'lucide-react'
+
+// ── Helpers de layout ────────────────────────────────────────
+function Field({
+  label, value, onChange, placeholder, hint, type = 'text', readOnly,
+}: {
+  label: string
+  value: string
+  onChange?: (v: string) => void
+  placeholder?: string
+  hint?: string
+  type?: string
+  readOnly?: boolean
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{label}</label>
+      <input
+        type={type}
+        value={value}
+        readOnly={readOnly}
+        onChange={e => onChange?.(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${
+          readOnly
+            ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-default'
+            : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+        }`}
+      />
+      {hint && <p className="text-[11px] text-gray-400">{hint}</p>}
+    </div>
+  )
+}
+
+function SelectField({
+  label, value, onChange, children,
+}: {
+  label: string; value: string; onChange: (v: string) => void; children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
+      >
+        {children}
+      </select>
+    </div>
+  )
+}
+
+function Row({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+// ── Componente principal ─────────────────────────────────────
+interface Props {
+  patient: Profile
+}
+
+export default function PatientCadastroTab({ patient }: Props) {
+  const [isPending, startTransition] = useTransition()
+  const [error, setSaveError]        = useState('')
+  const [saved, setSaved]            = useState(false)
+
+  // Senha
+  const [newPassword, setNewPassword] = useState<string | null>(null)
+  const [copiedPwd, setCopiedPwd]     = useState(false)
+  const [isPwdPending, startPwdTransition] = useTransition()
+
+  const [form, setForm] = useState({
+    full_name:       patient.full_name       ?? '',
+    email:           patient.email           ?? '',
+    cpf:             patient.cpf             ?? '',
+    phone:           patient.phone           ?? '',
+    data_nascimento: patient.data_nascimento ?? '',
+    sexo:            patient.sexo            ?? '',
+    nome_mae:        patient.nome_mae        ?? '',
+    profissao:       patient.profissao       ?? '',
+    cns:             patient.cns             ?? '',
+    como_conheceu:   patient.como_conheceu   ?? '',
+    cep:             patient.cep             ?? '',
+    endereco:        patient.endereco        ?? '',
+    cidade_estado:   patient.cidade_estado   ?? '',
+    clinica:         patient.clinica         ?? 'MedRenal',
+    diagnostico:     patient.diagnostico     ?? '',
+    status_paciente: patient.status_paciente ?? 'ativo',
+    obs_secretaria:  patient.obs_secretaria  ?? '',
+  })
+
+  const set = (k: keyof typeof form) => (v: string) =>
+    setForm(f => ({ ...f, [k]: v }))
+
+  function handleSave() {
+    setSaveError('')
+    startTransition(async () => {
+      const res = await updatePatientFull(patient.id, {
+        full_name:       form.full_name       || undefined,
+        cpf:             form.cpf             || undefined,
+        phone:           form.phone           || undefined,
+        data_nascimento: form.data_nascimento || null,
+        sexo:            (form.sexo as 'M' | 'F') || null,
+        nome_mae:        form.nome_mae        || undefined,
+        profissao:       form.profissao       || undefined,
+        cns:             form.cns             || null,
+        como_conheceu:   form.como_conheceu   || undefined,
+        cep:             form.cep             || undefined,
+        endereco:        form.endereco        || undefined,
+        cidade_estado:   form.cidade_estado   || undefined,
+        clinica:         form.clinica         || 'MedRenal',
+        diagnostico:     form.diagnostico     || null,
+        status_paciente: form.status_paciente as StatusPaciente,
+        obs_secretaria:  form.obs_secretaria  || null,
+        perfil_completo: true,
+      })
+      if (!res.success) { setSaveError(res.error); return }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    })
+  }
+
+  function handleResetPassword() {
+    if (!confirm(`Gerar nova senha para ${patient.full_name}?`)) return
+    startPwdTransition(async () => {
+      const res = await resetPatientPassword(patient.id)
+      if (res.success && res.data) setNewPassword(res.data.password)
+    })
+  }
+
+  function handleCopyPassword() {
+    if (!newPassword || !patient.email) return
+    const texto = `Portal Dr. Guilherme\n\nOlá! Sua senha foi redefinida.\n\nE-mail: ${patient.email}\nNova senha: ${newPassword}\n\nAcesse: https://portal-dr-guilherme.vercel.app`
+    navigator.clipboard.writeText(texto)
+    setCopiedPwd(true)
+    setTimeout(() => setCopiedPwd(false), 2000)
+  }
+
+  return (
+    <div className="space-y-7">
+
+      {/* ── Identificação ── */}
+      <Section title="Identificação">
+        <Row>
+          <Field label="Nome completo"       value={form.full_name}       onChange={set('full_name')}       placeholder="Nome completo" />
+          <Field label="E-mail"              value={form.email}            readOnly                          hint="Alteração de e-mail requer suporte" />
+        </Row>
+        <Row>
+          <Field label="CPF"                 value={form.cpf}              onChange={set('cpf')}             placeholder="Somente números" />
+          <Field label="Telefone / WhatsApp" value={form.phone}            onChange={set('phone')}           placeholder="11 99999-9999" />
+        </Row>
+        <Row>
+          <Field label="Data de nascimento"  value={form.data_nascimento}  onChange={set('data_nascimento')} type="date" />
+          <SelectField label="Sexo" value={form.sexo} onChange={set('sexo')}>
+            <option value="">—</option>
+            <option value="F">Feminino</option>
+            <option value="M">Masculino</option>
+          </SelectField>
+        </Row>
+        <Row>
+          <Field label="Nome da mãe"         value={form.nome_mae}         onChange={set('nome_mae')}        placeholder="Nome completo da mãe" />
+          <Field label="Profissão"           value={form.profissao}        onChange={set('profissao')}       placeholder="Ex: Professora" />
+        </Row>
+        <Field label="CNS — Cartão Nacional de Saúde (opcional)" value={form.cns} onChange={set('cns')} placeholder="000 0000 0000 0000" />
+      </Section>
+
+      {/* ── Endereço ── */}
+      <Section title="Endereço">
+        <Row>
+          <Field label="CEP"             value={form.cep}          onChange={set('cep')}          placeholder="01310-100" />
+          <Field label="Cidade e Estado" value={form.cidade_estado} onChange={set('cidade_estado')} placeholder="São Paulo, SP" />
+        </Row>
+        <Field label="Endereço completo" value={form.endereco} onChange={set('endereco')} placeholder="Rua das Flores, 123, Apto 45" />
+      </Section>
+
+      {/* ── Como conheceu ── */}
+      <Section title="Como conheceu o Dr. Guilherme">
+        <textarea
+          value={form.como_conheceu}
+          onChange={e => set('como_conheceu')(e.target.value)}
+          rows={2}
+          placeholder="Ex: Indicação, Google, amigo..."
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none text-gray-900"
+        />
+      </Section>
+
+      {/* ── Acompanhamento ── */}
+      <Section title="Acompanhamento (secretaria / médico)">
+        <Row>
+          <Field label="Clínica"     value={form.clinica}     onChange={set('clinica')}     placeholder="MedRenal" />
+          <Field label="Diagnóstico" value={form.diagnostico} onChange={set('diagnostico')} placeholder="Ex: Hipotireoidismo" />
+        </Row>
+        <SelectField label="Status do paciente" value={form.status_paciente} onChange={set('status_paciente')}>
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+          <option value="obito">Óbito</option>
+        </SelectField>
+        <div className="space-y-1">
+          <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+            Observações internas
+          </label>
+          <textarea
+            value={form.obs_secretaria}
+            onChange={e => set('obs_secretaria')(e.target.value)}
+            rows={2}
+            placeholder="Anotações da secretaria..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none text-gray-900"
+          />
+        </div>
+      </Section>
+
+      {/* ── Erro + Salvar ── */}
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+      )}
+
+      <div className="flex items-center justify-between pt-1">
+        {saved && (
+          <div className="flex items-center gap-1.5 text-sm text-emerald-700">
+            <CheckCircle className="w-4 h-4" />
+            Cadastro atualizado!
+          </div>
+        )}
+        {!saved && <span />}
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isPending}
+          className="flex items-center gap-2 px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-light disabled:opacity-60 transition-colors"
+        >
+          {isPending
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+            : <><Save className="w-4 h-4" /> Salvar alterações</>
+          }
+        </button>
+      </div>
+
+      {/* ── Acesso / Senha ── */}
+      <div className="border-t border-gray-100 pt-6 space-y-3">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Acesso ao portal</h3>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-700">Redefinir senha</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Gera uma senha temporária para o paciente acessar o portal.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetPassword}
+            disabled={isPwdPending}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors flex-shrink-0"
+          >
+            {isPwdPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <KeyRound className="w-4 h-4" />}
+            Gerar nova senha
+          </button>
+        </div>
+
+        {newPassword && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <KeyRound className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-amber-700 font-medium">Nova senha gerada</p>
+              <p className="text-sm font-bold text-amber-900 tracking-widest mt-0.5">{newPassword}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyPassword}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors flex-shrink-0"
+            >
+              {copiedPwd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedPwd ? 'Copiado!' : 'Copiar'}
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}

@@ -11,12 +11,13 @@ import {
   ArrowLeft, UserRound, FileText, Image, File, Video,
   Download, ClipboardList, Calendar, Save, CheckCircle,
   Paperclip, Plus, X, Trash2, Upload, AlertTriangle,
-  Stethoscope, Receipt,
+  Stethoscope, Receipt, Contact,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { deletePatient } from '@/app/actions/patients'
 import { cn } from '@/lib/utils'
 import ProntuarioTab from './prontuario/ProntuarioTab'
+import PatientCadastroTab from './PatientCadastroTab'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
   if (fileType?.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />
@@ -36,7 +37,7 @@ function actionLabel(fileType: string | null): string {
   return 'Baixar'
 }
 
-type DetailTab = 'prontuario' | 'plano' | 'faturas'
+type DetailTab = 'prontuario' | 'plano' | 'faturas' | 'cadastro'
 
 interface PatientDetailProps {
   patient: Profile
@@ -150,6 +151,7 @@ export default function PatientDetail({
     { id: 'prontuario', label: 'Prontuário',    icon: <Stethoscope   className="w-4 h-4" /> },
     { id: 'plano',      label: 'Plano e Exames', icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'faturas',    label: 'Faturas',        icon: <Receipt       className="w-4 h-4" /> },
+    { id: 'cadastro',   label: 'Cadastro',       icon: <Contact       className="w-4 h-4" /> },
   ]
 
   return (
@@ -461,6 +463,11 @@ export default function PatientDetail({
       {/* ── Tab: Faturas ── */}
       {activeDetailTab === 'faturas' && (
         <InvoiceSection patient={patient} invoices={invoices} />
+      )}
+
+      {/* ── Tab: Cadastro ── */}
+      {activeDetailTab === 'cadastro' && (
+        <PatientCadastroTab patient={patient} />
       )}
 
       {/* Zona de perigo — deletar paciente */}
