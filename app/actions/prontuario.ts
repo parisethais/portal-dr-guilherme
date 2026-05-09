@@ -16,7 +16,7 @@ export async function salvarConsultaFields(
   // Guard: prontuário já finalizado não pode ser editado
   const { data: consulta } = await supabase
     .from('consultas')
-    .select('prontuario_finalizado')
+    .select('prontuario_finalizado, patient_id')
     .eq('id', consultaId)
     .single()
   if (consulta?.prontuario_finalizado) {
@@ -29,6 +29,44 @@ export async function salvarConsultaFields(
     .eq('id', consultaId)
 
   if (error) return { success: false, error: error.message }
+
+  // ── Sincroniza profiles.diagnostico com o prontuário ─────────
+  // Sempre que diagnósticos são salvos, atualiza o campo de perfil
+  // com os nomes da consulta mais recente que tenha diagnósticos.
+  if (fields.diagnosticos !== undefined && consulta?.patient_id) {
+    const { data: latest } = await supabase
+      .from('consultas')
+      .select('diagnosticos')
+      .eq('patient_id', consulta.patient_id)
+      .not('diagnosticos', 'is', null)
+      .order('data_hora', { ascending: false })
+      .limit(5)
+
+    let syncedDiag: string | null = null
+    if (latest) {
+      for (const row of latest) {
+        if (!row.diagnosticos) continue
+        try {
+          const parsed = JSON.parse(row.diagnosticos)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            syncedDiag = parsed
+              .map((e: { nome?: string }) => e.nome)
+              .filter(Boolean)
+              .join(', ')
+            break
+          }
+        } catch {
+          // legacy plain text — use as-is
+          if (row.diagnosticos.trim()) { syncedDiag = row.diagnosticos.trim(); break }
+        }
+      }
+    }
+
+    await supabase
+      .from('profiles')
+      .update({ diagnostico: syncedDiag })
+      .eq('id', consulta.patient_id)
+  }
 
   revalidatePath('/medico')
   return { success: true }

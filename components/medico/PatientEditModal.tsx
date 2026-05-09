@@ -192,7 +192,7 @@ export default function PatientEditModal({ patient, onClose }: Props) {
           <Section title="Acompanhamento (secretaria / médico)">
             <Row>
               <Field label="Clínica"     value={form.clinica}     onChange={set('clinica')}     placeholder="MedRenal" />
-              <Field label="Diagnóstico" value={form.diagnostico} onChange={set('diagnostico')} placeholder="Ex: Hipotireoidismo" />
+              <Field label="Diagnóstico" value={form.diagnostico} readOnly hint="Preenchido automaticamente pelo prontuário" />
             </Row>
             <Row>
               <SelectField label="Status" value={form.status_paciente} onChange={set('status_paciente')}>

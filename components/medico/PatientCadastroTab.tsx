@@ -205,7 +205,12 @@ export default function PatientCadastroTab({ patient }: Props) {
       <Section title="Acompanhamento (secretaria / médico)">
         <Row>
           <Field label="Clínica"     value={form.clinica}     onChange={set('clinica')}     placeholder="MedRenal" />
-          <Field label="Diagnóstico" value={form.diagnostico} onChange={set('diagnostico')} placeholder="Ex: Hipotireoidismo" />
+          <Field
+            label="Diagnóstico"
+            value={form.diagnostico}
+            readOnly
+            hint="Preenchido automaticamente pelo prontuário (Diagnósticos da consulta mais recente)"
+          />
         </Row>
         <SelectField label="Status do paciente" value={form.status_paciente} onChange={set('status_paciente')}>
           <option value="ativo">Ativo</option>
