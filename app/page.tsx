@@ -15,6 +15,7 @@ export default function HomePage() {
       {/* ── Branding ── */}
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
         <h1 style={{
+          fontFamily: 'var(--font-syne)',
           fontSize: 38,
           fontWeight: 800,
           letterSpacing: '-0.03em',
@@ -26,7 +27,7 @@ export default function HomePage() {
           <span style={{ color: '#7EB8D4' }}>OS</span>
         </h1>
         <p style={{
-          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+          fontFamily: 'var(--font-dm-mono)',
           fontSize: 10,
           letterSpacing: '0.22em',
           color: 'rgba(255,255,255,0.28)',
@@ -36,10 +37,12 @@ export default function HomePage() {
           Sistema Operacional Clínico
         </p>
         <p style={{
-          fontSize: 14,
-          fontWeight: 500,
+          fontFamily: 'var(--font-syne)',
+          fontSize: 15,
+          fontWeight: 700,
           color: 'rgba(255,255,255,0.5)',
           margin: 0,
+          letterSpacing: '-0.01em',
         }}>
           Consultório Dr. Guilherme Santa Catharina
         </p>
