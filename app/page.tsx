@@ -16,13 +16,13 @@ export default function HomePage() {
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         {/* Produto */}
         <h1 style={{
-          fontFamily: 'var(--font-syne)',
-          fontSize: 42,
-          fontWeight: 800,
-          letterSpacing: '-0.04em',
+          fontFamily: 'var(--font-jakarta)',
+          fontSize: 30,
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
           color: '#F5F2EC',
-          margin: '0 0 14px',
-          lineHeight: 1,
+          margin: '0 0 10px',
+          lineHeight: 1.1,
         }}>
           Clinical Intelligence{' '}
           <span style={{ color: '#7EB8D4' }}>OS</span>
@@ -30,20 +30,20 @@ export default function HomePage() {
 
         {/* Separador */}
         <div style={{
-          width: 32,
+          width: 28,
           height: 1,
-          backgroundColor: 'rgba(126,184,212,0.35)',
-          margin: '0 auto 14px',
+          backgroundColor: 'rgba(126,184,212,0.3)',
+          margin: '0 auto 12px',
         }} />
 
-        {/* Tenant — serif italic, contraste editorial */}
+        {/* Tenant */}
         <p style={{
-          fontFamily: 'var(--font-dm-serif)',
-          fontStyle: 'italic',
-          fontSize: 17,
-          color: 'rgba(255,255,255,0.52)',
+          fontFamily: 'var(--font-jakarta)',
+          fontWeight: 300,
+          fontSize: 14,
+          color: 'rgba(255,255,255,0.45)',
           margin: 0,
-          letterSpacing: '0.01em',
+          letterSpacing: '0.02em',
         }}>
           Consultório Dr. Guilherme Santa Catharina
         </p>

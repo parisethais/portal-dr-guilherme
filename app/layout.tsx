@@ -1,26 +1,11 @@
 import type { Metadata } from 'next'
-import { Syne } from 'next/font/google'
-import { DM_Mono } from 'next/font/google'
-import { DM_Serif_Display } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
-const syne = Syne({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['700', '800'],
-  variable: '--font-syne',
-})
-
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-dm-mono',
-})
-
-const dmSerifDisplay = DM_Serif_Display({
-  subsets: ['latin'],
-  weight: ['400'],
-  style: ['italic'],
-  variable: '--font-dm-serif',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-jakarta',
 })
 
 export const metadata: Metadata = {
@@ -33,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${syne.variable} ${dmMono.variable} ${dmSerifDisplay.variable}`}>
+    <html lang="pt-BR" className={jakarta.variable}>
       <body>{children}</body>
     </html>
   )
