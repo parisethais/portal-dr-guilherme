@@ -267,6 +267,7 @@ export default function PatientDetail({
           labResults={labResults}
           imagingResults={imagingResults}
           patientId={patient.id}
+          patientName={patient.full_name ?? 'Paciente'}
         />
       )}
 

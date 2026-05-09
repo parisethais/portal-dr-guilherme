@@ -15,12 +15,13 @@ async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, 
 }
 
 export async function createConsulta(data: {
-  patient_id:  string
-  tipo:        ConsultaTipo
-  local:       ConsultaLocal
-  data_hora:   string
-  duracao_min: number
+  patient_id:   string
+  tipo:         ConsultaTipo
+  local:        ConsultaLocal
+  data_hora:    string
+  duracao_min:  number
   observacoes?: string | null
+  status?:      ConsultaStatus
 }): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,6 +40,7 @@ export async function createConsulta(data: {
       data_hora:   data.data_hora,
       duracao_min: data.duracao_min ?? 30,
       observacoes: data.observacoes?.trim() || null,
+      status:      data.status ?? 'agendada',
       created_by:  user.id,
     })
     .select('id')

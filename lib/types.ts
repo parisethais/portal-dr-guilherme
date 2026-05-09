@@ -157,6 +157,8 @@ export interface ImagingResult {
   tipo:           ImagingTipo
   data_realizado: string   // YYYY-MM-DD
   laudo_resumido: string | null
+  file_url:       string | null
+  file_name:      string | null
   created_at:     string
 }
 

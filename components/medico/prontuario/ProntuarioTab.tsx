@@ -8,10 +8,11 @@ import EvolucaoPanel from './EvolucaoPanel'
 import LabResultsPanel from './LabResultsPanel'
 import LabAlertsPanel from './LabAlertsPanel'
 import ImagingPanel from './ImagingPanel'
+import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
 import {
   ClipboardList, Stethoscope, FlaskConical, ScanLine, Pill,
-  Lock, AlertTriangle, Loader2, CheckCircle, FileText,
+  Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,17 +34,19 @@ interface Props {
   labResults:     LabResult[]
   imagingResults: ImagingResult[]
   patientId:      string
+  patientName:    string
 }
 
-export default function ProntuarioTab({ consultas, labResults, imagingResults, patientId }: Props) {
+export default function ProntuarioTab({ consultas, labResults, imagingResults, patientId, patientName }: Props) {
   const router = useRouter()
   const realizadas = consultas.filter(c => c.status !== 'cancelada')
 
-  const [activeTab, setActiveTab]         = useState<SubTab>('diagnosticos')
-  const [selectedId, setSelectedId]       = useState<string>(realizadas[0]?.id ?? '')
-  const [confirmFinalizar, setConfirm]    = useState(false)
-  const [finalizeError, setFinalizeError] = useState('')
-  const [isPending, startTransition]      = useTransition()
+  const [activeTab, setActiveTab]           = useState<SubTab>('diagnosticos')
+  const [selectedId, setSelectedId]         = useState<string>(realizadas[0]?.id ?? '')
+  const [confirmFinalizar, setConfirm]      = useState(false)
+  const [finalizeError, setFinalizeError]   = useState('')
+  const [showNovaConsulta, setShowNova]     = useState(false)
+  const [isPending, startTransition]        = useTransition()
 
   const selectedConsulta = realizadas.find(c => c.id === selectedId) ?? null
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
@@ -72,14 +75,39 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
 
   if (realizadas.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <FileText className="w-10 h-10 text-gray-200 mb-3" />
-        <p className="text-sm text-gray-400">Nenhuma consulta registrada para este paciente.</p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <FileText className="w-10 h-10 text-gray-200 mb-3" />
+          <p className="text-sm text-gray-400 mb-4">Nenhuma consulta registrada para este paciente.</p>
+          <button
+            type="button"
+            onClick={() => setShowNova(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-light transition-colors"
+          >
+            <CalendarPlus className="w-4 h-4" />
+            Iniciar primeira consulta
+          </button>
+        </div>
+        {showNovaConsulta && (
+          <NovaConsultaModal
+            patientId={patientId}
+            patientName={patientName}
+            onClose={() => setShowNova(false)}
+          />
+        )}
+      </>
     )
   }
 
   return (
+    <>
+    {showNovaConsulta && (
+      <NovaConsultaModal
+        patientId={patientId}
+        patientName={patientName}
+        onClose={() => setShowNova(false)}
+      />
+    )}
     <div className="space-y-0">
 
       {/* ── Seletor de consulta + status de finalização ── */}
@@ -99,6 +127,17 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             </option>
           ))}
         </select>
+
+        {/* Botão nova consulta */}
+        <button
+          type="button"
+          onClick={() => setShowNova(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-primary/40 text-primary rounded-lg text-xs font-medium hover:bg-primary/5 transition-colors flex-shrink-0"
+          title="Criar nova consulta avulsa"
+        >
+          <CalendarPlus className="w-3.5 h-3.5" />
+          Nova consulta
+        </button>
 
         {/* Pílula de status */}
         {isFinalized ? (
@@ -259,5 +298,6 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
       )}
 
     </div>
+    </>
   )
 }

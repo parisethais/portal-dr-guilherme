@@ -134,11 +134,13 @@ export async function deleteLabResult(id: string): Promise<ActionResult> {
 // ── Exames de imagem ──────────────────────────────────────────
 
 export async function upsertImagingResult(data: {
-  id?:            string
-  patient_id:     string
-  tipo:           string
-  data_realizado: string  // YYYY-MM-DD
+  id?:             string
+  patient_id:      string
+  tipo:            string
+  data_realizado:  string  // YYYY-MM-DD
   laudo_resumido?: string | null
+  file_url?:       string | null
+  file_name?:      string | null
 }): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
