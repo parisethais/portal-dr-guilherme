@@ -73,18 +73,25 @@ export default function PacienteDashboard({
   ]
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div
+      className="rounded-2xl overflow-hidden border border-white/60"
+      style={{
+        backdropFilter: 'blur(14px)',
+        backgroundColor: 'rgba(255,255,255,0.72)',
+        boxShadow: '0 2px 24px rgba(26,31,46,0.08), 0 1px 4px rgba(26,31,46,0.04)',
+      }}
+    >
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200 overflow-x-auto">
+      <div className="flex overflow-x-auto" style={{ borderBottom: '1px solid rgba(26,31,46,0.07)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-colors relative whitespace-nowrap px-2 touch-manipulation',
+              'flex items-center justify-center gap-2 px-4 py-3.5 text-sm whitespace-nowrap relative border-b-2 transition-all duration-150 touch-manipulation',
               activeTab === tab.id
-                ? 'text-primary border-b-2 border-primary bg-blue-50/50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-primary font-semibold border-primary-light'
+                : 'text-gray-400 font-medium border-transparent hover:text-gray-600 hover:bg-black/[0.018]'
             )}
           >
             {tab.icon}
