@@ -153,7 +153,14 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden p-4">
+      <div
+        className="rounded-2xl overflow-hidden p-5"
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.80)',
+          border: '1px solid rgba(26,31,46,0.07)',
+          boxShadow: '0 1px 12px rgba(26,31,46,0.05)',
+        }}
+      >
         <FullCalendarComponent
           events={events}
           onDateClick={handleDateClick}
