@@ -35,14 +35,17 @@ export default function Modal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop — fixed so it doesn't scroll with the panel */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={closable ? onClose : undefined}
       />
+      {/* Centering wrapper */}
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
         className={cn(
-          'relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto',
+          'relative bg-white rounded-2xl shadow-2xl w-full max-w-lg',
           className
         )}
       >
@@ -60,6 +63,7 @@ export default function Modal({
           </div>
         )}
         <div className="p-6">{children}</div>
+      </div>
       </div>
     </div>
   )
