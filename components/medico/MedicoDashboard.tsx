@@ -58,18 +58,25 @@ export default function MedicoDashboard({
   ]
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div
+      className="rounded-2xl overflow-hidden border border-white/60"
+      style={{
+        backdropFilter: 'blur(14px)',
+        backgroundColor: 'rgba(255,255,255,0.72)',
+        boxShadow: '0 2px 24px rgba(26,31,46,0.08), 0 1px 4px rgba(26,31,46,0.04)',
+      }}
+    >
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200 overflow-x-auto">
+      <div className="flex overflow-x-auto" style={{ borderBottom: '1px solid rgba(26,31,46,0.07)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-2 px-5 py-4 text-sm font-medium transition-colors whitespace-nowrap relative',
+              'flex items-center gap-2 px-5 py-3.5 text-sm whitespace-nowrap relative border-b-2 transition-all duration-150',
               activeTab === tab.id
-                ? 'text-primary border-b-2 border-primary bg-blue-50/50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-primary font-semibold border-primary-light'
+                : 'text-gray-400 font-medium border-transparent hover:text-gray-600 hover:bg-black/[0.018]'
             )}
           >
             {tab.icon}
@@ -84,51 +91,23 @@ export default function MedicoDashboard({
       </div>
 
       {/* Tab headers */}
-      <div className="px-6 pt-6 pb-2">
-        {activeTab === 'panorama' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Panorama</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Clique no nome ou no lápis para editar o cadastro completo do paciente.</p>
+      <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid rgba(126,184,212,0.12)' }}>
+        {[
+          { id: 'panorama',     title: 'Panorama',               sub: 'Clique no nome ou no lápis para editar o cadastro completo do paciente.' },
+          { id: 'pacientes',    title: 'Lista de Pacientes',      sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
+          { id: 'agenda',       title: 'Agenda',                  sub: 'Clique em um horário para agendar uma consulta. Clique em uma consulta para ver detalhes.' },
+          { id: 'documentos',   title: 'Documentos',              sub: 'Envie laudos, receitas e orientações para pacientes.' },
+          { id: 'mensagem',     title: 'Enviar Mensagem',         sub: 'Envie uma mensagem diretamente para um paciente.' },
+          { id: 'solicitacoes', title: 'Solicitações de Contato', sub: pendingCount > 0 ? `${pendingCount} solicitação${pendingCount > 1 ? 'ões' : ''} pendente${pendingCount > 1 ? 's' : ''}.` : 'Gerencie as solicitações de contato dos pacientes.' },
+        ].filter(t => t.id === activeTab).map(t => (
+          <div key={t.id} className="flex items-start gap-3">
+            <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7EB8D4' }} />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">{t.title}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{t.sub}</p>
+            </div>
           </div>
-        )}
-        {activeTab === 'pacientes' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Lista de Pacientes</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Clique em um paciente para ver exames e gerenciar o plano de cuidados.
-            </p>
-          </div>
-        )}
-        {activeTab === 'agenda' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Agenda</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Clique em um horário para agendar uma consulta. Clique em uma consulta para ver detalhes.
-            </p>
-          </div>
-        )}
-        {activeTab === 'documentos' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Documentos</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Envie laudos, receitas e orientações para pacientes.</p>
-          </div>
-        )}
-        {activeTab === 'mensagem' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Enviar Mensagem</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Envie uma mensagem diretamente para um paciente.</p>
-          </div>
-        )}
-        {activeTab === 'solicitacoes' && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Solicitações de Contato</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {pendingCount > 0
-                ? `${pendingCount} solicitação${pendingCount > 1 ? 'ões' : ''} pendente${pendingCount > 1 ? 's' : ''}.`
-                : 'Gerencie as solicitações de contato dos pacientes.'}
-            </p>
-          </div>
-        )}
+        ))}
       </div>
 
       {/* Content */}

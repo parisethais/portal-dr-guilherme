@@ -10,14 +10,14 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1a3a5c',
-          light: '#2d5986',
-          lighter: '#3b6fa8',
-          dark: '#122840',
+          DEFAULT: '#1A1F2E',
+          light: '#7EB8D4',
+          lighter: '#A8D4E8',
+          dark: '#0F1219',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
       },
     },
   },

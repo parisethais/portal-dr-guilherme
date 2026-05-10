@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { logout } from '@/app/actions/auth'
-import { LogOut, UserRound, Stethoscope } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import type { Profile } from '@/lib/types'
 
 interface HeaderProps {
@@ -21,35 +21,34 @@ export default function Header({ profile }: HeaderProps) {
   const isPaciente = profile.role === 'paciente'
 
   return (
-    <header className="bg-primary text-white h-[4.35rem] sm:h-16 flex items-center px-5 sm:px-6 shadow-lg sticky top-0 z-40">
+    <header
+      className="bg-primary text-white h-14 flex items-center px-5 sm:px-6 sticky top-0 z-40"
+      style={{ boxShadow: '0 1px 0 rgba(126,184,212,0.1), 0 6px 28px rgba(15,18,25,0.38)' }}
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="shrink-0 flex items-center justify-center w-9 h-9 bg-white rounded-full shadow">
-          <img src="/logogui.svg" alt="Logo Dr. Guilherme" className="w-7 h-7 object-contain" />
-        </div>
-        <div className="min-w-0">
-          <span className="block font-semibold text-[0.95rem] leading-tight truncate sm:inline sm:text-sm">
-            Portal Dr. Guilherme
-          </span>
-          <span className="block text-blue-200 text-[0.78rem] leading-tight mt-0.5 sm:inline sm:ml-2 sm:mt-0 sm:text-xs sm:text-blue-300">
-            <span className="hidden sm:inline">— </span>
-            {isPaciente ? 'Área do Paciente' : 'Área Médica'}
-          </span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/1.png"
+          alt="Clinical Intelligence OS"
+          className="h-8 w-auto shrink-0 object-contain"
+        />
+
+        <div className="w-px h-4 bg-white/20 shrink-0" />
+
+        <span className="text-sm text-white/70 truncate hidden sm:block">
+          Consultório Dr. Guilherme Santa Catharina
+          <span className="text-white/40 mx-1.5">—</span>
+          {isPaciente ? 'Área do Paciente' : 'Área Médica'}
+        </span>
+        <span className="text-xs text-white/60 sm:hidden truncate">
+          {isPaciente ? 'Área do Paciente' : 'Área Médica'}
+        </span>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <div className="flex items-center gap-2 text-sm">
-          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
-            {isPaciente ? (
-              <UserRound className="w-4 h-4 text-blue-200" />
-            ) : (
-              <Stethoscope className="w-4 h-4 text-blue-200" />
-            )}
-          </div>
-          <span className="text-blue-100 hidden sm:inline">
-            {profile.full_name || 'Usuário'}
-          </span>
-        </div>
+        <span className="text-white/60 text-sm hidden sm:inline">
+          {profile.full_name || 'Usuário'}
+        </span>
 
         <button
           onClick={handleLogout}

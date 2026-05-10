@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
+import { Users, CalendarCheck, Phone, AlertTriangle } from 'lucide-react'
 
 export default async function MedicoPage() {
   const supabase = await createClient()
@@ -79,29 +80,37 @@ export default async function MedicoPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Cabeçalho */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Painel Médico</h1>
-        <p className="text-gray-500 mt-1 text-sm">
+      {/* Hero */}
+      <div className="mb-8 pb-7 border-b border-black/[0.06]">
+        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-2.5" style={{ color: '#7EB8D4' }}>
+          Clinical Intelligence OS
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Painel Médico</h1>
+        <p className="text-gray-400 mt-1.5 text-sm font-normal">
           Gerencie pacientes, documentos, mensagens e solicitações de contato.
         </p>
       </div>
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'Pacientes',    value: (patients ?? []).length,  color: 'bg-blue-50 text-primary' },
-          { label: 'Consultas hoje', value: consultasHoje,           color: 'bg-emerald-50 text-emerald-700' },
-          { label: 'Solicitações', value: (requests ?? []).length,  color: 'bg-orange-50 text-orange-700' },
-          {
-            label: 'Pendentes',
-            value: pendingRequests,
-            color: pendingRequests > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
-          },
-        ].map((card) => (
-          <div key={card.label} className={`rounded-xl p-4 ${card.color}`}>
-            <p className="text-2xl font-bold">{card.value}</p>
-            <p className="text-sm opacity-80 mt-0.5">{card.label}</p>
+          { label: 'Pacientes',      value: (patients ?? []).length, accent: 'text-primary',     bg: 'rgba(245,242,236,0.9)',  Icon: Users },
+          { label: 'Consultas hoje', value: consultasHoje,           accent: 'text-emerald-600', bg: 'rgba(255,255,255,0.72)', Icon: CalendarCheck },
+          { label: 'Solicitações',   value: (requests ?? []).length, accent: 'text-orange-500',  bg: 'rgba(255,255,255,0.72)', Icon: Phone },
+          { label: 'Pendentes',      value: pendingRequests,         accent: pendingRequests > 0 ? 'text-red-500' : 'text-emerald-600', bg: pendingRequests > 0 ? 'rgba(254,242,242,0.82)' : 'rgba(255,255,255,0.72)', Icon: AlertTriangle },
+        ].map(({ label, value, accent, bg, Icon }) => (
+          <div
+            key={label}
+            className="rounded-2xl p-5 backdrop-blur-md border border-white/70 shadow-sm flex flex-col gap-3"
+            style={{ backgroundColor: bg }}
+          >
+            <div className="flex items-start justify-between">
+              <p className={`text-3xl font-bold tracking-tight ${accent}`}>{value}</p>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(26,31,46,0.05)' }}>
+                <Icon className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-500 leading-none">{label}</p>
           </div>
         ))}
       </div>

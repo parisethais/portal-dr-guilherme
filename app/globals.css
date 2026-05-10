@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-primary: #1a3a5c;
-  --color-primary-light: #2d5986;
+  --color-primary: #1A1F2E;
+  --color-primary-light: #7EB8D4;
 }
 
 * {
@@ -14,7 +12,7 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
   @apply bg-gray-50 text-gray-900 antialiased;
 }
 
@@ -33,12 +31,12 @@ body {
 /* FullCalendar — visual overrides */
 :root {
   --fc-border-color: #e5e7eb;
-  --fc-button-bg-color: #1a3a5c;
-  --fc-button-active-bg-color: #122840;
-  --fc-button-border-color: #1a3a5c;
-  --fc-button-hover-bg-color: #2d5986;
-  --fc-button-hover-border-color: #2d5986;
-  --fc-button-active-border-color: #122840;
+  --fc-button-bg-color: #1A1F2E;
+  --fc-button-active-bg-color: #0F1219;
+  --fc-button-border-color: #1A1F2E;
+  --fc-button-hover-bg-color: #7EB8D4;
+  --fc-button-hover-border-color: #7EB8D4;
+  --fc-button-active-border-color: #0F1219;
   --fc-today-bg-color: rgba(59, 130, 246, 0.06);
   --fc-page-bg-color: #ffffff;
   --fc-neutral-bg-color: #f9fafb;
@@ -50,7 +48,7 @@ body {
   font-weight: 500 !important;
   border-radius: 0.5rem !important;
   padding: 0.35rem 0.85rem !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: var(--font-jakarta), sans-serif !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
 }
@@ -59,7 +57,7 @@ body {
   font-size: 1rem !important;
   font-weight: 600 !important;
   color: #111827 !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: var(--font-jakarta), sans-serif !important;
 }
 
 .fc .fc-col-header-cell {

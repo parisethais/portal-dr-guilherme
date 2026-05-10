@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 
 // ── Cores ────────────────────────────────────────────────────
-const PRIMARY    = '#1a3a5c'
+const PRIMARY    = '#1A1F2E'
 // Cores bem distintas para o donut
 const COLORS_PIE = ['#1e3a8a', '#0891b2', '#7c3aed', '#be185d', '#059669']
 
@@ -128,7 +128,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
         <PatientEditModal patient={patient} onClose={() => setModalOpen(false)} />
       )}
 
-      <tr className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${patient.status_paciente === 'obito' ? 'opacity-60' : ''}`}>
+      <tr className={`transition-colors ${patient.status_paciente === 'obito' ? 'opacity-50' : ''}`} style={{ borderBottom: '1px solid rgba(26,31,46,0.05)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(126,184,212,0.05)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
 
         {/* Ações */}
         <td className="px-3 py-3">
@@ -326,7 +326,7 @@ function SemRetornoRow({ patient, ultima }: { patient: Profile; ultima: string |
 
 function SemRetornoPanel({ lista, total, getUltima }: SemRetornoPanelProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-semibold text-gray-800">Ativos sem retorno agendado</h3>
@@ -445,17 +445,23 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       {/* ── 1. Cards resumo ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Ativos',          value: totais.ativo,          color: 'bg-green-50  text-green-700',  sub: 'pacientes' },
-          { label: 'Inativos',        value: totais.inativo,        color: 'bg-gray-50   text-gray-600',   sub: 'pacientes' },
-          { label: 'Óbitos',          value: totais.obito,          color: 'bg-red-50    text-red-700',    sub: 'registros' },
-          { label: 'Sem retorno',     value: totais.semRetorno,     color: 'bg-amber-50  text-amber-700',  sub: 'ativos' },
-          { label: 'Consultas / mês', value: totais.consultasMes,   color: 'bg-blue-50   text-blue-700',   sub: 'realizadas' },
-          { label: 'Novos / mês',     value: totais.novosMes,       color: 'bg-purple-50 text-purple-700', sub: 'cadastros' },
+          { label: 'Ativos',          value: totais.ativo,        valueColor: 'text-primary',       bg: 'rgba(255,255,255,0.75)', accent: '#1A1F2E' },
+          { label: 'Inativos',        value: totais.inativo,      valueColor: 'text-gray-400',      bg: 'rgba(255,255,255,0.60)', accent: '#D1D5DB' },
+          { label: 'Óbitos',          value: totais.obito,        valueColor: 'text-red-500',       bg: 'rgba(254,242,242,0.65)', accent: '#EF4444' },
+          { label: 'Sem retorno',     value: totais.semRetorno,   valueColor: 'text-amber-500',     bg: 'rgba(255,251,235,0.65)', accent: '#F59E0B' },
+          { label: 'Consultas / mês', value: totais.consultasMes, valueColor: 'text-primary',       bg: 'rgba(126,184,212,0.1)',  accent: '#7EB8D4' },
+          { label: 'Novos / mês',     value: totais.novosMes,     valueColor: 'text-primary',       bg: 'rgba(126,184,212,0.1)',  accent: '#7EB8D4' },
         ].map(card => (
-          <div key={card.label} className={`rounded-xl p-4 ${card.color}`}>
-            <p className="text-3xl font-bold">{card.value}</p>
-            <p className="text-sm font-medium mt-1">{card.label}</p>
-            <p className="text-xs opacity-60 mt-0.5">{card.sub}</p>
+          <div
+            key={card.label}
+            className="rounded-xl border border-white/60 backdrop-blur-sm overflow-hidden"
+            style={{ backgroundColor: card.bg }}
+          >
+            <div className="h-0.5 w-full" style={{ backgroundColor: card.accent, opacity: 0.4 }} />
+            <div className="p-4">
+              <p className={`text-4xl font-bold tracking-tight ${card.valueColor}`}>{card.value}</p>
+              <p className="text-sm font-semibold text-gray-700 mt-2 leading-none">{card.label}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -464,7 +470,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       <div className="grid lg:grid-cols-2 gap-4">
 
         {/* Consultas por mês */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col" style={{ minHeight: 300 }}>
+        <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5 flex flex-col" style={{ minHeight: 300, backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-2 mb-3 flex-shrink-0">
             <TrendingUp className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-gray-800">Consultas realizadas</h3>
@@ -486,7 +492,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
         </div>
 
         {/* Como conheceu */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-2 mb-4">
             <UserCheck className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-gray-800">Como conheceram o consultório</h3>
@@ -532,7 +538,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       <div className="grid lg:grid-cols-2 gap-4">
 
         {/* Próximas consultas — 7 dias */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-2 mb-4">
             <CalendarDays className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-gray-800">Próximas consultas</h3>
@@ -602,7 +608,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           ))}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <table className="w-full text-sm" style={{ minWidth: 1100 }}>
             <colgroup>
               <col style={{ width:  60 }} />
@@ -616,9 +622,9 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               <col style={{ width: 150 }} />
             </colgroup>
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
+              <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
                 {['', 'Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
                 ))}

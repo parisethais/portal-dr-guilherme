@@ -121,25 +121,28 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
               <Card
                 key={patient.id}
                 padding="sm"
-                className={`hover:shadow-md transition-shadow cursor-pointer ${
+                className={`cursor-pointer transition-all duration-150 hover:-translate-y-0.5 ${
                   hasCritical
-                    ? 'border-red-300 hover:border-red-400'
+                    ? 'border-red-200 hover:border-red-300 hover:shadow-md'
                     : hasWarning
-                    ? 'border-amber-200 hover:border-amber-300'
-                    : 'hover:border-primary/30'
+                    ? 'border-amber-200 hover:border-amber-300 hover:shadow-md'
+                    : 'hover:border-primary/20 hover:shadow-md'
                 }`}
                 onClick={() => setSelectedPatient(patient)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <UserRound className="w-5 h-5 text-primary" />
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                    style={{ backgroundColor: 'rgba(26,31,46,0.07)', color: '#1A1F2E' }}
+                  >
+                    {(patient.full_name || '?').split(' ').map((n: string) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm truncate">
+                    <p className="font-semibold text-gray-900 text-sm truncate">
                       {patient.full_name || 'Nome não informado'}
                     </p>
                     {patient.cpf && (
-                      <p className="text-xs text-gray-500 truncate">CPF: {patient.cpf}</p>
+                      <p className="text-xs text-gray-400 truncate">CPF: {patient.cpf}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-0.5">
                       Desde {formatDate(patient.created_at)}
