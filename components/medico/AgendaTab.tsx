@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Profile, Consulta, ConsultaStatus } from '@/lib/types'
 import ConsultaModal, { TIPO_LABEL } from './ConsultaModal'
+import DayViewModal from './DayViewModal'
 import { CalendarDays, Plus } from 'lucide-react'
 
 // Dynamic imports to avoid SSR issues
@@ -89,6 +90,10 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     open: false,
     consulta: null,
   })
+  const [dayModal, setDayModal] = useState<{ open: boolean; date: string }>({
+    open: false,
+    date: '',
+  })
 
   // Build a patient name lookup map
   const patientMap: Record<string, string> = {}
@@ -118,13 +123,14 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   })
 
   function handleDateClick(dateStr: string, allDay: boolean) {
-    let dt = dateStr
+    const dateOnly = dateStr.slice(0, 10)
     if (allDay) {
-      dt = dateStr.slice(0, 10) + 'T08:00'
+      // Clique no dia na view mensal → abre o day modal
+      setDayModal({ open: true, date: dateOnly })
     } else {
-      dt = dateStr.slice(0, 16)
+      // Clique em horário específico (view semana/dia) → abre direto para criar
+      setCreateModal({ open: true, defaultDateTime: dateStr.slice(0, 16) })
     }
-    setCreateModal({ open: true, defaultDateTime: dt })
   }
 
   function handleEventClick(consulta: Consulta) {
@@ -174,6 +180,17 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
           consulta={viewModal.consulta}
         />
       )}
+
+      {/* Day view modal */}
+      <DayViewModal
+        open={dayModal.open}
+        onClose={() => setDayModal({ open: false, date: '' })}
+        date={dayModal.date}
+        consultas={consultas.filter((c) => c.data_hora.startsWith(dayModal.date))}
+        patients={patients}
+        onSelectConsulta={(c) => setViewModal({ open: true, consulta: c })}
+        onNewConsulta={(dt) => setCreateModal({ open: true, defaultDateTime: dt })}
+      />
     </div>
   )
 }
