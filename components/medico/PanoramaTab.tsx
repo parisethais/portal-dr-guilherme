@@ -6,7 +6,6 @@ import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
-import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
 import { updateRetornoPrevisto } from '@/app/actions/profile'
 import { TIPO_LABEL } from './ConsultaModal'
 import {
@@ -100,11 +99,10 @@ interface RowProps {
   ultimaConsulta:  string | null
   proximaConsulta: string | null
   ultimoTipo:      string | null    // tipo da última consulta (label)
-  diagnosticos:    string[]
   alertRetorno:    'atrasado' | 'chegando' | null
 }
 
-function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, diagnosticos, alertRetorno }: RowProps) {
+function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, alertRetorno }: RowProps) {
   const [modalOpen, setModalOpen]     = useState(false)
   const [isPending, startTransition]  = useTransition()
   const [newPassword, setNewPassword] = useState<string | null>(null)
@@ -196,19 +194,6 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, dia
           }
         </td>
 
-        {/* Diagnóstico — vem do prontuário */}
-        <td className="px-4 py-3 text-xs text-gray-700">
-          {diagnosticos.length > 0 ? (
-            <div className="space-y-0.5">
-              {diagnosticos.map((d, i) => (
-                <p key={i} className="leading-snug">{d}</p>
-              ))}
-            </div>
-          ) : (
-            <span className="text-gray-300">—</span>
-          )}
-        </td>
-
         {/* Última consulta */}
         <td className="px-4 py-3 text-xs text-gray-500">
           {ultimaConsulta ? formatDate(ultimaConsulta) : '—'}
@@ -277,7 +262,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, dia
 
       {newPassword && (
         <tr>
-          <td colSpan={8} className="px-4 pb-3">
+          <td colSpan={7} className="px-4 pb-3">
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <KeyRound className="w-4 h-4 text-amber-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -433,16 +418,6 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     return consultas
       .filter(c => c.patient_id === patientId && c.data_hora >= nowISO && ['agendada', 'confirmada'].includes(c.status))
       .sort((a, b) => a.data_hora.localeCompare(b.data_hora))[0]?.data_hora ?? null
-  }
-
-  // Diagnósticos do prontuário — da consulta mais recente com diagnósticos
-  function getDiagnosticos(patientId: string): string[] {
-    const consultaComDx = consultas
-      .filter(c => c.patient_id === patientId)
-      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
-      .find(c => parseDiagnosticos(c.diagnosticos ?? null).length > 0)
-    if (!consultaComDx) return []
-    return parseDiagnosticos(consultaComDx.diagnosticos ?? null).map(e => e.nome)
   }
 
   // Tipo da última consulta (qualquer status)
@@ -699,20 +674,19 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
         </div>
 
         <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
-          <table className="w-full text-sm" style={{ minWidth: 1100 }}>
+          <table className="w-full text-sm" style={{ minWidth: 950 }}>
             <colgroup>
               <col style={{ width:  60 }} />
-              <col style={{ width: 170 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 170 }} />
-              <col style={{ width: 110 }} />
+              <col style={{ width: 190 }} />
               <col style={{ width: 160 }} />
-              <col style={{ width: 140 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 170 }} />
               <col style={{ width: 150 }} />
+              <col style={{ width: 160 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
-                {['', 'Paciente', 'Como conheceu', 'Diagnóstico', 'Última consulta', 'Retorno previsto', 'Status', 'Observações'].map(h => (
+                {['', 'Paciente', 'Como conheceu', 'Última consulta', 'Retorno previsto', 'Status', 'Observações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
@@ -722,7 +696,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
                     Nenhum paciente encontrado.
                   </td>
                 </tr>
@@ -734,7 +708,6 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                     ultimaConsulta={getUltima(p.id)}
                     proximaConsulta={getProxima(p.id)}
                     ultimoTipo={getUltimoTipo(p.id)}
-                    diagnosticos={getDiagnosticos(p.id)}
                     alertRetorno={getAlertRetorno(p)}
                   />
                 ))
