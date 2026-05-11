@@ -349,6 +349,64 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             onDirtyChange={setHasDirty}
           />
         )}
+        {/* ── Últimas consultas (resumo abaixo dos painéis clínicos) ── */}
+        {isClinicTab && !isHistorico && selectedConsulta && (() => {
+          const idx = realizadas.findIndex(c => c.id === selectedConsulta.id)
+          const anteriores = realizadas.slice(idx + 1, idx + 3)
+          if (anteriores.length === 0) return null
+          return (
+            <div className="mt-6 border-t border-gray-100 pt-5 space-y-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Consultas anteriores (referência)
+              </p>
+              {anteriores.map(c => {
+                const d    = new Date(c.data_hora)
+                const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                const tipo = TIPO_LABEL[c.tipo] ?? c.tipo
+                return (
+                  <div key={c.id} className="rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 space-y-2.5 text-xs">
+                    <div className="flex items-center gap-2 text-gray-500 font-semibold">
+                      <span>{data}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-primary text-[10px]">{tipo}</span>
+                      {c.prontuario_finalizado && <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] flex items-center gap-0.5"><Lock className="w-2.5 h-2.5" />Finalizado</span>}
+                    </div>
+                    {(c.pas != null || c.pad != null || c.fc != null) && (
+                      <div className="flex gap-4 text-gray-600">
+                        {c.pas != null && <span>PA: <strong>{c.pas}/{c.pad ?? '—'}</strong> mmHg</span>}
+                        {c.fc  != null && <span>FC: <strong>{c.fc}</strong> bpm</span>}
+                      </div>
+                    )}
+                    {activeTab === 'evolucao' && c.evolucao && (
+                      <p className="text-gray-600 leading-relaxed whitespace-pre-wrap line-clamp-4">{c.evolucao}</p>
+                    )}
+                    {activeTab === 'evolucao' && c.conduta && (
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Conduta</p>
+                        <p className="text-gray-600 whitespace-pre-wrap line-clamp-3">{c.conduta}</p>
+                      </div>
+                    )}
+                    {activeTab === 'diagnosticos' && c.diagnosticos && (() => {
+                      try {
+                        const diags = JSON.parse(c.diagnosticos) as { nome: string }[]
+                        return diags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {diags.map((d, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">{d.nome}</span>
+                            ))}
+                          </div>
+                        ) : null
+                      } catch { return <p className="text-gray-600">{c.diagnosticos}</p> }
+                    })()}
+                    {activeTab === 'evolucao' && !c.evolucao && !c.conduta && (
+                      <p className="text-gray-400 italic">Sem anotações nesta consulta.</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {activeTab === 'laboratorial' && (
           <LabResultsPanel labResults={labResults} patientId={patientId} />
         )}

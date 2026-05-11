@@ -8,7 +8,8 @@ import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
 import PanoramaTab from './PanoramaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2 } from 'lucide-react'
+import RelatoriosTab from './RelatoriosTab'
 import { cn } from '@/lib/utils'
 
 interface MedicoDashboardProps {
@@ -23,9 +24,9 @@ interface MedicoDashboardProps {
   imagingResults: ImagingResult[]
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios'
 
-const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos']
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios']
 
 export default function MedicoDashboard({
   patients,
@@ -56,8 +57,9 @@ export default function MedicoDashboard({
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'panorama',   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'pacientes',  label: 'Pacientes',  icon: <Users className="w-4 h-4" /> },
-    { id: 'agenda',     label: 'Agenda',     icon: <CalendarDays className="w-4 h-4" /> },
-    { id: 'documentos', label: 'Documentos', icon: <Upload className="w-4 h-4" /> },
+    { id: 'agenda',      label: 'Agenda',      icon: <CalendarDays className="w-4 h-4" /> },
+    { id: 'documentos',  label: 'Documentos',  icon: <Upload       className="w-4 h-4" /> },
+    { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2    className="w-4 h-4" /> },
   ]
 
   const headers: Record<Tab, { title: string; sub: string }> = {
@@ -65,6 +67,7 @@ export default function MedicoDashboard({
     pacientes:  { title: 'Lista de Pacientes', sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
     agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
     documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
+    relatorios: { title: 'Relatórios',         sub: 'Análise de dados dos seus pacientes. Filtre e cruze informações.' },
   }
 
   return (
@@ -141,6 +144,14 @@ export default function MedicoDashboard({
               <MedicoDocumentList documents={documents} />
             </div>
           </div>
+        )}
+        {activeTab === 'relatorios' && (
+          <RelatoriosTab
+            patients={patients}
+            consultas={consultas}
+            labResults={labResults}
+            imagingResults={imagingResults}
+          />
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, Consulta, ConsultaStatus } from '@/lib/types'
+import type { Profile, Consulta, ConsultaStatus, ConsultaTipo } from '@/lib/types'
 import ConsultaModal, { TIPO_LABEL } from './ConsultaModal'
 import DayViewModal from './DayViewModal'
 import { CalendarDays, Plus } from 'lucide-react'
@@ -24,8 +24,19 @@ const FullCalendarComponent = dynamic(
   }
 )
 
-// ── Status colors ──────────────────────────────────────────
+// ── Cores por tipo de consulta ─────────────────────────────
 
+export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; text: string }> = {
+  primeira_consulta:          { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' },
+  primeira_consulta_desconto: { bg: '#2563eb', border: '#3b82f6', text: '#ffffff' },
+  nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' },
+  nova_consulta_desconto:     { bg: '#14b8a6', border: '#0d9488', text: '#ffffff' },
+  retorno:                    { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
+  urgencia:                   { bg: '#c2410c', border: '#ea580c', text: '#ffffff' },
+  telemedicina:               { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' },
+}
+
+// Mantido para compatibilidade com DayViewModal/outros componentes
 export const STATUS_COLORS: Record<ConsultaStatus, { bg: string; border: string; text: string }> = {
   agendada:   { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
   confirmada: { bg: '#16a34a', border: '#15803d', text: '#ffffff' },
@@ -48,26 +59,19 @@ export interface CalendarEvent {
   extendedProps:  { consulta: Consulta }
 }
 
-// ── Legend ─────────────────────────────────────────────────
+// ── Legend por tipo ────────────────────────────────────────
 
-function StatusLegend() {
-  const items: { status: ConsultaStatus; label: string }[] = [
-    { status: 'agendada',   label: 'Agendada' },
-    { status: 'confirmada', label: 'Confirmada' },
-    { status: 'realizada',  label: 'Realizada' },
-    { status: 'falta',      label: 'Falta' },
-    { status: 'cancelada',  label: 'Cancelada' },
-  ]
-
+function TipoLegend() {
+  const tipos = Object.keys(TIPO_COLORS) as ConsultaTipo[]
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {items.map(({ status, label }) => (
-        <div key={status} className="flex items-center gap-1.5">
+      {tipos.map(tipo => (
+        <div key={tipo} className="flex items-center gap-1.5">
           <span
-            className="w-3 h-3 rounded-sm inline-block"
-            style={{ backgroundColor: STATUS_COLORS[status].bg }}
+            className="w-3 h-3 rounded-sm inline-block flex-shrink-0"
+            style={{ backgroundColor: TIPO_COLORS[tipo].bg }}
           />
-          <span className="text-xs text-gray-500">{label}</span>
+          <span className="text-xs text-gray-500">{TIPO_LABEL[tipo]}</span>
         </div>
       ))}
     </div>
@@ -103,20 +107,24 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
 
   // Transform consultas → FullCalendar events
   const events: CalendarEvent[] = consultas.map((c) => {
-    const startDate = new Date(c.data_hora)
-    const endDate   = new Date(startDate.getTime() + c.duracao_min * 60_000)
-    const colors    = STATUS_COLORS[c.status]
+    const startDate   = new Date(c.data_hora)
+    const endDate     = new Date(startDate.getTime() + c.duracao_min * 60_000)
+    const tipoColors  = TIPO_COLORS[c.tipo]
     const patientName = c.patient?.full_name ?? patientMap[c.patient_id] ?? 'Paciente'
+    const hora        = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-    const hora = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    // Consultas passadas (realizada/falta/cancelada) ficam mais apagadas
+    const isPast    = ['realizada', 'falta', 'cancelada'].includes(c.status)
+    const isFalta   = c.status === 'falta'
+
     return {
       id:              c.id,
       title:           `${hora} · ${patientName}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
-      backgroundColor: colors.bg,
-      borderColor:     colors.border,
-      textColor:       colors.text,
+      backgroundColor: isPast ? '#9ca3af' : tipoColors.bg,
+      borderColor:     isFalta ? '#dc2626' : (isPast ? '#6b7280' : tipoColors.border),
+      textColor:       tipoColors.text,
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : [],
       extendedProps:   { consulta: c },
     }
@@ -141,7 +149,7 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     <div className="space-y-4">
       {/* Header row */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <StatusLegend />
+        <TipoLegend />
         <button
           type="button"
           onClick={() => setCreateModal({ open: true, defaultDateTime: '' })}
