@@ -21,16 +21,7 @@ export default function Modal({
   className,
   closable = true,
 }: ModalProps) {
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [open])
+  // Modal é fixed, não precisa travar o scroll do body
 
   if (!open) return null
 
