@@ -214,44 +214,48 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, dia
           {ultimaConsulta ? formatDate(ultimaConsulta) : '—'}
         </td>
 
-        {/* Próxima consulta agendada */}
-        <td className="px-4 py-3 text-xs">
-          {proximaConsulta ? (
-            <span className="text-primary font-medium">{formatDate(proximaConsulta)}</span>
-          ) : (
-            <span className="text-gray-300">—</span>
-          )}
-        </td>
-
-        {/* Retorno Previsto — editável */}
+        {/* Retorno Previsto — editável + alertas + badge de agendado */}
         <td className="px-4 py-3">
-          <div className="flex items-center gap-1">
-            <input
-              type="date"
-              value={retornoPrevisto}
-              onChange={e => handleRetornoPrevisto(e.target.value)}
-              className={`text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary w-[120px] transition-colors ${
-                alertRetorno === 'atrasado'
-                  ? 'border-red-300 bg-red-50 text-red-700'
-                  : alertRetorno === 'chegando'
-                  ? 'border-amber-300 bg-amber-50 text-amber-700'
-                  : 'border-gray-200 bg-white text-gray-700'
-              }`}
-            />
-            {savingRetorno && <Clock className="w-3 h-3 text-gray-300 animate-spin" />}
+          <div className="space-y-1.5">
+            {/* Input de data */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={retornoPrevisto}
+                onChange={e => handleRetornoPrevisto(e.target.value)}
+                className={`text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary w-[126px] transition-colors ${
+                  !proximaConsulta && alertRetorno === 'atrasado'
+                    ? 'border-red-300 bg-red-50 text-red-700'
+                    : !proximaConsulta && alertRetorno === 'chegando'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700'
+                    : 'border-gray-200 bg-white text-gray-700'
+                }`}
+              />
+              {savingRetorno && <Clock className="w-3 h-3 text-gray-300 animate-spin" />}
+            </div>
+
+            {/* Badge: consulta já agendada */}
+            {proximaConsulta && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">
+                <Check className="w-2.5 h-2.5" />
+                Agendado · {formatDate(proximaConsulta)}
+              </span>
+            )}
+
+            {/* Alertas — só quando sem agendamento */}
+            {!proximaConsulta && alertRetorno === 'atrasado' && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700">
+                <AlertTriangle className="w-2.5 h-2.5" />
+                Retorno atrasado
+              </span>
+            )}
+            {!proximaConsulta && alertRetorno === 'chegando' && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700">
+                <AlertTriangle className="w-2.5 h-2.5" />
+                Agendar em breve
+              </span>
+            )}
           </div>
-          {alertRetorno === 'atrasado' && !proximaConsulta && (
-            <span className="inline-flex items-center gap-1 text-[10px] mt-1 text-red-600 font-semibold">
-              <AlertTriangle className="w-2.5 h-2.5" />
-              Atrasado
-            </span>
-          )}
-          {alertRetorno === 'chegando' && !proximaConsulta && (
-            <span className="inline-flex items-center gap-1 text-[10px] mt-1 text-amber-600 font-semibold">
-              <AlertTriangle className="w-2.5 h-2.5" />
-              Sem agendamento
-            </span>
-          )}
         </td>
 
         {/* Status = tipo da última consulta */}
@@ -273,7 +277,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, dia
 
       {newPassword && (
         <tr>
-          <td colSpan={9} className="px-4 pb-3">
+          <td colSpan={8} className="px-4 pb-3">
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <KeyRound className="w-4 h-4 text-amber-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -700,16 +704,15 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               <col style={{ width:  60 }} />
               <col style={{ width: 170 }} />
               <col style={{ width: 140 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 110 }} />
               <col style={{ width: 160 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 130 }} />
               <col style={{ width: 140 }} />
               <col style={{ width: 150 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
-                {['', 'Paciente', 'Como conheceu', 'Diagnóstico', 'Última consulta', 'Próxima agendada', 'Retorno previsto', 'Status', 'Observações'].map(h => (
+                {['', 'Paciente', 'Como conheceu', 'Diagnóstico', 'Última consulta', 'Retorno previsto', 'Status', 'Observações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
@@ -719,7 +722,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
                     Nenhum paciente encontrado.
                   </td>
                 </tr>
