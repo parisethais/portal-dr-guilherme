@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import { guardNavigation } from '@/lib/prontuario-dirty'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
@@ -32,15 +33,19 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
   const selectedPatient = patientId ? (patients.find(p => p.id === patientId) ?? null) : null
 
   function selectPatient(patient: Profile) {
-    const p = new URLSearchParams(searchParams.toString())
-    p.set('p', patient.id)
-    router.push(`?${p.toString()}`, { scroll: false })
+    guardNavigation(() => {
+      const p = new URLSearchParams(searchParams.toString())
+      p.set('p', patient.id)
+      router.push(`?${p.toString()}`, { scroll: false })
+    })
   }
 
   function goBack() {
-    const p = new URLSearchParams(searchParams.toString())
-    p.delete('p')
-    router.push(`?${p.toString()}`, { scroll: false })
+    guardNavigation(() => {
+      const p = new URLSearchParams(searchParams.toString())
+      p.delete('p')
+      router.push(`?${p.toString()}`, { scroll: false })
+    })
   }
 
   const filtered = patients.filter((p) => {

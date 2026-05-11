@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, Document, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import { guardNavigation } from '@/lib/prontuario-dirty'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
@@ -44,11 +45,12 @@ export default function MedicoDashboard({
   const activeTab: Tab = rawTab && VALID_TABS.includes(rawTab) ? rawTab : 'panorama'
 
   function setActiveTab(tab: Tab) {
-    const p = new URLSearchParams(searchParams.toString())
-    p.set('tab', tab)
-    // Limpa seleção de paciente ao trocar de aba
-    p.delete('p')
-    router.push(`?${p.toString()}`, { scroll: false })
+    guardNavigation(() => {
+      const p = new URLSearchParams(searchParams.toString())
+      p.set('tab', tab)
+      p.delete('p')
+      router.push(`?${p.toString()}`, { scroll: false })
+    })
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [

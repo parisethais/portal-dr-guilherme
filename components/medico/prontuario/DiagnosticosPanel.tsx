@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef } from 'react'
 import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
+import { setProntuarioDirty } from '@/lib/prontuario-dirty'
 import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock } from 'lucide-react'
 
 // ── Lista de diagnósticos de nefrologia ───────────────────────
@@ -96,6 +97,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   useUnsavedWarning(isDirty && !isFinalized)
 
   useEffect(() => {
+    setProntuarioDirty(isDirty && !isFinalized)
     onDirtyChange?.(isDirty && !isFinalized)
   }, [isDirty, isFinalized]) // eslint-disable-line react-hooks/exhaustive-deps
 

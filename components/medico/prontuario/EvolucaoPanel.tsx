@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
+import { setProntuarioDirty } from '@/lib/prontuario-dirty'
 import { Save, CheckCircle, Loader2, Lock, Activity, MessageSquare } from 'lucide-react'
 
 interface Props {
@@ -115,6 +116,7 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
   useUnsavedWarning(isDirty)
 
   useEffect(() => {
+    setProntuarioDirty(isDirty)
     onDirtyChange?.(isDirty)
   }, [isDirty]) // eslint-disable-line react-hooks/exhaustive-deps
 

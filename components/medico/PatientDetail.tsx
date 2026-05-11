@@ -13,6 +13,7 @@ import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
 import ProntuarioTab from './prontuario/ProntuarioTab'
 import PatientCadastroTab from './PatientCadastroTab'
+import { guardNavigation } from '@/lib/prontuario-dirty'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
   if (fileType?.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />
@@ -68,7 +69,7 @@ export default function PatientDetail({
     <div className="space-y-6">
       {/* Back + patient header */}
       <button
-        onClick={onBack}
+        onClick={() => guardNavigation(onBack)}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -99,7 +100,7 @@ export default function PatientDetail({
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveDetailTab(tab.id)}
+            onClick={() => guardNavigation(() => setActiveDetailTab(tab.id))}
             className={cn(
               'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px',
               activeDetailTab === tab.id
