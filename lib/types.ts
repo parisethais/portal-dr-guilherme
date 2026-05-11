@@ -30,6 +30,7 @@ export interface Profile {
   status_paciente: StatusPaciente
   obs_secretaria: string | null
   form_token: string | null
+  retorno_previsto: string | null   // date YYYY-MM-DD
 }
 
 export interface Document {
@@ -112,7 +113,14 @@ export interface Invoice {
 }
 
 // ── Agendamento ────────────────────────────────────────────
-export type ConsultaTipo   = 'primeira_consulta' | 'retorno' | 'urgencia' | 'telemedicina'
+export type ConsultaTipo   =
+  | 'primeira_consulta'
+  | 'nova_consulta'
+  | 'retorno'
+  | 'primeira_consulta_desconto'
+  | 'nova_consulta_desconto'
+  | 'urgencia'
+  | 'telemedicina'
 export type ConsultaLocal  = 'consultorio' | 'telemedicina'
 export type ConsultaStatus = 'agendada' | 'confirmada' | 'realizada' | 'falta' | 'cancelada'
 

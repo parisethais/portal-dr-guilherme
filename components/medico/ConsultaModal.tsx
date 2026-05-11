@@ -17,10 +17,23 @@ import {
 // ── Labels ────────────────────────────────────────────────
 
 export const TIPO_LABEL: Record<ConsultaTipo, string> = {
-  primeira_consulta: 'Primeira Consulta',
-  retorno:           'Retorno',
-  urgencia:          'Urgência',
-  telemedicina:      'Telemedicina',
+  primeira_consulta:          'Primeira Consulta',
+  nova_consulta:              'Nova Consulta',
+  retorno:                    'Retorno',
+  primeira_consulta_desconto: 'Primeira Consulta (Desconto)',
+  nova_consulta_desconto:     'Nova Consulta (Desconto)',
+  urgencia:                   'Urgência',
+  telemedicina:               'Telemedicina',
+}
+
+export const TIPO_INFO: Record<ConsultaTipo, { duracao: number; preco: string }> = {
+  primeira_consulta:          { duracao: 75, preco: 'R$1.000' },
+  nova_consulta:              { duracao: 45, preco: 'R$1.000' },
+  retorno:                    { duracao: 30, preco: 'Gratuito' },
+  primeira_consulta_desconto: { duracao: 75, preco: 'R$500'   },
+  nova_consulta_desconto:     { duracao: 45, preco: 'R$500'   },
+  urgencia:                   { duracao: 30, preco: '—'       },
+  telemedicina:               { duracao: 30, preco: '—'       },
 }
 
 export const LOCAL_LABEL: Record<ConsultaLocal, string> = {
@@ -430,12 +443,19 @@ export default function ConsultaModal({
               </label>
               <select
                 value={tipo}
-                onChange={(e) => setTipo(e.target.value as ConsultaTipo)}
+                onChange={(e) => {
+                  const t = e.target.value as ConsultaTipo
+                  setTipo(t)
+                  setDuracao(TIPO_INFO[t].duracao)
+                }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="primeira_consulta">Primeira Consulta</option>
-                <option value="retorno">Retorno</option>
+                <option value="primeira_consulta">Primeira Consulta — 1h15 · R$1.000</option>
+                <option value="nova_consulta">Nova Consulta — 45min · R$1.000</option>
+                <option value="retorno">Retorno — 30min · Gratuito</option>
+                <option value="primeira_consulta_desconto">Primeira Consulta (Desconto) — 1h15 · R$500</option>
+                <option value="nova_consulta_desconto">Nova Consulta (Desconto) — 45min · R$500</option>
                 <option value="urgencia">Urgência</option>
                 <option value="telemedicina">Telemedicina</option>
               </select>

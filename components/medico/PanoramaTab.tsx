@@ -4,8 +4,11 @@ import { useState, useTransition } from 'react'
 import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
+import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
+import { updateRetornoPrevisto } from '@/app/actions/profile'
+import { TIPO_LABEL } from './ConsultaModal'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LabelList, PieChart, Pie, Cell, Legend,
@@ -93,24 +96,36 @@ function CustomPieTooltip({ active, payload }: any) {
 
 // ── Linha da tabela ───────────────────────────────────────────
 interface RowProps {
-  patient: Profile
-  ultimaConsulta: string | null
+  patient:         Profile
+  ultimaConsulta:  string | null
   proximaConsulta: string | null
+  ultimoTipo:      string | null    // tipo da última consulta (label)
+  diagnosticos:    string[]
+  alertRetorno:    'atrasado' | 'chegando' | null
 }
 
-function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
+function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, diagnosticos, alertRetorno }: RowProps) {
   const [modalOpen, setModalOpen]     = useState(false)
   const [isPending, startTransition]  = useTransition()
   const [newPassword, setNewPassword] = useState<string | null>(null)
   const [copiedPwd, setCopiedPwd]     = useState(false)
-
-  const statusCfg = STATUS_CONFIG[patient.status_paciente ?? 'ativo']
+  const [retornoPrevisto, setRetornoPrevisto] = useState(patient.retorno_previsto ?? '')
+  const [savingRetorno, setSavingRetorno]     = useState(false)
 
   function handleResetPassword() {
     if (!confirm(`Gerar nova senha para ${patient.full_name}?`)) return
     startTransition(async () => {
       const res = await resetPatientPassword(patient.id)
       if (res.success && res.data) setNewPassword(res.data.password)
+    })
+  }
+
+  function handleRetornoPrevisto(value: string) {
+    setRetornoPrevisto(value)
+    setSavingRetorno(true)
+    startTransition(async () => {
+      await updateRetornoPrevisto(patient.id, value || null)
+      setSavingRetorno(false)
     })
   }
 
@@ -181,14 +196,17 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
           }
         </td>
 
-        {/* Clínica */}
+        {/* Diagnóstico — vem do prontuário */}
         <td className="px-4 py-3 text-xs text-gray-700">
-          {patient.clinica || 'MedRenal'}
-        </td>
-
-        {/* Diagnóstico */}
-        <td className="px-4 py-3 text-xs text-gray-700">
-          {patient.diagnostico || <span className="text-gray-300">—</span>}
+          {diagnosticos.length > 0 ? (
+            <div className="space-y-0.5">
+              {diagnosticos.map((d, i) => (
+                <p key={i} className="leading-snug">{d}</p>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-300">—</span>
+          )}
         </td>
 
         {/* Última consulta */}
@@ -196,20 +214,55 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta }: RowProps) {
           {ultimaConsulta ? formatDate(ultimaConsulta) : '—'}
         </td>
 
-        {/* Próxima consulta */}
+        {/* Próxima consulta agendada */}
         <td className="px-4 py-3 text-xs">
           {proximaConsulta ? (
             <span className="text-primary font-medium">{formatDate(proximaConsulta)}</span>
           ) : (
-            <span className="text-amber-500 font-medium">Sem retorno</span>
+            <span className="text-gray-300">—</span>
           )}
         </td>
 
-        {/* Status */}
+        {/* Retorno Previsto — editável */}
         <td className="px-4 py-3">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
-            {statusCfg.label}
-          </span>
+          <div className="flex items-center gap-1">
+            <input
+              type="date"
+              value={retornoPrevisto}
+              onChange={e => handleRetornoPrevisto(e.target.value)}
+              className={`text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary w-[120px] transition-colors ${
+                alertRetorno === 'atrasado'
+                  ? 'border-red-300 bg-red-50 text-red-700'
+                  : alertRetorno === 'chegando'
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            />
+            {savingRetorno && <Clock className="w-3 h-3 text-gray-300 animate-spin" />}
+          </div>
+          {alertRetorno === 'atrasado' && !proximaConsulta && (
+            <span className="inline-flex items-center gap-1 text-[10px] mt-1 text-red-600 font-semibold">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              Atrasado
+            </span>
+          )}
+          {alertRetorno === 'chegando' && !proximaConsulta && (
+            <span className="inline-flex items-center gap-1 text-[10px] mt-1 text-amber-600 font-semibold">
+              <AlertTriangle className="w-2.5 h-2.5" />
+              Sem agendamento
+            </span>
+          )}
+        </td>
+
+        {/* Status = tipo da última consulta */}
+        <td className="px-4 py-3">
+          {ultimoTipo ? (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-primary">
+              {ultimoTipo}
+            </span>
+          ) : (
+            <span className="text-gray-300 text-xs">—</span>
+          )}
         </td>
 
         {/* Observações */}
@@ -376,6 +429,39 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     return consultas
       .filter(c => c.patient_id === patientId && c.data_hora >= nowISO && ['agendada', 'confirmada'].includes(c.status))
       .sort((a, b) => a.data_hora.localeCompare(b.data_hora))[0]?.data_hora ?? null
+  }
+
+  // Diagnósticos do prontuário — da consulta mais recente com diagnósticos
+  function getDiagnosticos(patientId: string): string[] {
+    const consultaComDx = consultas
+      .filter(c => c.patient_id === patientId)
+      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
+      .find(c => parseDiagnosticos(c.diagnosticos ?? null).length > 0)
+    if (!consultaComDx) return []
+    return parseDiagnosticos(consultaComDx.diagnosticos ?? null).map(e => e.nome)
+  }
+
+  // Tipo da última consulta (qualquer status)
+  function getUltimoTipo(patientId: string): string | null {
+    const ultima = consultas
+      .filter(c => c.patient_id === patientId)
+      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))[0]
+    if (!ultima) return null
+    return TIPO_LABEL[ultima.tipo] ?? ultima.tipo
+  }
+
+  // Alerta de retorno baseado em retorno_previsto
+  function getAlertRetorno(patient: Profile): 'atrasado' | 'chegando' | null {
+    const rp = patient.retorno_previsto
+    if (!rp) return null
+    if (getProxima(patient.id)) return null   // já tem consulta agendada
+    const hoje   = new Date(); hoje.setHours(0,0,0,0)
+    const data   = new Date(rp + 'T00:00:00')
+    const diffMs = data.getTime() - hoje.getTime()
+    const dias   = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    if (dias < 0)  return 'atrasado'
+    if (dias <= 30) return 'chegando'
+    return null
   }
 
   // ── Totais / cards ────────────────────────────────────────
@@ -614,16 +700,16 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
               <col style={{ width:  60 }} />
               <col style={{ width: 170 }} />
               <col style={{ width: 140 }} />
+              <col style={{ width: 160 }} />
               <col style={{ width: 110 }} />
-              <col style={{ width: 150 }} />
               <col style={{ width: 110 }} />
-              <col style={{ width: 110 }} />
-              <col style={{ width: 100 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 140 }} />
               <col style={{ width: 150 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
-                {['', 'Paciente', 'Como conheceu', 'Clínica', 'Diagnóstico', 'Última consulta', 'Próxima consulta', 'Status', 'Observações'].map(h => (
+                {['', 'Paciente', 'Como conheceu', 'Diagnóstico', 'Última consulta', 'Próxima agendada', 'Retorno previsto', 'Status', 'Observações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
@@ -644,6 +730,9 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                     patient={p}
                     ultimaConsulta={getUltima(p.id)}
                     proximaConsulta={getProxima(p.id)}
+                    ultimoTipo={getUltimoTipo(p.id)}
+                    diagnosticos={getDiagnosticos(p.id)}
+                    alertRetorno={getAlertRetorno(p)}
                   />
                 ))
               )}

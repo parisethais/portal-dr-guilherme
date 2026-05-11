@@ -162,6 +162,27 @@ export async function resetPatientPassword(
   return { success: true, data: { password: newPassword } }
 }
 
+// ── Atualiza retorno previsto (secretaria preenche direto na tabela) ─
+export async function updateRetornoPrevisto(
+  patientId: string,
+  retorno_previsto: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ retorno_previsto, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}
+
 // ── Atualiza só o status do paciente (para uso rápido no Panorama) ─
 export async function updatePatientStatus(
   patientId: string,
