@@ -24,21 +24,17 @@ export default function Modal({
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const drag = useRef({
     active: false,
-    moved:  false,   // true se houve movimento real durante o drag
+    moved:  false,
     startX: 0,
     startY: 0,
     fromX:  0,
     fromY:  0,
   })
-  // true só quando o mousedown aconteceu diretamente no backdrop
-  const backdropDown = useRef(false)
 
-  // Reset position when modal opens
   useEffect(() => {
     if (open) setOffset({ x: 0, y: 0 })
   }, [open])
 
-  // Global mouse events for drag
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!drag.current.active) return
@@ -80,30 +76,32 @@ export default function Modal({
 
   return (
     <>
-      {/* Backdrop — fecha só se o mousedown veio do backdrop (não do painel) */}
-      <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-        onMouseDown={() => { backdropDown.current = true }}
-        onClick={() => {
-          if (closable && backdropDown.current && !drag.current.moved) onClose?.()
-          backdropDown.current = false
-        }}
-      />
+      {/* Backdrop — só visual, pointer-events:none para não interceptar cliques */}
+      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" style={{ pointerEvents: 'none' }} />
 
-      {/* Scroll container + centering */}
-      <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+      {/*
+        Container clicável + scrollável.
+        onClick aqui = clicou fora do painel → fecha.
+        onMouseDown aqui = reseta "moved" para cliques genuínos no fundo.
+      */}
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto"
+        onMouseDown={() => { drag.current.moved = false }}
+        onClick={closable ? () => { if (!drag.current.moved) onClose?.() } : undefined}
+      >
         <div className="flex min-h-screen items-center justify-center p-4">
           <div
             className={cn(
-              'relative bg-white rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto select-none',
+              'relative bg-white rounded-2xl shadow-2xl w-full max-w-lg select-none',
               className
             )}
             style={{
               transform: `translate(${offset.x}px, ${offset.y}px)`,
               transition: drag.current.active ? 'none' : 'transform 0.15s ease',
             }}
-            // cancela a flag do backdrop quando o mousedown é dentro do painel
-            onMouseDown={() => { backdropDown.current = false }}
+            // impede que cliques DENTRO do painel cheguem ao container externo
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             {/* Drag handle + title bar */}
             <div
@@ -119,7 +117,7 @@ export default function Modal({
               </div>
               {closable && onClose && (
                 <button
-                  onMouseDown={e => e.stopPropagation()} // não inicia drag ao clicar no X
+                  onMouseDown={e => e.stopPropagation()}
                   onClick={onClose}
                   className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
                 >
