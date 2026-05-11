@@ -117,7 +117,6 @@ export default async function MedicoPage() {
 
       <MedicoDashboard
         patients={patients ?? []}
-        requests={requests ?? []}
         documents={documents ?? []}
         patientExams={patientExams ?? []}
         carePlans={carePlans ?? []}
@@ -126,7 +125,6 @@ export default async function MedicoPage() {
         consultas={consultas ?? []}
         labResults={labResults ?? []}
         imagingResults={imagingResults ?? []}
-        pendingCount={pendingRequests}
       />
     </div>
   )

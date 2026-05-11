@@ -97,12 +97,10 @@ export default async function PacientePage() {
         <PacienteDashboard
           profile={profile}
           documents={documents ?? []}
-          messages={messages ?? []}
           exames={exames ?? []}
           carePlan={carePlan ?? null}
           carePlanAttachments={carePlanAttachments ?? []}
           invoices={invoices ?? []}
-          unreadCount={unreadCount}
         />
       </div>
     </>

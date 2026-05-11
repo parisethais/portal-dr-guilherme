@@ -1,20 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, Document, ContactRequest, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import type { Profile, Document, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
-import SendMessageForm from './SendMessageForm'
-import ContactRequests from './ContactRequests'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
 import PanoramaTab from './PanoramaTab'
-import { Users, Upload, MessageSquare, Phone, CalendarDays, LayoutDashboard } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MedicoDashboardProps {
   patients: Profile[]
-  requests: ContactRequest[]
   documents: Document[]
   patientExams: PatientExam[]
   carePlans: CarePlan[]
@@ -23,14 +20,12 @@ interface MedicoDashboardProps {
   consultas: Consulta[]
   labResults: LabResult[]
   imagingResults: ImagingResult[]
-  pendingCount: number
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'mensagem' | 'solicitacoes'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos'
 
 export default function MedicoDashboard({
   patients,
-  requests,
   documents,
   patientExams,
   carePlans,
@@ -39,23 +34,22 @@ export default function MedicoDashboard({
   consultas,
   labResults,
   imagingResults,
-  pendingCount,
 }: MedicoDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('panorama')
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'panorama',     label: 'Panorama',     icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'pacientes',    label: 'Pacientes',    icon: <Users className="w-4 h-4" /> },
-    { id: 'agenda',       label: 'Agenda',        icon: <CalendarDays className="w-4 h-4" /> },
-    { id: 'documentos',   label: 'Documentos',   icon: <Upload className="w-4 h-4" /> },
-    { id: 'mensagem',     label: 'Mensagem',     icon: <MessageSquare className="w-4 h-4" /> },
-    {
-      id: 'solicitacoes',
-      label: 'Solicitações',
-      icon: <Phone className="w-4 h-4" />,
-      badge: pendingCount || undefined,
-    },
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'panorama',   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'pacientes',  label: 'Pacientes',  icon: <Users className="w-4 h-4" /> },
+    { id: 'agenda',     label: 'Agenda',     icon: <CalendarDays className="w-4 h-4" /> },
+    { id: 'documentos', label: 'Documentos', icon: <Upload className="w-4 h-4" /> },
   ]
+
+  const headers: Record<Tab, { title: string; sub: string }> = {
+    panorama:   { title: 'Panorama',          sub: 'Clique no nome ou no lápis para editar o cadastro completo do paciente.' },
+    pacientes:  { title: 'Lista de Pacientes', sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
+    agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
+    documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
+  }
 
   return (
     <div
@@ -81,33 +75,19 @@ export default function MedicoDashboard({
           >
             {tab.icon}
             {tab.label}
-            {tab.badge !== undefined && tab.badge > 0 && (
-              <span className="inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold bg-red-500 text-white">
-                {tab.badge > 99 ? '99+' : tab.badge}
-              </span>
-            )}
           </button>
         ))}
       </div>
 
-      {/* Tab headers */}
+      {/* Tab header */}
       <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid rgba(126,184,212,0.12)' }}>
-        {[
-          { id: 'panorama',     title: 'Panorama',               sub: 'Clique no nome ou no lápis para editar o cadastro completo do paciente.' },
-          { id: 'pacientes',    title: 'Lista de Pacientes',      sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
-          { id: 'agenda',       title: 'Agenda',                  sub: 'Clique em um horário para agendar uma consulta. Clique em uma consulta para ver detalhes.' },
-          { id: 'documentos',   title: 'Documentos',              sub: 'Envie laudos, receitas e orientações para pacientes.' },
-          { id: 'mensagem',     title: 'Enviar Mensagem',         sub: 'Envie uma mensagem diretamente para um paciente.' },
-          { id: 'solicitacoes', title: 'Solicitações de Contato', sub: pendingCount > 0 ? `${pendingCount} solicitação${pendingCount > 1 ? 'ões' : ''} pendente${pendingCount > 1 ? 's' : ''}.` : 'Gerencie as solicitações de contato dos pacientes.' },
-        ].filter(t => t.id === activeTab).map(t => (
-          <div key={t.id} className="flex items-start gap-3">
-            <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7EB8D4' }} />
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">{t.title}</h2>
-              <p className="text-sm text-gray-500 mt-0.5">{t.sub}</p>
-            </div>
+        <div className="flex items-start gap-3">
+          <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7EB8D4' }} />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{headers[activeTab].title}</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{headers[activeTab].sub}</p>
           </div>
-        ))}
+        </div>
       </div>
 
       {/* Content */}
@@ -146,8 +126,6 @@ export default function MedicoDashboard({
             </div>
           </div>
         )}
-        {activeTab === 'mensagem' && <SendMessageForm patients={patients} />}
-        {activeTab === 'solicitacoes' && <ContactRequests requests={requests} />}
       </div>
     </div>
   )

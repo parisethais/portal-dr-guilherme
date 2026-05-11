@@ -1,38 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import type { Document, Message, PatientExam, CarePlan, CarePlanAttachment, Invoice, Profile } from '@/lib/types'
+import type { Document, PatientExam, CarePlan, CarePlanAttachment, Invoice, Profile } from '@/lib/types'
 import DocumentList from './DocumentList'
-import MessageList from './MessageList'
-import ContactRequestForm from './ContactRequestForm'
 import CuidadosTab from './CuidadosTab'
 import InvoiceList from './InvoiceList'
 import MeuCadastroTab from './MeuCadastroTab'
-import { FileText, MessageSquare, Phone, ClipboardList, Receipt, User } from 'lucide-react'
+import { FileText, ClipboardList, Receipt, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PacienteDashboardProps {
   profile: Profile
   documents: Document[]
-  messages: Message[]
   exames: PatientExam[]
   carePlan: CarePlan | null
   carePlanAttachments: CarePlanAttachment[]
   invoices: Invoice[]
-  unreadCount: number
 }
 
-type Tab = 'documentos' | 'mensagens' | 'contato' | 'cuidados' | 'notas' | 'cadastro'
+type Tab = 'documentos' | 'cuidados' | 'notas' | 'cadastro'
 
 export default function PacienteDashboard({
   profile,
   documents = [],
-  messages = [],
   exames = [],
   carePlan,
   carePlanAttachments = [],
   invoices = [],
-  unreadCount,
 }: PacienteDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('documentos')
 
@@ -49,21 +43,10 @@ export default function PacienteDashboard({
       icon: <ClipboardList className="w-4 h-4" />,
     },
     {
-      id: 'mensagens',
-      label: 'Mensagens',
-      icon: <MessageSquare className="w-4 h-4" />,
-      badge: unreadCount || undefined,
-    },
-    {
       id: 'notas',
       label: 'Notas Fiscais',
       icon: <Receipt className="w-4 h-4" />,
       badge: invoices.filter((i) => !i.downloaded_at).length || undefined,
-    },
-    {
-      id: 'contato',
-      label: 'Solicitar Contato',
-      icon: <Phone className="w-4 h-4" />,
     },
     {
       id: 'cadastro',
@@ -97,14 +80,7 @@ export default function PacienteDashboard({
             {tab.icon}
             <span className="hidden sm:inline">{tab.label}</span>
             {tab.badge !== undefined && tab.badge > 0 && (
-              <span
-                className={cn(
-                  'inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold',
-                  tab.id === 'mensagens'
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-200 text-gray-600'
-                )}
-              >
+              <span className="inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold bg-gray-200 text-gray-600">
                 {tab.badge > 99 ? '99+' : tab.badge}
               </span>
             )}
@@ -117,8 +93,6 @@ export default function PacienteDashboard({
         {activeTab === 'documentos' && <DocumentList documents={documents} exames={exames} />}
         {activeTab === 'cuidados'   && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
         {activeTab === 'notas'      && <InvoiceList invoices={invoices} />}
-        {activeTab === 'mensagens'  && <MessageList messages={messages} />}
-        {activeTab === 'contato'    && <ContactRequestForm />}
         {activeTab === 'cadastro'   && <MeuCadastroTab profile={profile} />}
       </div>
     </div>
