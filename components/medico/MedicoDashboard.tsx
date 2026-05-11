@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, Document, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
@@ -24,6 +24,8 @@ interface MedicoDashboardProps {
 
 type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos'
 
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos']
+
 export default function MedicoDashboard({
   patients,
   documents,
@@ -35,7 +37,19 @@ export default function MedicoDashboard({
   labResults,
   imagingResults,
 }: MedicoDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('panorama')
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+
+  const rawTab   = searchParams.get('tab') as Tab | null
+  const activeTab: Tab = rawTab && VALID_TABS.includes(rawTab) ? rawTab : 'panorama'
+
+  function setActiveTab(tab: Tab) {
+    const p = new URLSearchParams(searchParams.toString())
+    p.set('tab', tab)
+    // Limpa seleção de paciente ao trocar de aba
+    p.delete('p')
+    router.push(`?${p.toString()}`, { scroll: false })
+  }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'panorama',   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },

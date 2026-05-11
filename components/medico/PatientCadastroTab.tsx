@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { updatePatientFull, resetPatientPassword } from '@/app/actions/profile'
+import { deletePatient } from '@/app/actions/patients'
 import type { Profile, StatusPaciente } from '@/lib/types'
-import { Save, Loader2, CheckCircle, KeyRound, Copy, Check } from 'lucide-react'
+import { Save, Loader2, CheckCircle, KeyRound, Copy, Check, Trash2, AlertTriangle } from 'lucide-react'
 
 // ── Helpers de layout ────────────────────────────────────────
 function Field({
@@ -74,12 +75,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ── Componente principal ─────────────────────────────────────
 interface Props {
   patient: Profile
+  onDeleted?: () => void
 }
 
-export default function PatientCadastroTab({ patient }: Props) {
+export default function PatientCadastroTab({ patient, onDeleted }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setSaveError]        = useState('')
   const [saved, setSaved]            = useState(false)
+
+  // Deletar
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError]             = useState('')
+  const [isDeleting, startDeleteTransition]       = useTransition()
 
   // Senha
   const [newPassword, setNewPassword] = useState<string | null>(null)
@@ -142,6 +149,15 @@ export default function PatientCadastroTab({ patient }: Props) {
     startPwdTransition(async () => {
       const res = await resetPatientPassword(patient.id)
       if (res.success && res.data) setNewPassword(res.data.password)
+    })
+  }
+
+  function handleDelete() {
+    setDeleteError('')
+    startDeleteTransition(async () => {
+      const res = await deletePatient(patient.id)
+      if (!res.success) { setDeleteError(res.error); return }
+      onDeleted?.()
     })
   }
 
@@ -297,6 +313,67 @@ export default function PatientCadastroTab({ patient }: Props) {
               {copiedPwd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               {copiedPwd ? 'Copiado!' : 'Copiar'}
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Zona de perigo ── */}
+      <div className="border-t border-red-100 pt-6 space-y-3">
+        <h3 className="text-[11px] font-bold text-red-400 uppercase tracking-widest">Zona de perigo</h3>
+
+        {!showDeleteConfirm ? (
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-700">Deletar paciente</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Remove permanentemente o paciente, consultas, prontuário, exames e todos os dados vinculados.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors flex-shrink-0"
+            >
+              <Trash2 className="w-4 h-4" />
+              Deletar paciente
+            </button>
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-900">Confirmar exclusão de {patient.full_name}?</p>
+                <p className="text-xs text-red-700 mt-0.5 leading-relaxed">
+                  Todos os dados serão removidos permanentemente — consultas, prontuário, exames, faturas e acesso ao portal.
+                  <strong className="block mt-1">Esta ação não pode ser desfeita.</strong>
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <p className="text-xs text-red-700 bg-white border border-red-200 rounded-lg px-3 py-2">{deleteError}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }}
+                disabled={isDeleting}
+                className="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-4 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Deletando...</>
+                  : <><Trash2 className="w-3.5 h-3.5" /> Sim, deletar</>
+                }
+              </button>
+            </div>
           </div>
         )}
       </div>

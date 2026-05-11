@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -22,9 +23,25 @@ interface PatientListProps {
 }
 
 export default function PatientList({ patients, patientExams, carePlans, carePlanAttachments, invoices, consultas, labResults, imagingResults }: PatientListProps) {
-  const [search, setSearch] = useState('')
-  const [selectedPatient, setSelectedPatient] = useState<Profile | null>(null)
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const [search, setSearch]       = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
+
+  const patientId     = searchParams.get('p')
+  const selectedPatient = patientId ? (patients.find(p => p.id === patientId) ?? null) : null
+
+  function selectPatient(patient: Profile) {
+    const p = new URLSearchParams(searchParams.toString())
+    p.set('p', patient.id)
+    router.push(`?${p.toString()}`, { scroll: false })
+  }
+
+  function goBack() {
+    const p = new URLSearchParams(searchParams.toString())
+    p.delete('p')
+    router.push(`?${p.toString()}`, { scroll: false })
+  }
 
   const filtered = patients.filter((p) => {
     const q = search.toLowerCase()
@@ -63,7 +80,7 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
         consultas={patientConsultas}
         labResults={patientLabs}
         imagingResults={patientImaging}
-        onBack={() => setSelectedPatient(null)}
+        onBack={goBack}
       />
     )
   }
@@ -128,7 +145,7 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
                     ? 'border-amber-200 hover:border-amber-300 hover:shadow-md'
                     : 'hover:border-primary/20 hover:shadow-md'
                 }`}
-                onClick={() => setSelectedPatient(patient)}
+                onClick={() => selectPatient(patient)}
               >
                 <div className="flex items-center gap-3">
                   <div

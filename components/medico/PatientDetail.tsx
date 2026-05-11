@@ -173,7 +173,7 @@ export default function PatientDetail({
 
       {/* ── Tab: Cadastro ── */}
       {activeDetailTab === 'cadastro' && (
-        <PatientCadastroTab patient={patient} />
+        <PatientCadastroTab patient={patient} onDeleted={onBack} />
       )}
 
     </div>

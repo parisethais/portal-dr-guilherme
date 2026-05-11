@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
@@ -73,17 +74,19 @@ export default async function MedicoPage() {
         </p>
       </div>
 
-      <MedicoDashboard
-        patients={patients ?? []}
-        documents={documents ?? []}
-        patientExams={patientExams ?? []}
-        carePlans={carePlans ?? []}
-        carePlanAttachments={carePlanAttachments ?? []}
-        invoices={invoices ?? []}
-        consultas={consultas ?? []}
-        labResults={labResults ?? []}
-        imagingResults={imagingResults ?? []}
-      />
+      <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
+        <MedicoDashboard
+          patients={patients ?? []}
+          documents={documents ?? []}
+          patientExams={patientExams ?? []}
+          carePlans={carePlans ?? []}
+          carePlanAttachments={carePlanAttachments ?? []}
+          invoices={invoices ?? []}
+          consultas={consultas ?? []}
+          labResults={labResults ?? []}
+          imagingResults={imagingResults ?? []}
+        />
+      </Suspense>
     </div>
   )
 }
