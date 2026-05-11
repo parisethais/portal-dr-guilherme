@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { X, GripHorizontal } from 'lucide-react'
 
@@ -22,6 +23,7 @@ export default function Modal({
   closable = true,
 }: ModalProps) {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [mounted, setMounted] = useState(false)
   const drag = useRef({
     active: false,
     moved:  false,
@@ -30,6 +32,9 @@ export default function Modal({
     fromX:  0,
     fromY:  0,
   })
+
+  // necessário para createPortal (SSR-safe)
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (open) setOffset({ x: 0, y: 0 })
@@ -72,17 +77,16 @@ export default function Modal({
     document.body.style.cursor = 'grabbing'
   }
 
-  if (!open) return null
+  if (!mounted || !open) return null
 
-  return (
+  const modal = (
     <>
-      {/* Backdrop — só visual, pointer-events:none para não interceptar cliques */}
+      {/* Backdrop — puramente visual, pointer-events none */}
       <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" style={{ pointerEvents: 'none' }} />
 
       {/*
-        Container clicável + scrollável.
-        onClick aqui = clicou fora do painel → fecha.
-        onMouseDown aqui = reseta "moved" para cliques genuínos no fundo.
+        Container clicável: clique FORA do painel → fecha.
+        Clique DENTRO do painel é bloqueado por stopPropagation no painel.
       */}
       <div
         className="fixed inset-0 z-50 overflow-y-auto"
@@ -99,7 +103,6 @@ export default function Modal({
               transform: `translate(${offset.x}px, ${offset.y}px)`,
               transition: drag.current.active ? 'none' : 'transform 0.15s ease',
             }}
-            // impede que cliques DENTRO do painel cheguem ao container externo
             onMouseDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
           >
@@ -132,4 +135,8 @@ export default function Modal({
       </div>
     </>
   )
+
+  // Portal garante que o modal é montado no document.body,
+  // fora de qualquer tabela ou contexto de DOM inválido
+  return createPortal(modal, document.body)
 }
