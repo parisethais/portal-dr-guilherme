@@ -120,15 +120,7 @@ export default function PatientEditModal({ patient, onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} className="max-w-2xl">
-      {/* Header */}
-      <div className="-mt-6 -mx-6 flex items-center justify-between px-6 py-4 border-b border-gray-100 mb-5">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">{patient.full_name ?? 'Paciente'}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Editar todos os dados do cadastro</p>
-        </div>
-      </div>
-
+    <Modal open onClose={onClose} className="max-w-2xl" title={patient.full_name ?? 'Editar paciente'}>
       <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
 
         <Section title="Identificação">
