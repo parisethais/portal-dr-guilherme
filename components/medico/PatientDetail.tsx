@@ -7,9 +7,8 @@ import Card from '@/components/ui/Card'
 import {
   ArrowLeft, UserRound, FileText, Image, File, Video,
   Download, ClipboardList,
-  Stethoscope, Receipt, Contact, AlertCircle, TrendingUp, TrendingDown, FlaskConical,
+  Stethoscope, Receipt, Contact,
 } from 'lucide-react'
-import { computeLabAlerts } from '@/lib/lab-alerts'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
 import ProntuarioTab from './prontuario/ProntuarioTab'
@@ -93,62 +92,6 @@ export default function PatientDetail({
           </div>
         </div>
       </div>
-
-      {/* ── Alertas laboratoriais ── */}
-      {(() => {
-        const alerts = computeLabAlerts(labResults)
-        if (alerts.length === 0) return null
-        const critCount = alerts.filter(a => a.severity === 'critical').length
-        const warnCount = alerts.filter(a => a.severity === 'warning').length
-        return (
-          <div className="rounded-xl border overflow-hidden -mt-2">
-            {/* Header */}
-            <div className={`flex items-center gap-2 px-4 py-2.5 ${critCount > 0 ? 'bg-red-50 border-b border-red-200' : 'bg-amber-50 border-b border-amber-200'}`}>
-              <FlaskConical className={`w-3.5 h-3.5 flex-shrink-0 ${critCount > 0 ? 'text-red-500' : 'text-amber-500'}`} />
-              <span className={`text-xs font-semibold ${critCount > 0 ? 'text-red-700' : 'text-amber-700'}`}>
-                Alertas laboratoriais
-              </span>
-              {critCount > 0 && (
-                <span className="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  {critCount} crítico{critCount > 1 ? 's' : ''}
-                </span>
-              )}
-              {warnCount > 0 && (
-                <span className="text-[10px] bg-amber-200 text-amber-800 font-semibold px-1.5 py-0.5 rounded-full leading-none">
-                  {warnCount} atenção
-                </span>
-              )}
-              <span className="ml-auto text-[10px] text-gray-400">ver em Prontuário → Laboratorial</span>
-            </div>
-            {/* Alert rows */}
-            <div className={`divide-y ${critCount > 0 ? 'divide-red-100 border-red-200' : 'divide-amber-100 border-amber-200'} border`}>
-              {alerts.map(alert => {
-                const isCrit = alert.severity === 'critical'
-                const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                return (
-                  <div key={alert.id} className={`flex items-center gap-3 px-4 py-2.5 ${isCrit ? 'bg-red-50/60' : 'bg-amber-50/40'}`}>
-                    <div className={`flex-shrink-0 ${isCrit ? 'text-red-500' : 'text-amber-500'}`}>
-                      {isCrit
-                        ? <AlertCircle className="w-3.5 h-3.5" />
-                        : alert.direction === 'high'
-                          ? <TrendingUp className="w-3.5 h-3.5" />
-                          : <TrendingDown className="w-3.5 h-3.5" />}
-                    </div>
-                    <p className={`text-xs font-medium flex-1 ${isCrit ? 'text-red-800' : 'text-amber-800'}`}>
-                      {alert.message}
-                    </p>
-                    <span className={`text-xs flex-shrink-0 ${isCrit ? 'text-red-500' : 'text-amber-600'}`}>
-                      <strong>{alert.latestValue}{alert.latestUnit ? ` ${alert.latestUnit}` : ''}</strong>
-                      {' '}· {fmt(alert.latestDate)}
-                      {alert.count > 1 && ` · ${alert.count}×`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
 
       {/* Main tab bar */}
       <div className="flex border-b border-gray-200 gap-0">

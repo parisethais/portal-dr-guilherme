@@ -6,7 +6,6 @@ import type { Consulta, LabResult, ImagingResult } from '@/lib/types'
 import DiagnosticosPanel from './DiagnosticosPanel'
 import EvolucaoPanel from './EvolucaoPanel'
 import LabResultsPanel from './LabResultsPanel'
-import LabAlertsPanel from './LabAlertsPanel'
 import ImagingPanel from './ImagingPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
@@ -347,10 +346,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
           />
         )}
         {activeTab === 'laboratorial' && (
-          <>
-            <LabAlertsPanel labResults={labResults} />
-            <LabResultsPanel labResults={labResults} patientId={patientId} />
-          </>
+          <LabResultsPanel labResults={labResults} patientId={patientId} />
         )}
         {activeTab === 'imagem' && (
           <ImagingPanel imagingResults={imagingResults} patientId={patientId} />
