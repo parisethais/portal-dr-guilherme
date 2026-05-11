@@ -7,7 +7,16 @@ import type { ActionResult } from '@/lib/types'
 // ── Salvar campos de prontuário na consulta ───────────────────
 export async function salvarConsultaFields(
   consultaId: string,
-  fields: { diagnosticos?: string | null; evolucao?: string | null; conduta?: string | null },
+  fields: {
+    diagnosticos?: string | null
+    evolucao?:     string | null
+    exame_fisico?: string | null
+    pas?:          number | null
+    pad?:          number | null
+    fc?:           number | null
+    impressao?:    string | null
+    conduta?:      string | null
+  },
 ): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

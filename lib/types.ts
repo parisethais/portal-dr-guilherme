@@ -138,6 +138,11 @@ export interface Consulta {
   // Prontuário
   diagnosticos:              string | null
   evolucao:                  string | null
+  exame_fisico:              string | null
+  pas:                       number | null
+  pad:                       number | null
+  fc:                        number | null
+  impressao:                 string | null
   conduta:                   string | null
   prontuario_finalizado:     boolean
   prontuario_finalizado_at:  string | null

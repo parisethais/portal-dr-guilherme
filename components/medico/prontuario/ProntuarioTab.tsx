@@ -12,11 +12,131 @@ import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
 import {
   ClipboardList, Stethoscope, FlaskConical, ScanLine, Pill,
-  Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus,
+  Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
 
-type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem'
+type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem' | 'historico'
+
+// ── Aba Histórico completo ────────────────────────────────────
+function HistoricoTab({ consultas }: { consultas: Consulta[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const sorted = [...consultas].sort((a, b) => b.data_hora.localeCompare(a.data_hora))
+
+  if (sorted.length === 0) {
+    return (
+      <div className="text-center py-16 text-gray-400 text-sm">
+        Nenhuma consulta registrada.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {sorted.map((c, i) => {
+        const d       = new Date(c.data_hora)
+        const data    = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const hora    = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        const isOpen  = expanded === c.id
+        const tipo    = TIPO_LABEL[c.tipo] ?? c.tipo
+        const isFirst = i === 0
+
+        return (
+          <div key={c.id} className={`rounded-xl border overflow-hidden transition-all ${isFirst ? 'border-primary/30' : 'border-gray-200'}`}>
+            {/* Header clicável */}
+            <button
+              type="button"
+              onClick={() => setExpanded(isOpen ? null : c.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isOpen ? 'bg-gray-50' : 'bg-white hover:bg-gray-50/60'}`}
+            >
+              {/* Linha do tempo */}
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${c.prontuario_finalizado ? 'bg-emerald-400' : isFirst ? 'bg-amber-400 animate-pulse' : 'bg-gray-300'}`} />
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-800">{data}</span>
+                  <span className="text-xs text-gray-400">{hora}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium">{tipo}</span>
+                  {c.prontuario_finalizado ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" /> Finalizado
+                    </span>
+                  ) : isFirst ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Rascunho</span>
+                  ) : null}
+                </div>
+                {/* Preview */}
+                {!isOpen && c.evolucao && (
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">{c.evolucao}</p>
+                )}
+              </div>
+
+              {/* Sinais vitais inline */}
+              {(c.pas != null || c.pad != null || c.fc != null) && (
+                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                  <Activity className="w-3 h-3 text-gray-300" />
+                  {c.pas != null && <span className="text-xs text-gray-500">{c.pas}/{c.pad ?? '—'} <span className="text-gray-300">mmHg</span></span>}
+                  {c.fc  != null && <span className="text-xs text-gray-500">{c.fc} <span className="text-gray-300">bpm</span></span>}
+                </div>
+              )}
+
+              <span className="text-gray-300 text-xs flex-shrink-0">{isOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {/* Conteúdo expandido */}
+            {isOpen && (
+              <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-4 bg-white">
+
+                {/* Sinais vitais */}
+                {(c.pas != null || c.pad != null || c.fc != null) && (
+                  <div className="flex gap-5 py-2">
+                    <VitalDisplay label="PAS" value={c.pas} unit="mmHg" />
+                    <VitalDisplay label="PAD" value={c.pad} unit="mmHg" />
+                    <VitalDisplay label="FC"  value={c.fc}  unit="bpm"  />
+                  </div>
+                )}
+
+                {c.exame_fisico && <HistField label="Exame físico" value={c.exame_fisico} />}
+                {c.evolucao     && <HistField label="Evolução"     value={c.evolucao}     />}
+                {c.impressao    && <HistField label="Impressão"    value={c.impressao} private />}
+                {c.conduta      && <HistField label="Conduta"      value={c.conduta}      />}
+                {!c.evolucao && !c.conduta && !c.exame_fisico && (
+                  <p className="text-sm text-gray-400 italic py-2">Prontuário não preenchido.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function VitalDisplay({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+      <p className="text-base font-bold text-gray-800">{value ?? <span className="text-gray-300">—</span>}</p>
+      <p className="text-[10px] text-gray-400">{unit}</p>
+    </div>
+  )
+}
+
+function HistField({ label, value, private: isPrivate }: { label: string; value: string; private?: boolean }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+        {label}
+        {isPrivate && <span className="text-[9px] text-gray-300 normal-case">(privado)</span>}
+      </p>
+      <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isPrivate ? 'text-gray-500 italic' : 'text-gray-700'}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
 
 function formatConsultaLabel(c: Consulta) {
   const d    = new Date(c.data_hora)
@@ -52,8 +172,9 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
   const finalizedAt      = selectedConsulta?.prontuario_finalizado_at
 
-  // Só mostra seletor de consulta e status de finalização nas abas clínicas
+  // Seletor de consulta aparece nas abas clínicas (não no histórico)
   const isClinicTab = activeTab === 'diagnosticos' || activeTab === 'evolucao'
+  const isHistorico = activeTab === 'historico'
 
   function handleFinalizar() {
     if (!selectedConsulta) return
@@ -67,10 +188,11 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
   }
 
   const tabs: { id: SubTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'diagnosticos', label: 'Diagnósticos',  icon: <ClipboardList className="w-3.5 h-3.5" /> },
-    { id: 'evolucao',     label: 'Evolução',       icon: <Stethoscope   className="w-3.5 h-3.5" /> },
-    { id: 'laboratorial', label: 'Laboratorial',   icon: <FlaskConical  className="w-3.5 h-3.5" /> },
-    { id: 'imagem',       label: 'Imagem',         icon: <ScanLine      className="w-3.5 h-3.5" /> },
+    { id: 'diagnosticos', label: 'Diagnósticos', icon: <ClipboardList className="w-3.5 h-3.5" /> },
+    { id: 'evolucao',     label: 'Evolução',      icon: <Stethoscope   className="w-3.5 h-3.5" /> },
+    { id: 'laboratorial', label: 'Laboratorial',  icon: <FlaskConical  className="w-3.5 h-3.5" /> },
+    { id: 'imagem',       label: 'Imagem',        icon: <ScanLine      className="w-3.5 h-3.5" /> },
+    { id: 'historico',    label: 'Histórico',     icon: <History       className="w-3.5 h-3.5" /> },
   ]
 
   if (realizadas.length === 0) {
@@ -110,8 +232,8 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
     )}
     <div className="space-y-0">
 
-      {/* ── Seletor de consulta + status de finalização ── */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* ── Seletor de consulta + status (oculto no Histórico) ── */}
+      {!isHistorico && <div className="flex items-center gap-3 mb-4">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
           Consulta
         </label>
@@ -151,10 +273,10 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             Rascunho
           </span>
         )}
-      </div>
+      </div>}
 
       {/* ── Banner de prontuário finalizado ── */}
-      {isFinalized && (
+      {!isHistorico && isFinalized && (
         <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 text-emerald-800">
           <Lock className="w-4 h-4 flex-shrink-0 text-emerald-600" />
           <div>
@@ -220,6 +342,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
         {activeTab === 'evolucao' && selectedConsulta && (
           <EvolucaoPanel
             consulta={selectedConsulta}
+            consultas={realizadas}
             isFinalized={isFinalized}
           />
         )}
@@ -232,10 +355,14 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
         {activeTab === 'imagem' && (
           <ImagingPanel imagingResults={imagingResults} patientId={patientId} />
         )}
+
+        {activeTab === 'historico' && (
+          <HistoricoTab consultas={realizadas} />
+        )}
       </div>
 
       {/* ── Seção de finalização (só nas abas clínicas, só se não finalizado) ── */}
-      {isClinicTab && !isFinalized && selectedConsulta && (
+      {isClinicTab && !isHistorico && !isFinalized && selectedConsulta && (
         <div className="mt-6 pt-5 border-t border-gray-100">
           {!confirmFinalizar ? (
             <div className="flex items-center justify-between">
