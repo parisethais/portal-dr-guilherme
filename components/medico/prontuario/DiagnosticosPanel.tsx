@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from 'react'
 import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
+import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock } from 'lucide-react'
 
 // ── Lista de diagnósticos de nefrologia ───────────────────────
@@ -79,16 +80,24 @@ export function parseDiagnosticos(raw: string | null): DiagnosisEntry[] {
 
 // ── Props ─────────────────────────────────────────────────────
 interface Props {
-  consulta:    Consulta          // consulta já selecionada (pelo ProntuarioTab)
-  consultas:   Consulta[]        // lista completa para carry-forward
-  isFinalized: boolean
+  consulta:       Consulta
+  consultas:      Consulta[]
+  isFinalized:    boolean
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export default function DiagnosticosPanel({ consulta, consultas, isFinalized }: Props) {
+export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
+  const [isDirty, setIsDirty]           = useState(false)
   const [saved, setSaved]               = useState(false)
   const [error, setError]               = useState('')
   const [isPending, startTransition]    = useTransition()
+
+  useUnsavedWarning(isDirty && !isFinalized)
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty && !isFinalized)
+  }, [isDirty, isFinalized]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Autocomplete
   const [searchText, setSearchText]     = useState('')
@@ -96,9 +105,10 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized }: 
   const inputRef                        = useRef<HTMLInputElement>(null)
   const dropdownRef                     = useRef<HTMLDivElement>(null)
 
-  // Sincroniza quando a consulta selecionada muda (vem do ProntuarioTab)
+  // Sincroniza quando a consulta selecionada muda
   useEffect(() => {
     setEntries(parseDiagnosticos(consulta.diagnosticos))
+    setIsDirty(false)
     setSaved(false)
     setError('')
     setSearchText('')
@@ -138,28 +148,30 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized }: 
     && !addedNames.has(qLow)
     && !PRESET_DIAGNOSES.some(d => d.toLowerCase() === qLow)
 
+  function markDirty() { setIsDirty(true); setSaved(false) }
+
   function addDiagnosis(nome: string) {
     setEntries(prev => [...prev, { nome, evolucao: '' }])
     setSearchText('')
     setShowDropdown(false)
-    setSaved(false)
+    markDirty()
     inputRef.current?.focus()
   }
 
   function removeDiagnosis(idx: number) {
     setEntries(prev => prev.filter((_, i) => i !== idx))
-    setSaved(false)
+    markDirty()
   }
 
   function updateEvolucao(idx: number, val: string) {
     setEntries(prev => prev.map((e, i) => i === idx ? { ...e, evolucao: val } : e))
-    setSaved(false)
+    markDirty()
   }
 
   function handleCarryForward() {
     if (!carrySource) return
     setEntries(parseDiagnosticos(carrySource.diagnosticos ?? null))
-    setSaved(false)
+    markDirty()
   }
 
   function handleSave() {
@@ -169,6 +181,8 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized }: 
         diagnosticos: entries.length > 0 ? JSON.stringify(entries) : null,
       })
       if (!res.success) { setError(res.error); return }
+      setIsDirty(false)
+      onDirtyChange?.(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     })

@@ -3,12 +3,14 @@
 import { useState, useTransition, useEffect } from 'react'
 import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
+import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { Save, CheckCircle, Loader2, Lock, Activity, MessageSquare } from 'lucide-react'
 
 interface Props {
-  consulta:    Consulta
-  consultas:   Consulta[]   // todas as consultas do paciente (para comparativo)
-  isFinalized: boolean
+  consulta:       Consulta
+  consultas:      Consulta[]
+  isFinalized:    boolean
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 function fmt(v: number | null | undefined) {
@@ -87,7 +89,7 @@ function VitaisHistorico({ consultas, currentId }: { consultas: Consulta[]; curr
   )
 }
 
-export default function EvolucaoPanel({ consulta, consultas, isFinalized }: Props) {
+export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
   const [evolucao,    setEvolucao]    = useState(consulta.evolucao    ?? '')
   const [exameFisico, setExameFisico] = useState(consulta.exame_fisico ?? '')
   const [pas,         setPas]         = useState(fmt(consulta.pas))
@@ -98,6 +100,23 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized }: Prop
   const [saved,       setSaved]       = useState(false)
   const [error,       setError]       = useState('')
   const [isPending,   startTransition] = useTransition()
+
+  // ── Detecção de alterações não salvas ─────────────────────────
+  const isDirty = !isFinalized && (
+    evolucao    !== (consulta.evolucao      ?? '') ||
+    exameFisico !== (consulta.exame_fisico  ?? '') ||
+    pas         !== fmt(consulta.pas)              ||
+    pad         !== fmt(consulta.pad)              ||
+    fc          !== fmt(consulta.fc)               ||
+    impressao   !== (consulta.impressao     ?? '') ||
+    conduta     !== (consulta.conduta       ?? '')
+  )
+
+  useUnsavedWarning(isDirty)
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setEvolucao(consulta.evolucao       ?? '')
@@ -125,6 +144,7 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized }: Prop
       })
       if (!res.success) { setError(res.error); return }
       setSaved(true)
+      onDirtyChange?.(false)
       setTimeout(() => setSaved(false), 3000)
     })
   }

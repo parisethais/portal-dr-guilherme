@@ -166,6 +166,13 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
   const [finalizeError, setFinalizeError]   = useState('')
   const [showNovaConsulta, setShowNova]     = useState(false)
   const [isPending, startTransition]        = useTransition()
+  const [hasDirty, setHasDirty]            = useState(false)
+
+  function guardNav(action: () => void) {
+    if (hasDirty && !window.confirm('Você tem alterações não salvas no prontuário. Deseja sair sem salvar?')) return
+    setHasDirty(false)
+    action()
+  }
 
   const selectedConsulta = realizadas.find(c => c.id === selectedId) ?? null
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
@@ -238,7 +245,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
         </label>
         <select
           value={selectedId}
-          onChange={e => { setSelectedId(e.target.value); setConfirm(false); setFinalizeError('') }}
+          onChange={e => { const id = e.target.value; guardNav(() => { setSelectedId(id); setConfirm(false); setFinalizeError('') }) }}
           className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
         >
           {realizadas.map(c => (
@@ -303,7 +310,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             <button
               key={tab.id}
               type="button"
-              onClick={() => { setActiveTab(tab.id); setConfirm(false) }}
+              onClick={() => guardNav(() => { setActiveTab(tab.id); setConfirm(false) })}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px',
                 activeTab === tab.id
@@ -336,6 +343,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             consulta={selectedConsulta}
             consultas={realizadas}
             isFinalized={isFinalized}
+            onDirtyChange={setHasDirty}
           />
         )}
         {activeTab === 'evolucao' && selectedConsulta && (
@@ -343,6 +351,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             consulta={selectedConsulta}
             consultas={realizadas}
             isFinalized={isFinalized}
+            onDirtyChange={setHasDirty}
           />
         )}
         {activeTab === 'laboratorial' && (
