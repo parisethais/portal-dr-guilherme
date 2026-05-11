@@ -108,6 +108,8 @@ export interface Invoice {
   file_path: string
   amount: number
   issue_date: string
+  consulta_date: string | null
+  numero_nota: string | null
   downloaded_at: string | null
   created_at: string
 }

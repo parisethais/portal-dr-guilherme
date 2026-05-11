@@ -16,6 +16,8 @@ export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
   const patientId = formData.get('patient_id') as string
   const amount = parseFloat(formData.get('amount') as string)
   const issueDate = formData.get('issue_date') as string
+  const consultaDate = (formData.get('consulta_date') as string) || null
+  const numeroNota = (formData.get('numero_nota') as string) || null
 
   if (!file || file.size === 0) return { success: false, error: 'Selecione um arquivo PDF.' }
   if (!file.type.includes('pdf')) return { success: false, error: 'Apenas arquivos PDF são aceitos.' }
@@ -38,6 +40,8 @@ export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
     file_path: filePath,
     amount,
     issue_date: issueDate,
+    consulta_date: consultaDate,
+    numero_nota: numeroNota,
   })
 
   if (dbError) {

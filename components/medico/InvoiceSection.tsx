@@ -40,6 +40,8 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [amount, setAmount] = useState('')
   const [issueDate, setIssueDate] = useState('')
+  const [consultaDate, setConsultaDate] = useState('')
+  const [numeroNota, setNumeroNota] = useState('')
   const [formError, setFormError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
@@ -50,6 +52,8 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
     setSelectedFile(null)
     setAmount('')
     setIssueDate('')
+    setConsultaDate('')
+    setNumeroNota('')
     setFormError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -69,6 +73,8 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
     formData.append('patient_id', patient.id)
     formData.append('amount', amount.replace(',', '.'))
     formData.append('issue_date', issueDate)
+    formData.append('consulta_date', consultaDate)
+    formData.append('numero_nota', numeroNota)
 
     startTransition(async () => {
       const result = await uploadInvoice(formData)
@@ -149,6 +155,29 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600 block mb-1">
+                  Nº da nota fiscal
+                </label>
+                <input
+                  type="text"
+                  value={numeroNota}
+                  onChange={(e) => setNumeroNota(e.target.value)}
+                  placeholder="Ex: 000123"
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">
+                  Data da consulta
+                </label>
+                <input
+                  type="date"
+                  value={consultaDate}
+                  onChange={(e) => setConsultaDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">
                   Data de emissão <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -222,7 +251,9 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
           <table className="w-full text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Nº NF</th>
+                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Consulta</th>
+                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Emissão</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="text-right px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
@@ -231,6 +262,8 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
             <tbody className="divide-y divide-gray-100">
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-3 py-2.5 text-gray-500">{inv.numero_nota ?? <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-2.5 text-gray-700">{inv.consulta_date ? formatIssueDate(inv.consulta_date) : <span className="text-gray-300">—</span>}</td>
                   <td className="px-3 py-2.5 text-gray-700">{formatIssueDate(inv.issue_date)}</td>
                   <td className="px-3 py-2.5 font-medium text-gray-900">{formatCurrency(inv.amount)}</td>
                   <td className="px-3 py-2.5">
