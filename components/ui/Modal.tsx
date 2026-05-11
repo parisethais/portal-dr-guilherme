@@ -24,11 +24,14 @@ export default function Modal({
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const drag = useRef({
     active: false,
+    moved:  false,   // true se houve movimento real durante o drag
     startX: 0,
     startY: 0,
-    fromX: 0,
-    fromY: 0,
+    fromX:  0,
+    fromY:  0,
   })
+  // true só quando o mousedown aconteceu diretamente no backdrop
+  const backdropDown = useRef(false)
 
   // Reset position when modal opens
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function Modal({
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!drag.current.active) return
+      drag.current.moved = true
       setOffset({
         x: drag.current.fromX + (e.clientX - drag.current.startX),
         y: drag.current.fromY + (e.clientY - drag.current.startY),
@@ -62,10 +66,11 @@ export default function Modal({
   function onHeaderMouseDown(e: React.MouseEvent) {
     drag.current = {
       active: true,
+      moved:  false,
       startX: e.clientX,
       startY: e.clientY,
-      fromX: offset.x,
-      fromY: offset.y,
+      fromX:  offset.x,
+      fromY:  offset.y,
     }
     document.body.style.userSelect = 'none'
     document.body.style.cursor = 'grabbing'
@@ -73,14 +78,16 @@ export default function Modal({
 
   if (!open) return null
 
-  const isDragged = offset.x !== 0 || offset.y !== 0
-
   return (
     <>
-      {/* Backdrop — clicável só se não tiver sido arrastado */}
+      {/* Backdrop — fecha só se o mousedown veio do backdrop (não do painel) */}
       <div
         className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-        onClick={closable && !isDragged ? onClose : undefined}
+        onMouseDown={() => { backdropDown.current = true }}
+        onClick={() => {
+          if (closable && backdropDown.current && !drag.current.moved) onClose?.()
+          backdropDown.current = false
+        }}
       />
 
       {/* Scroll container + centering */}
@@ -95,6 +102,8 @@ export default function Modal({
               transform: `translate(${offset.x}px, ${offset.y}px)`,
               transition: drag.current.active ? 'none' : 'transform 0.15s ease',
             }}
+            // cancela a flag do backdrop quando o mousedown é dentro do painel
+            onMouseDown={() => { backdropDown.current = false }}
           >
             {/* Drag handle + title bar */}
             <div
