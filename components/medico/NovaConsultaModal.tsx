@@ -18,7 +18,6 @@ const TIPOS: { value: ConsultaTipo; label: string; duracao: number }[] = [
   { value: 'nova_consulta',              label: 'Nova consulta',               duracao: 45 },
   { value: 'nova_consulta_desconto',     label: 'Nova consulta (desconto)',    duracao: 45 },
   { value: 'retorno',                    label: 'Retorno',                     duracao: 30 },
-  { value: 'urgencia',                   label: 'Urgência',                    duracao: 30 },
 ]
 
 const LOCAIS: { value: ConsultaLocal; label: string }[] = [

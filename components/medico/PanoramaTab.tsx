@@ -422,10 +422,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       .sort((a, b) => a.data_hora.localeCompare(b.data_hora))[0]?.data_hora ?? null
   }
 
-  // Tipo da última consulta regular (exclui urgência)
+  // Tipo da última consulta
   function getUltimoTipo(patientId: string): string | null {
     const ultima = consultas
-      .filter(c => c.patient_id === patientId && c.tipo !== 'urgencia')
+      .filter(c => c.patient_id === patientId)
       .sort((a, b) => b.data_hora.localeCompare(a.data_hora))[0]
     if (!ultima) return null
     return TIPO_LABEL[ultima.tipo] ?? ultima.tipo

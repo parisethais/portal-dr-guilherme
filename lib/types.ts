@@ -121,7 +121,6 @@ export type ConsultaTipo   =
   | 'retorno'
   | 'primeira_consulta_desconto'
   | 'nova_consulta_desconto'
-  | 'urgencia'
 export type ConsultaLocal  = 'consultorio' | 'telemedicina'
 export type ConsultaStatus = 'agendada' | 'confirmada' | 'realizada' | 'falta' | 'cancelada'
 

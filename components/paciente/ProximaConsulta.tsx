@@ -2,10 +2,11 @@ import type { Consulta } from '@/lib/types'
 import { CalendarDays, MapPin, Clock } from 'lucide-react'
 
 const TIPO_LABEL: Record<string, string> = {
-  primeira_consulta: 'Primeira Consulta',
-  retorno:           'Retorno',
-  urgencia:          'Urgência',
-  telemedicina:      'Telemedicina',
+  primeira_consulta:          'Primeira Consulta',
+  primeira_consulta_desconto: 'Primeira Consulta (Desconto)',
+  nova_consulta:              'Nova Consulta',
+  nova_consulta_desconto:     'Nova Consulta (Desconto)',
+  retorno:                    'Retorno',
 }
 
 const LOCAL_LABEL: Record<string, string> = {

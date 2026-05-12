@@ -142,10 +142,7 @@ function formatConsultaLabel(c: Consulta) {
   const d    = new Date(c.data_hora)
   const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  const tipo = c.tipo === 'primeira_consulta' ? 'Primeira consulta'
-    : c.tipo === 'retorno'    ? 'Retorno'
-    : c.tipo === 'urgencia'   ? 'Urgência'
-    : 'Telemedicina'
+  const tipo = TIPO_LABEL[c.tipo] ?? c.tipo
   return `${data} ${hora} — ${tipo}`
 }
 

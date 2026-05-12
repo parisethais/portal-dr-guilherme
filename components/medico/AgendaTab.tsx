@@ -32,7 +32,6 @@ export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; tex
   nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' },
   nova_consulta_desconto:     { bg: '#14b8a6', border: '#0d9488', text: '#ffffff' },
   retorno:                    { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
-  urgencia:                   { bg: '#c2410c', border: '#ea580c', text: '#ffffff' },
 }
 
 // Mantido para compatibilidade com DayViewModal/outros componentes
