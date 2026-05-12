@@ -178,7 +178,17 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
             {patient.phone && (
               <p className="text-xs text-gray-400 mt-0.5 font-mono">{patient.phone}</p>
             )}
-            {!patient.perfil_completo && (
+            {patient.status_paciente === 'obito' && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium mt-0.5 inline-block">
+                Óbito
+              </span>
+            )}
+            {patient.status_paciente === 'inativo' && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium mt-0.5 inline-block">
+                Inativo
+              </span>
+            )}
+            {!patient.perfil_completo && patient.status_paciente === 'ativo' && (
               <span className="text-[11px] text-amber-500 inline-flex items-center gap-0.5 mt-0.5">
                 <AlertCircle className="w-3 h-3" /> incompleto
               </span>
@@ -399,7 +409,7 @@ interface PanoramaTabProps {
 }
 
 export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
-  const [filterStatus, setFilterStatus] = useState<StatusPaciente | 'todos'>('todos')
+  const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [search, setSearch] = useState('')
 
   const now      = new Date()
@@ -499,7 +509,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   // ── Tabela filtrada ────────────────────────────────────────
   const filtered = patients.filter(p => {
     const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filterStatus === 'todos' || p.status_paciente === filterStatus
+    const matchStatus =
+      filterStatus === 'todos'    ? true :
+      filterStatus === 'ativo'    ? p.status_paciente === 'ativo' :
+      /* inativos */                p.status_paciente === 'inativo' || p.status_paciente === 'obito'
     return matchSearch && matchStatus
   })
 
@@ -659,16 +672,20 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          {(['todos', 'ativo', 'inativo', 'obito'] as const).map(s => (
+          {([
+            { key: 'ativo',    label: `Ativos (${totais.ativo})`                              },
+            { key: 'inativos', label: `Inativos (${totais.inativo + totais.obito})`           },
+            { key: 'todos',    label: `Todos (${patients.length})`                            },
+          ] as const).map(s => (
             <button
-              key={s}
+              key={s.key}
               type="button"
-              onClick={() => setFilterStatus(s)}
+              onClick={() => setFilterStatus(s.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filterStatus === s ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filterStatus === s.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {s === 'todos' ? 'Todos' : s === 'ativo' ? 'Ativos' : s === 'inativo' ? 'Inativos' : 'Óbitos'}
+              {s.label}
             </button>
           ))}
         </div>
