@@ -30,7 +30,7 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
   return (
     <FullCalendar
       plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-      initialView="dayGridMonth"
+      initialView="timeGridWeek"
       locale={ptBrLocale}
       headerToolbar={{
         left:   'prev,next today',
@@ -54,7 +54,7 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
       nowIndicator={true}
       expandRows={true}
       eventDisplay="block"
-      displayEventTime={false}
+      displayEventTime={true}
       dayMaxEvents={3}
     />
   )
