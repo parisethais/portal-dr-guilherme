@@ -13,8 +13,8 @@ interface Props {
 }
 
 const TIPOS: { value: ConsultaTipo; label: string; duracao: number }[] = [
-  { value: 'primeira_consulta',          label: 'Primeira consulta',           duracao: 60 },
-  { value: 'primeira_consulta_desconto', label: 'Primeira consulta (desconto)', duracao: 60 },
+  { value: 'primeira_consulta',          label: 'Primeira consulta',           duracao: 75 },
+  { value: 'primeira_consulta_desconto', label: 'Primeira consulta (desconto)', duracao: 75 },
   { value: 'nova_consulta',              label: 'Nova consulta',               duracao: 45 },
   { value: 'nova_consulta_desconto',     label: 'Nova consulta (desconto)',    duracao: 45 },
   { value: 'retorno',                    label: 'Retorno',                     duracao: 30 },
