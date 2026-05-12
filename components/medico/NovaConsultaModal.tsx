@@ -12,10 +12,13 @@ interface Props {
   onClose:     () => void
 }
 
-const TIPOS: { value: ConsultaTipo; label: string }[] = [
-  { value: 'primeira_consulta', label: 'Primeira consulta' },
-  { value: 'retorno',           label: 'Retorno'           },
-  { value: 'urgencia',          label: 'Urgência'          },
+const TIPOS: { value: ConsultaTipo; label: string; duracao: number }[] = [
+  { value: 'primeira_consulta',          label: 'Primeira consulta',           duracao: 60 },
+  { value: 'primeira_consulta_desconto', label: 'Primeira consulta (desconto)', duracao: 60 },
+  { value: 'nova_consulta',              label: 'Nova consulta',               duracao: 45 },
+  { value: 'nova_consulta_desconto',     label: 'Nova consulta (desconto)',    duracao: 45 },
+  { value: 'retorno',                    label: 'Retorno',                     duracao: 30 },
+  { value: 'urgencia',                   label: 'Urgência',                    duracao: 30 },
 ]
 
 const LOCAIS: { value: ConsultaLocal; label: string }[] = [
@@ -48,6 +51,11 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
 
   const set = <K extends keyof typeof form>(k: K) =>
     (v: (typeof form)[K]) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleTipoChange(tipo: ConsultaTipo) {
+    const duracao = TIPOS.find(t => t.value === tipo)?.duracao ?? 30
+    setForm(f => ({ ...f, tipo, duracao_min: String(duracao) }))
+  }
 
   function handleCreate() {
     setError('')
@@ -99,7 +107,7 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Tipo</label>
               <select
                 value={form.tipo}
-                onChange={e => set('tipo')(e.target.value as ConsultaTipo)}
+                onChange={e => handleTipoChange(e.target.value as ConsultaTipo)}
                 className={inputCls}
               >
                 {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
