@@ -370,15 +370,10 @@ function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo }: SemRetornoP
       {lista.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">Todos os pacientes têm retorno agendado 🎉</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 420 }}>
           {lista.map(p => (
             <SemRetornoRow key={p.id} patient={p} ultima={getUltima(p.id)} ultimoTipo={getUltimoTipo(p.id)} />
           ))}
-          {total > 6 && (
-            <p className="text-xs text-gray-400 text-center pt-1">
-              + {total - 6} outros pacientes
-            </p>
-          )}
         </div>
       )}
     </div>
@@ -488,7 +483,6 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       const ub = getUltima(b.id) ?? ''
       return ua.localeCompare(ub) // mais antigos primeiro
     })
-    .slice(0, 6)
 
   // ── Contagens para filtros de alerta ──────────────────────
   const totaisAlerta = {
