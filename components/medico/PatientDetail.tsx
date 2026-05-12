@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -47,6 +47,8 @@ interface PatientDetailProps {
   onBack: () => void
 }
 
+const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro']
+
 export default function PatientDetail({
   patient,
   exames,
@@ -56,7 +58,17 @@ export default function PatientDetail({
   imagingResults,
   onBack,
 }: PatientDetailProps) {
-  const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>('prontuario')
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+
+  const rawDtab = searchParams.get('dtab') as DetailTab | null
+  const activeDetailTab: DetailTab = rawDtab && VALID_DETAIL_TABS.includes(rawDtab) ? rawDtab : 'prontuario'
+
+  function setActiveDetailTab(tab: DetailTab) {
+    const p = new URLSearchParams(searchParams.toString())
+    p.set('dtab', tab)
+    router.push(`?${p.toString()}`, { scroll: false })
+  }
 
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [
     { id: 'prontuario', label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> },

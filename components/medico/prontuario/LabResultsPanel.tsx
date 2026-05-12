@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import type { LabResult } from '@/lib/types'
 import { upsertLabResults, deleteLabResult } from '@/app/actions/prontuario'
 import { extractLabResultsFromFile } from '@/app/actions/lab-ocr'
-import { EXAM_CATALOG, EXAM_GROUPS, classifyValue } from '@/lib/lab-catalog'
+import { EXAM_CATALOG, EXAM_GROUPS, classifyValue, type ExamDef } from '@/lib/lab-catalog'
 import {
   Plus, Save, Loader2, Trash2, FlaskConical, X, CalendarPlus,
   Upload, PenLine, Sparkles, AlertCircle,
@@ -27,8 +27,37 @@ function buildGrid(results: LabResult[]) {
 // Cor da célula baseada na classificação
 function cellCls(status: 'normal' | 'warn' | 'crit' | null) {
   if (status === 'crit') return 'bg-red-100 text-red-800 font-bold'
-  if (status === 'warn') return 'bg-amber-50 text-amber-800 font-semibold'
+  if (status === 'warn') return 'bg-amber-100 text-amber-800 font-semibold'
   return 'text-gray-800'
+}
+
+// Formata faixa de referência para exibição
+function fmtN(n: number): string {
+  if (Math.abs(n) >= 10000) return `${Math.round(n / 1000)}k`
+  if (Number.isInteger(n)) return String(n)
+  return String(n)
+}
+
+function formatRef(def: ExamDef, unit: string | null): string {
+  if (def.noRef) return '—'
+  if (def.qualitative) return def.normalAnswer ?? '—'
+  const ranges = (unit && def.unitRanges?.[unit] ? def.unitRanges[unit] : def) as Partial<ExamDef>
+  const { refMin, refMax } = ranges
+  if (refMin !== undefined && refMax !== undefined) return `${fmtN(refMin)}–${fmtN(refMax)}`
+  if (refMax !== undefined) return `≤ ${fmtN(refMax)}`
+  if (refMin !== undefined) return `≥ ${fmtN(refMin)}`
+  return '—'
+}
+
+// Direção do desvio em relação à faixa normal
+function getDirection(def: ExamDef, value: string, unit: string | null): 'high' | 'low' | null {
+  if (!value || def.qualitative || def.noRef) return null
+  const num = parseFloat(value.replace(',', '.'))
+  if (isNaN(num)) return null
+  const ranges = (unit && def.unitRanges?.[unit] ? def.unitRanges[unit] : def) as Partial<ExamDef>
+  if (ranges.refMax !== undefined && num > ranges.refMax) return 'high'
+  if (ranges.refMin !== undefined && num < ranges.refMin) return 'low'
+  return null
 }
 
 interface Props {
@@ -203,21 +232,34 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     <div className="space-y-3">
 
       {/* ── Cabeçalho ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <FlaskConical className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-gray-800">Resultados Laboratoriais</h3>
         </div>
-        {mode === 'idle' && !editingDate && (
-          <button
-            type="button"
-            onClick={() => setMode('choose')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light transition-colors"
-          >
-            <CalendarPlus className="w-3.5 h-3.5" />
-            Novo registro
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {/* Legenda sempre visível */}
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block flex-shrink-0" />
+              Atenção
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-red-100 border border-red-300 inline-block flex-shrink-0" />
+              Alterado
+            </span>
+          </div>
+          {mode === 'idle' && !editingDate && (
+            <button
+              type="button"
+              onClick={() => setMode('choose')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light transition-colors"
+            >
+              <CalendarPlus className="w-3.5 h-3.5" />
+              Novo registro
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Escolha do modo ── */}
@@ -339,10 +381,11 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
 
       {/* ── Tabela ── */}
       <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="text-xs" style={{ tableLayout: 'fixed', width: '100%', minWidth: displayDates.length > 0 ? 300 + displayDates.length * 100 : 300 }}>
+        <table className="text-xs" style={{ tableLayout: 'fixed', width: '100%', minWidth: displayDates.length > 0 ? 360 + displayDates.length * 100 : 360 }}>
           <colgroup>
-            <col style={{ width: 160 }} />
-            <col style={{ width: 72 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 65 }} />
+            <col style={{ width: 90 }} />
             {displayDates.map(d => <col key={d} style={{ width: 100 }} />)}
           </colgroup>
           <thead>
@@ -352,6 +395,9 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
               </th>
               <th className="px-2 py-2.5 text-left font-semibold text-gray-400 uppercase tracking-wide truncate overflow-hidden">
                 Un.
+              </th>
+              <th className="px-2 py-2.5 text-left font-semibold text-gray-400 uppercase tracking-wide truncate overflow-hidden">
+                Ref.
               </th>
               {displayDates.map(d => (
                 <th key={d} className="px-3 py-2.5 text-center font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap overflow-hidden">
@@ -382,7 +428,7 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
                 <>
                   <tr key={`g-${group}`} className="bg-gray-50/80 border-y border-gray-100">
                     <td
-                      colSpan={2 + displayDates.length}
+                      colSpan={3 + displayDates.length}
                       className="sticky left-0 px-4 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest"
                     >
                       {group}
@@ -423,6 +469,11 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
                           }
                         </td>
 
+                        {/* Referência */}
+                        <td className="px-2 py-2 text-gray-400 truncate overflow-hidden whitespace-nowrap">
+                          {formatRef(def, editingDate ? (editValues[def.name]?.unit ?? def.unit) : (recordedUnit ?? def.unit))}
+                        </td>
+
                         {/* Células de dados */}
                         {displayDates.map(d => {
                           const isEditing    = d === editingDate
@@ -434,6 +485,8 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
                             ? (editValues[def.name]?.value ?? '')
                             : (cell?.value ?? '')
                           const status = classifyValue(def, valForStatus, unitForStatus)
+
+                          const direction = getDirection(def, valForStatus, unitForStatus)
 
                           if (isEditing) {
                             return (
@@ -456,7 +509,15 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
                           return (
                             <td key={d} className={`px-3 py-2 text-center ${status ? cellCls(status) : ''}`}>
                               {cell
-                                ? <span>{cell.value}</span>
+                                ? <span className="inline-flex items-center gap-0.5 justify-center">
+                                    {direction === 'high' && (
+                                      <span className={`text-[10px] leading-none ${status === 'crit' ? 'text-red-600' : 'text-amber-600'}`}>↑</span>
+                                    )}
+                                    {direction === 'low' && (
+                                      <span className={`text-[10px] leading-none ${status === 'crit' ? 'text-red-600' : 'text-amber-600'}`}>↓</span>
+                                    )}
+                                    {cell.value}
+                                  </span>
                                 : <span className="text-gray-200">—</span>
                               }
                             </td>
@@ -472,13 +533,9 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
         </table>
       </div>
 
-      {/* ── Legenda + ações de edição ── */}
+      {/* ── Ações de edição ── */}
       {editingDate && (
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100 inline-block border border-amber-200" /> Pouco alterado</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block border border-red-200" /> Muito alterado</span>
-          </div>
           {formError && (
             <p className={`text-xs ${isOcrReview && !formError.startsWith('Preencha') ? 'text-emerald-700' : 'text-red-600'}`}>
               {formError}
@@ -497,13 +554,6 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
               {isPending ? <><Loader2 className="w-3 h-3 animate-spin" /> Salvando...</> : <><Save className="w-3 h-3" /> Salvar coleta</>}
             </button>
           </div>
-        </div>
-      )}
-
-      {!editingDate && allDates.length > 0 && (
-        <div className="flex items-center gap-3 text-xs text-gray-400 justify-end">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100 inline-block border border-amber-200" /> Pouco alterado</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block border border-red-200" /> Muito alterado</span>
         </div>
       )}
 

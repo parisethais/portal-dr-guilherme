@@ -44,6 +44,9 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
     guardNavigation(() => {
       const p = new URLSearchParams(searchParams.toString())
       p.delete('p')
+      p.delete('dtab')
+      p.delete('stab')
+      p.delete('consulta')
       router.push(`?${p.toString()}`, { scroll: false })
     })
   }

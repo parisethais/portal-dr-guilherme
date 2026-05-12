@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Consulta, LabResult, ImagingResult } from '@/lib/types'
 import DiagnosticosPanel from './DiagnosticosPanel'
 import EvolucaoPanel from './EvolucaoPanel'
@@ -157,12 +157,23 @@ interface Props {
   patientName:    string
 }
 
+const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico']
+
 export default function ProntuarioTab({ consultas, labResults, imagingResults, patientId, patientName }: Props) {
-  const router = useRouter()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
   const realizadas = consultas.filter(c => c.status !== 'cancelada')
 
-  const [activeTab, setActiveTab]           = useState<SubTab>('diagnosticos')
-  const [selectedId, setSelectedId]         = useState<string>(realizadas[0]?.id ?? '')
+  // Sub-tab persistida na URL como ?stab=...
+  const rawStab = searchParams.get('stab') as SubTab | null
+  const activeTab: SubTab = rawStab && VALID_SUBTABS.includes(rawStab) ? rawStab : 'diagnosticos'
+
+  // Consulta selecionada persistida na URL como ?consulta=...
+  const rawConsulta = searchParams.get('consulta')
+  const selectedId = (rawConsulta && realizadas.find(c => c.id === rawConsulta))
+    ? rawConsulta
+    : (realizadas[0]?.id ?? '')
+
   const [confirmFinalizar, setConfirm]      = useState(false)
   const [finalizeError, setFinalizeError]   = useState('')
   const [showNovaConsulta, setShowNova]     = useState(false)
@@ -240,7 +251,16 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
         </label>
         <select
           value={selectedId}
-          onChange={e => { const id = e.target.value; guardNavigation(() => { setSelectedId(id); setConfirm(false); setFinalizeError('') }) }}
+          onChange={e => {
+            const id = e.target.value
+            guardNavigation(() => {
+              setConfirm(false)
+              setFinalizeError('')
+              const p = new URLSearchParams(searchParams.toString())
+              p.set('consulta', id)
+              router.push(`?${p.toString()}`, { scroll: false })
+            })
+          }}
           className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
         >
           {realizadas.map(c => (
@@ -305,7 +325,12 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
             <button
               key={tab.id}
               type="button"
-              onClick={() => guardNavigation(() => { setActiveTab(tab.id); setConfirm(false) })}
+              onClick={() => guardNavigation(() => {
+                setConfirm(false)
+                const p = new URLSearchParams(searchParams.toString())
+                p.set('stab', tab.id)
+                router.push(`?${p.toString()}`, { scroll: false })
+              })}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px',
                 activeTab === tab.id
