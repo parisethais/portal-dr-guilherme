@@ -23,7 +23,6 @@ export const TIPO_LABEL: Record<ConsultaTipo, string> = {
   primeira_consulta_desconto: 'Primeira Consulta (Desconto)',
   nova_consulta_desconto:     'Nova Consulta (Desconto)',
   urgencia:                   'Urgência',
-  telemedicina:               'Telemedicina',
 }
 
 export const TIPO_INFO: Record<ConsultaTipo, { duracao: number; preco: string }> = {
@@ -33,7 +32,6 @@ export const TIPO_INFO: Record<ConsultaTipo, { duracao: number; preco: string }>
   primeira_consulta_desconto: { duracao: 75, preco: 'R$500'   },
   nova_consulta_desconto:     { duracao: 45, preco: 'R$500'   },
   urgencia:                   { duracao: 30, preco: '—'       },
-  telemedicina:               { duracao: 30, preco: '—'       },
 }
 
 export const LOCAL_LABEL: Record<ConsultaLocal, string> = {
@@ -457,7 +455,6 @@ export default function ConsultaModal({
                 <option value="primeira_consulta_desconto">Primeira Consulta (Desconto) — 1h15 · R$500</option>
                 <option value="nova_consulta_desconto">Nova Consulta (Desconto) — 45min · R$500</option>
                 <option value="urgencia">Urgência</option>
-                <option value="telemedicina">Telemedicina</option>
               </select>
             </div>
 

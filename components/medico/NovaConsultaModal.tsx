@@ -16,7 +16,6 @@ const TIPOS: { value: ConsultaTipo; label: string }[] = [
   { value: 'primeira_consulta', label: 'Primeira consulta' },
   { value: 'retorno',           label: 'Retorno'           },
   { value: 'urgencia',          label: 'Urgência'          },
-  { value: 'telemedicina',      label: 'Telemedicina'      },
 ]
 
 const LOCAIS: { value: ConsultaLocal; label: string }[] = [

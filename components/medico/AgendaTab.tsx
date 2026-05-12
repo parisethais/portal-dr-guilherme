@@ -33,7 +33,6 @@ export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; tex
   nova_consulta_desconto:     { bg: '#14b8a6', border: '#0d9488', text: '#ffffff' },
   retorno:                    { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
   urgencia:                   { bg: '#c2410c', border: '#ea580c', text: '#ffffff' },
-  telemedicina:               { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' },
 }
 
 // Mantido para compatibilidade com DayViewModal/outros componentes
@@ -119,7 +118,7 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
 
     return {
       id:              c.id,
-      title:           `${hora} · ${patientName}`,
+      title:           `${c.local === 'telemedicina' ? '📹 ' : ''}${hora} · ${patientName}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
       backgroundColor: isPast ? '#9ca3af' : tipoColors.bg,
