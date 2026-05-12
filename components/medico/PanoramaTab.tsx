@@ -300,16 +300,18 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
 
 // ── Painel: sem retorno com CTAs ─────────────────────────────
 interface SemRetornoPanelProps {
-  lista: Profile[]
-  total: number
+  lista:         Profile[]
+  total:         number
   getUltima:     (id: string) => string | null
   getUltimoTipo: (id: string) => string | null
+  getAlerta:     (p: Profile) => 'atrasado' | 'chegando' | null
 }
 
-function SemRetornoRow({ patient, ultima, ultimoTipo }: {
+function SemRetornoRow({ patient, ultima, ultimoTipo, alerta }: {
   patient:    Profile
   ultima:     string | null
   ultimoTipo: string | null
+  alerta:     'atrasado' | 'chegando' | null
 }) {
   const firstName = patient.full_name?.split(' ')[0] ?? 'paciente'
   const phone     = patient.phone?.replace(/\D/g, '')
@@ -318,28 +320,33 @@ function SemRetornoRow({ patient, ultima, ultimoTipo }: {
   )
   const waUrl = phone ? `https://wa.me/55${phone}?text=${waMessage}` : null
 
+  const bgClass     = alerta === 'atrasado' ? 'bg-red-50/60 border-red-100'    : 'bg-amber-50/60 border-amber-100'
+  const alertaBadge = alerta === 'atrasado'
+    ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold flex-shrink-0 mt-0.5 whitespace-nowrap">Atrasado</span>
+    : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold flex-shrink-0 mt-0.5 whitespace-nowrap">Em breve</span>
+
   return (
-    <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2.5 space-y-2">
-      {/* Nome + última consulta */}
+    <div className={`rounded-lg border px-3 py-2.5 space-y-2 ${bgClass}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-gray-800 truncate">{patient.full_name ?? '—'}</p>
           <p className="text-[11px] text-gray-400">
-            {ultima ? `Última consulta: ${formatDate(ultima)}` : 'Sem consultas registradas'}
+            {ultima ? `Última: ${formatDate(ultima)}` : 'Sem consultas'}
+            {patient.retorno_previsto && (
+              <> · Previsto: {formatDate(patient.retorno_previsto)}</>
+            )}
           </p>
         </div>
-        {ultimoTipo ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium flex-shrink-0 mt-0.5 whitespace-nowrap">
-            {ultimoTipo}
-          </span>
-        ) : (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0 mt-0.5">
-            Sem retorno
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {alertaBadge}
+          {ultimoTipo && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium whitespace-nowrap">
+              {ultimoTipo}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* WhatsApp */}
       <div className="flex items-center">
         {waUrl ? (
           <a
@@ -359,20 +366,26 @@ function SemRetornoRow({ patient, ultima, ultimoTipo }: {
   )
 }
 
-function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo }: SemRetornoPanelProps) {
+function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo, getAlerta }: SemRetornoPanelProps) {
   return (
     <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-4 h-4 text-amber-500" />
-        <h3 className="text-sm font-semibold text-gray-800">Ativos sem retorno agendado</h3>
-        <span className="text-xs text-gray-400 ml-auto">{total} total</span>
+        <h3 className="text-sm font-semibold text-gray-800">Retorno previsto sem agendamento</h3>
+        <span className="text-xs text-gray-400 ml-auto">{total} pacientes</span>
       </div>
       {lista.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">Todos os pacientes têm retorno agendado 🎉</p>
+        <p className="text-sm text-gray-400 text-center py-6">Nenhum retorno pendente no momento 🎉</p>
       ) : (
         <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 420 }}>
           {lista.map(p => (
-            <SemRetornoRow key={p.id} patient={p} ultima={getUltima(p.id)} ultimoTipo={getUltimoTipo(p.id)} />
+            <SemRetornoRow
+              key={p.id}
+              patient={p}
+              ultima={getUltima(p.id)}
+              ultimoTipo={getUltimoTipo(p.id)}
+              alerta={getAlerta(p)}
+            />
           ))}
         </div>
       )}
@@ -477,11 +490,16 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
   // ── Lista: ativos sem retorno ──────────────────────────────
   const semRetornoLista = patients
-    .filter(p => p.status_paciente === 'ativo' && !getProxima(p.id))
+    .filter(p =>
+      p.status_paciente === 'ativo' &&
+      !getProxima(p.id) &&
+      (getAlertRetorno(p) === 'atrasado' || getAlertRetorno(p) === 'chegando')
+    )
     .sort((a, b) => {
-      const ua = getUltima(a.id) ?? ''
-      const ub = getUltima(b.id) ?? ''
-      return ua.localeCompare(ub) // mais antigos primeiro
+      const pa = getAlertRetorno(a) === 'atrasado' ? 0 : 1
+      const pb = getAlertRetorno(b) === 'atrasado' ? 0 : 1
+      if (pa !== pb) return pa - pb          // atrasados primeiro
+      return (a.retorno_previsto ?? '').localeCompare(b.retorno_previsto ?? '') // mais antigo primeiro
     })
 
   // ── Contagens para filtros de alerta ──────────────────────
@@ -646,9 +664,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
         {/* Pacientes ativos sem retorno */}
         <SemRetornoPanel
           lista={semRetornoLista}
-          total={totais.semRetorno}
+          total={semRetornoLista.length}
           getUltima={getUltima}
           getUltimoTipo={getUltimoTipo}
+          getAlerta={getAlertRetorno}
         />
       </div>
 
