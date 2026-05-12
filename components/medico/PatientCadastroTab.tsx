@@ -107,7 +107,6 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
     cep:             patient.cep             ?? '',
     endereco:        patient.endereco        ?? '',
     cidade_estado:   patient.cidade_estado   ?? '',
-    clinica:         patient.clinica         ?? 'MedRenal',
     diagnostico:     patient.diagnostico     ?? '',
     status_paciente: patient.status_paciente ?? 'ativo',
     obs_secretaria:  patient.obs_secretaria  ?? '',
@@ -132,7 +131,6 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
         cep:             form.cep             || undefined,
         endereco:        form.endereco        || undefined,
         cidade_estado:   form.cidade_estado   || undefined,
-        clinica:         form.clinica         || 'MedRenal',
         diagnostico:     form.diagnostico     || null,
         status_paciente: form.status_paciente as StatusPaciente,
         obs_secretaria:  form.obs_secretaria  || null,
@@ -219,15 +217,12 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
 
       {/* ── Acompanhamento ── */}
       <Section title="Acompanhamento (secretaria / médico)">
-        <Row>
-          <Field label="Clínica"     value={form.clinica}     onChange={set('clinica')}     placeholder="MedRenal" />
-          <Field
-            label="Diagnóstico"
-            value={form.diagnostico}
-            readOnly
-            hint="Preenchido automaticamente pelo prontuário (Diagnósticos da consulta mais recente)"
-          />
-        </Row>
+        <Field
+          label="Diagnóstico"
+          value={form.diagnostico}
+          readOnly
+          hint="Preenchido automaticamente pelo prontuário (Diagnósticos da consulta mais recente)"
+        />
         <SelectField label="Status do paciente" value={form.status_paciente} onChange={set('status_paciente')}>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
