@@ -302,28 +302,21 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
 interface SemRetornoPanelProps {
   lista: Profile[]
   total: number
-  getUltima: (id: string) => string | null
+  getUltima:     (id: string) => string | null
+  getUltimoTipo: (id: string) => string | null
 }
 
-function SemRetornoRow({ patient, ultima }: { patient: Profile; ultima: string | null }) {
-  const [isPending, startTransition] = useTransition()
-  const [localStatus, setLocalStatus] = useState<StatusPaciente>(patient.status_paciente ?? 'ativo')
-  const [statusSaved, setStatusSaved] = useState(false)
-
-  const firstName  = patient.full_name?.split(' ')[0] ?? 'paciente'
-  const phone      = patient.phone?.replace(/\D/g, '')
-  const waMessage  = encodeURIComponent(
+function SemRetornoRow({ patient, ultima, ultimoTipo }: {
+  patient:    Profile
+  ultima:     string | null
+  ultimoTipo: string | null
+}) {
+  const firstName = patient.full_name?.split(' ')[0] ?? 'paciente'
+  const phone     = patient.phone?.replace(/\D/g, '')
+  const waMessage = encodeURIComponent(
     `Olá, ${firstName}! Aqui é a equipe do consultório do Dr. Guilherme. Percebemos que você está sem consulta de retorno agendada e gostaríamos de marcar um horário para continuarmos seu acompanhamento. Quando seria melhor para você? 😊`
   )
   const waUrl = phone ? `https://wa.me/55${phone}?text=${waMessage}` : null
-
-  function handleStatusChange(s: StatusPaciente) {
-    setLocalStatus(s)
-    startTransition(async () => {
-      const res = await updatePatientStatus(patient.id, s)
-      if (res.success) { setStatusSaved(true); setTimeout(() => setStatusSaved(false), 2000) }
-    })
-  }
 
   return (
     <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2.5 space-y-2">
@@ -335,14 +328,19 @@ function SemRetornoRow({ patient, ultima }: { patient: Profile; ultima: string |
             {ultima ? `Última consulta: ${formatDate(ultima)}` : 'Sem consultas registradas'}
           </p>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0 mt-0.5">
-          Sem retorno
-        </span>
+        {ultimoTipo ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium flex-shrink-0 mt-0.5 whitespace-nowrap">
+            {ultimoTipo}
+          </span>
+        ) : (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex-shrink-0 mt-0.5">
+            Sem retorno
+          </span>
+        )}
       </div>
 
-      {/* Ações */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* WhatsApp */}
+      {/* WhatsApp */}
+      <div className="flex items-center">
         {waUrl ? (
           <a
             href={waUrl}
@@ -356,27 +354,12 @@ function SemRetornoRow({ patient, ultima }: { patient: Profile; ultima: string |
         ) : (
           <span className="text-[11px] text-gray-300 italic">sem telefone</span>
         )}
-
-        {/* Status inline */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          {statusSaved && <Check className="w-3 h-3 text-green-500" />}
-          <select
-            value={localStatus}
-            disabled={isPending}
-            onChange={e => handleStatusChange(e.target.value as StatusPaciente)}
-            className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-          >
-            <option value="ativo">Ativo</option>
-            <option value="inativo">Inativo</option>
-            <option value="obito">Óbito</option>
-          </select>
-        </div>
       </div>
     </div>
   )
 }
 
-function SemRetornoPanel({ lista, total, getUltima }: SemRetornoPanelProps) {
+function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo }: SemRetornoPanelProps) {
   return (
     <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
       <div className="flex items-center gap-2 mb-4">
@@ -389,7 +372,7 @@ function SemRetornoPanel({ lista, total, getUltima }: SemRetornoPanelProps) {
       ) : (
         <div className="space-y-2">
           {lista.map(p => (
-            <SemRetornoRow key={p.id} patient={p} ultima={getUltima(p.id)} />
+            <SemRetornoRow key={p.id} patient={p} ultima={getUltima(p.id)} ultimoTipo={getUltimoTipo(p.id)} />
           ))}
           {total > 6 && (
             <p className="text-xs text-gray-400 text-center pt-1">
@@ -671,6 +654,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           lista={semRetornoLista}
           total={totais.semRetorno}
           getUltima={getUltima}
+          getUltimoTipo={getUltimoTipo}
         />
       </div>
 
