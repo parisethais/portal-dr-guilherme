@@ -410,6 +410,7 @@ interface PanoramaTabProps {
 
 export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
+  const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
 
   const now      = new Date()
@@ -506,6 +507,12 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     })
     .slice(0, 6)
 
+  // ── Contagens para filtros de alerta ──────────────────────
+  const totaisAlerta = {
+    atrasado: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id) && getAlertRetorno(p) === 'atrasado').length,
+    chegando: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id) && getAlertRetorno(p) === 'chegando').length,
+  }
+
   // ── Tabela filtrada ────────────────────────────────────────
   const filtered = patients.filter(p => {
     const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
@@ -513,7 +520,12 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       filterStatus === 'todos'    ? true :
       filterStatus === 'ativo'    ? p.status_paciente === 'ativo' :
       /* inativos */                p.status_paciente === 'inativo' || p.status_paciente === 'obito'
-    return matchSearch && matchStatus
+    const alerta = getAlertRetorno(p)
+    const matchAlerta =
+      filterAlerta === 'all'      ? true :
+      filterAlerta === 'atrasado' ? (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'atrasado') :
+      /* chegando */                (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'chegando')
+    return matchSearch && matchStatus && matchAlerta
   })
 
   // ── Render ─────────────────────────────────────────────────
@@ -664,7 +676,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
       {/* ── 4. Filtros + Tabela ── */}
       <div className="space-y-3">
-        <div className="flex gap-2 flex-wrap">
+        {/* Linha 1: busca + status */}
+        <div className="flex gap-2 flex-wrap items-center">
           <input
             type="text"
             placeholder="Buscar paciente..."
@@ -673,21 +686,59 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {([
-            { key: 'ativo',    label: `Ativos (${totais.ativo})`                              },
-            { key: 'inativos', label: `Inativos (${totais.inativo + totais.obito})`           },
-            { key: 'todos',    label: `Todos (${patients.length})`                            },
+            { key: 'ativo',    label: `Ativos (${totais.ativo})`                    },
+            { key: 'inativos', label: `Inativos (${totais.inativo + totais.obito})` },
+            { key: 'todos',    label: `Todos (${patients.length})`                  },
           ] as const).map(s => (
             <button
               key={s.key}
               type="button"
-              onClick={() => setFilterStatus(s.key)}
+              onClick={() => { setFilterStatus(s.key); setFilterAlerta('all') }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filterStatus === s.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filterStatus === s.key && filterAlerta === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {s.label}
             </button>
           ))}
+        </div>
+
+        {/* Linha 2: filtros de alerta de retorno */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <span className="text-xs text-gray-400 font-medium">Retorno:</span>
+          <button
+            type="button"
+            onClick={() => { setFilterAlerta('atrasado'); setFilterStatus('ativo') }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              filterAlerta === 'atrasado'
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+            }`}
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Atrasado ({totaisAlerta.atrasado})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFilterAlerta('chegando'); setFilterStatus('ativo') }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              filterAlerta === 'chegando'
+                ? 'bg-amber-500 text-white border-amber-500'
+                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Agendar em breve ({totaisAlerta.chegando})
+          </button>
+          {filterAlerta !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setFilterAlerta('all')}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2"
+            >
+              × limpar
+            </button>
+          )}
         </div>
 
         <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
