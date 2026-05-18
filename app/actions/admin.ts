@@ -50,14 +50,28 @@ async function assertSuperAdmin() {
 
 export async function getClinics(): Promise<Clinic[]> {
   const { supabase } = await assertSuperAdmin()
-  const { data, error } = await supabase
+
+  const { data: clinicsData, error } = await supabase
     .from('clinics')
-    .select('*, clinic_members(count)')
+    .select('*')
     .order('created_at', { ascending: false })
-  if (error) { console.error(error); return [] }
-  return (data ?? []).map((c: any) => ({
+
+  if (error) { console.error('[getClinics]', error); return [] }
+  if (!clinicsData?.length) return []
+
+  // Busca contagem de membros separadamente (evita problemas de RLS aninhado)
+  const { data: membersData } = await supabase
+    .from('clinic_members')
+    .select('clinic_id')
+
+  const countByClinic: Record<string, number> = {}
+  for (const m of membersData ?? []) {
+    countByClinic[m.clinic_id] = (countByClinic[m.clinic_id] ?? 0) + 1
+  }
+
+  return clinicsData.map((c: any) => ({
     ...c,
-    member_count: c.clinic_members?.[0]?.count ?? 0,
+    member_count: countByClinic[c.id] ?? 0,
   }))
 }
 
