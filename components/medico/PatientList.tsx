@@ -13,6 +13,7 @@ import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
 import { countLabAlerts } from '@/lib/lab-alerts'
 
 interface PatientListProps {
+  currentRole: string
   patients: Profile[]
   patientExams: PatientExam[]
   carePlans: CarePlan[]
@@ -23,7 +24,7 @@ interface PatientListProps {
   imagingResults: ImagingResult[]
 }
 
-export default function PatientList({ patients, patientExams, carePlans, carePlanAttachments, invoices, consultas, labResults, imagingResults }: PatientListProps) {
+export default function PatientList({ currentRole, patients, patientExams, carePlans, carePlanAttachments, invoices, consultas, labResults, imagingResults }: PatientListProps) {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch]       = useState('')
@@ -80,6 +81,7 @@ export default function PatientList({ patients, patientExams, carePlans, carePla
     const patientImaging = imagingResults.filter(r => r.patient_id === selectedPatient.id)
     return (
       <PatientDetail
+        currentRole={currentRole}
         patient={selectedPatient}
         exames={exames}
         carePlan={carePlan}

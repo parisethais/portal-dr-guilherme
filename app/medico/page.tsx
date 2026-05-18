@@ -12,6 +12,14 @@ export default async function MedicoPage() {
 
   if (!user) redirect('/')
 
+  const { data: currentProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const currentRole = currentProfile?.role ?? 'medico'
+
   const [
     { data: patients },
     { data: documents },
@@ -76,6 +84,7 @@ export default async function MedicoPage() {
 
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
         <MedicoDashboard
+          currentRole={currentRole}
           patients={patients ?? []}
           documents={documents ?? []}
           patientExams={patientExams ?? []}

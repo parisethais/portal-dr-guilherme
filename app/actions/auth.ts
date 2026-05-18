@@ -37,7 +37,10 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  return { redirectTo: profile.role === 'medico' ? '/medico' : '/paciente' }
+  if (profile.role === 'medico' || profile.role === 'secretaria') {
+    return { redirectTo: '/medico' }
+  }
+  return { redirectTo: '/paciente' }
 }
 
 export async function signup(formData: FormData) {

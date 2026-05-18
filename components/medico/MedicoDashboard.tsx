@@ -13,6 +13,7 @@ import RelatoriosTab from './RelatoriosTab'
 import { cn } from '@/lib/utils'
 
 interface MedicoDashboardProps {
+  currentRole: string
   patients: Profile[]
   documents: Document[]
   patientExams: PatientExam[]
@@ -29,6 +30,7 @@ type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios'
 const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios']
 
 export default function MedicoDashboard({
+  currentRole,
   patients,
   documents,
   patientExams,
@@ -116,6 +118,7 @@ export default function MedicoDashboard({
         )}
         {activeTab === 'pacientes' && (
           <PatientList
+            currentRole={currentRole}
             patients={patients}
             patientExams={patientExams}
             carePlans={carePlans}

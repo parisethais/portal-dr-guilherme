@@ -54,19 +54,21 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
+    const isStaff = role === 'medico' || role === 'secretaria'
+
     // Usuário autenticado na raiz → redireciona para o dashboard correto
     if (pathname === '/') {
       if (role === 'paciente') return NextResponse.redirect(new URL('/paciente', request.url))
-      if (role === 'medico') return NextResponse.redirect(new URL('/medico', request.url))
+      if (isStaff)            return NextResponse.redirect(new URL('/medico', request.url))
       return supabaseResponse
     }
 
-    // Role errado em /paciente → manda para /medico (só se role for medico, evita loop)
-    if (pathname.startsWith('/paciente') && role === 'medico') {
+    // Role errado em /paciente → manda para /medico
+    if (pathname.startsWith('/paciente') && isStaff) {
       return NextResponse.redirect(new URL('/medico', request.url))
     }
 
-    // Role errado em /medico → manda para /paciente (só se role for paciente, evita loop)
+    // Role errado em /medico → manda para /paciente
     if (pathname.startsWith('/medico') && role === 'paciente') {
       return NextResponse.redirect(new URL('/paciente', request.url))
     }

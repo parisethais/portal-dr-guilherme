@@ -36,6 +36,7 @@ function actionLabel(fileType: string | null): string {
 type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro'
 
 interface PatientDetailProps {
+  currentRole: string
   patient: Profile
   exames: PatientExam[]
   carePlan: CarePlan | null
@@ -50,6 +51,7 @@ interface PatientDetailProps {
 const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro']
 
 export default function PatientDetail({
+  currentRole,
   patient,
   exames,
   invoices,
@@ -61,8 +63,11 @@ export default function PatientDetail({
   const router       = useRouter()
   const searchParams = useSearchParams()
 
+  const canSeeProntuario = currentRole !== 'secretaria'
+  const defaultTab: DetailTab = canSeeProntuario ? 'prontuario' : 'exames'
+
   const rawDtab = searchParams.get('dtab') as DetailTab | null
-  const activeDetailTab: DetailTab = rawDtab && VALID_DETAIL_TABS.includes(rawDtab) ? rawDtab : 'prontuario'
+  const activeDetailTab: DetailTab = rawDtab && VALID_DETAIL_TABS.includes(rawDtab) ? rawDtab : defaultTab
 
   function setActiveDetailTab(tab: DetailTab) {
     const p = new URLSearchParams(searchParams.toString())
@@ -71,10 +76,10 @@ export default function PatientDetail({
   }
 
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'prontuario', label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> },
-    { id: 'exames',     label: 'Exames',     icon: <ClipboardList className="w-4 h-4" /> },
-    { id: 'faturas',    label: 'Faturas',    icon: <Receipt       className="w-4 h-4" /> },
-    { id: 'cadastro',   label: 'Cadastro',   icon: <Contact       className="w-4 h-4" /> },
+    ...(canSeeProntuario ? [{ id: 'prontuario' as DetailTab, label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> }] : []),
+    { id: 'exames',   label: 'Exames',   icon: <ClipboardList className="w-4 h-4" /> },
+    { id: 'faturas',  label: 'Faturas',  icon: <Receipt       className="w-4 h-4" /> },
+    { id: 'cadastro', label: 'Cadastro', icon: <Contact       className="w-4 h-4" /> },
   ]
 
   return (
@@ -127,7 +132,7 @@ export default function PatientDetail({
       </div>
 
       {/* ── Tab: Prontuário ── */}
-      {activeDetailTab === 'prontuario' && (
+      {activeDetailTab === 'prontuario' && canSeeProntuario && (
         <ProntuarioTab
           consultas={consultas}
           labResults={labResults}
