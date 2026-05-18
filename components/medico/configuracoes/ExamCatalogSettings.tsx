@@ -190,12 +190,15 @@ export default function ExamCatalogSettings({ initialExams }: Props) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set([GROUPS[0]]))
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingGroup, setAddingGroup] = useState<string | null>(null)
+  const [customGroups, setCustomGroups] = useState<string[]>([])
+  const [newGroupInput, setNewGroupInput] = useState('')
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false)
   const [pending, startTransition] = useTransition()
   const [savingId, setSavingId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const groups = [...new Set(exams.map(e => e.group).concat(GROUPS))].filter(
+  const groups = [...new Set(exams.map(e => e.group).concat(GROUPS).concat(customGroups))].filter(
     g => g !== '__new__'
   )
 
@@ -488,19 +491,61 @@ export default function ExamCatalogSettings({ initialExams }: Props) {
       })}
 
       {/* Adicionar novo grupo */}
-      <button
-        onClick={() => {
-          const name = prompt('Nome do novo grupo:')
-          if (!name?.trim()) return
-          setAddingGroup(name.trim())
-          setOpenGroups(prev => new Set([...prev, name.trim()]))
-          setExams(prev => prev) // força re-render
-        }}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Adicionar novo grupo de exames
-      </button>
+      {showNewGroupInput ? (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl border-2 border-blue-200 bg-blue-50/40">
+          <input
+            autoFocus
+            value={newGroupInput}
+            onChange={e => setNewGroupInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                const name = newGroupInput.trim()
+                if (!name) return
+                setCustomGroups(prev => [...prev, name])
+                setAddingGroup(name)
+                setOpenGroups(prev => new Set([...prev, name]))
+                setNewGroupInput('')
+                setShowNewGroupInput(false)
+              }
+              if (e.key === 'Escape') {
+                setNewGroupInput('')
+                setShowNewGroupInput(false)
+              }
+            }}
+            placeholder="Nome do novo grupo..."
+            className="flex-1 text-sm bg-transparent border-none outline-none text-gray-700 placeholder-gray-400"
+          />
+          <button
+            onClick={() => {
+              const name = newGroupInput.trim()
+              if (!name) return
+              setCustomGroups(prev => [...prev, name])
+              setAddingGroup(name)
+              setOpenGroups(prev => new Set([...prev, name]))
+              setNewGroupInput('')
+              setShowNewGroupInput(false)
+            }}
+            disabled={!newGroupInput.trim()}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
+          >
+            Criar
+          </button>
+          <button
+            onClick={() => { setNewGroupInput(''); setShowNewGroupInput(false) }}
+            className="p-1.5 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowNewGroupInput(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Adicionar novo grupo de exames
+        </button>
+      )}
     </div>
   )
 }
