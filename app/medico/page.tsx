@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
 
 export default async function MedicoPage() {
@@ -76,10 +78,23 @@ export default async function MedicoPage() {
         <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-2.5" style={{ color: '#7EB8D4' }}>
           Clinical Intelligence OS
         </p>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Painel Médico</h1>
-        <p className="text-gray-400 mt-1.5 text-sm font-normal">
-          Gerencie pacientes, documentos e agenda.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Painel Médico</h1>
+            <p className="text-gray-400 mt-1.5 text-sm font-normal">
+              Gerencie pacientes, documentos e agenda.
+            </p>
+          </div>
+          {currentRole === 'medico' && (
+            <Link
+              href="/medico/configuracoes"
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+            >
+              <Settings className="w-4 h-4" />
+              Configurações
+            </Link>
+          )}
+        </div>
       </div>
 
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
