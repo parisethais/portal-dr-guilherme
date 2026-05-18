@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { redirect } from 'next/navigation'
-import { getClinics } from '@/app/actions/admin'
 import AdminDashboard from '@/components/admin/AdminDashboard'
 import { Shield } from 'lucide-react'
+import type { Clinic } from '@/app/actions/admin'
 
 export default async function AdminPage() {
+  // 1. Verifica sessão com client normal (tem cookies)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/')
@@ -14,7 +16,29 @@ export default async function AdminPage() {
 
   if (profile?.role !== 'superadmin') redirect('/medico')
 
-  const clinics = await getClinics()
+  // 2. Busca dados com admin client (service role, bypassa RLS)
+  const adminClient = createAdminClient()
+
+  const { data: clinicsData, error: clinicsError } = await adminClient
+    .from('clinics')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (clinicsError) console.error('[AdminPage] clinics error:', clinicsError)
+
+  const { data: membersData } = await adminClient
+    .from('clinic_members')
+    .select('clinic_id')
+
+  const countByClinic: Record<string, number> = {}
+  for (const m of membersData ?? []) {
+    countByClinic[m.clinic_id] = (countByClinic[m.clinic_id] ?? 0) + 1
+  }
+
+  const clinics: Clinic[] = (clinicsData ?? []).map((c: any) => ({
+    ...c,
+    member_count: countByClinic[c.id] ?? 0,
+  }))
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #f8f9fc 60%, #f0f4ff 100%)' }}>
