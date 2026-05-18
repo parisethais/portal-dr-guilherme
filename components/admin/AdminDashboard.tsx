@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import type { Clinic, ClinicMember, ClinicSetting } from '@/app/actions/admin'
 import {
   createClinic, updateClinic,
@@ -96,8 +96,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
   const [members, setMembers] = useState<ClinicMember[]>([])
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'members' | 'settings'>('members')
-  const [loaded, setLoaded] = useState(false)
-  const [pending, startTransition] = useTransition()
+  const [loading, setLoading] = useState(true)
 
   // Add member form
   const [memberEmail, setMemberEmail] = useState('')
@@ -110,18 +109,18 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
   const [editVal, setEditVal] = useState('')
   const [settingSaving, setSettingSaving] = useState(false)
 
-  // Load on mount
-  if (!loaded) {
-    setLoaded(true)
-    startTransition(async () => {
-      const [m, s] = await Promise.all([
-        getClinicMembers(clinic.id),
-        getClinicSettings(clinic.id),
-      ])
+  // Load on mount via useEffect
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      getClinicMembers(clinic.id),
+      getClinicSettings(clinic.id),
+    ]).then(([m, s]) => {
       setMembers(m)
       setSettings(s)
+      setLoading(false)
     })
-  }
+  }, [clinic.id])
 
   async function handleAddMember() {
     if (!memberEmail.trim()) return
@@ -212,7 +211,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
 
           {/* List */}
           <div className="rounded-xl border border-gray-100 overflow-hidden bg-white/60">
-            {pending ? (
+            {loading ? (
               <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
             ) : members.length === 0 ? (
               <p className="py-8 text-center text-sm text-gray-400">Nenhum membro ainda.</p>
