@@ -32,6 +32,7 @@ export default async function MedicoPage() {
     { data: consultas },
     { data: labResults },
     { data: imagingResults },
+    { data: financialEntries },
   ] = await Promise.all([
     supabase
       .from('profiles')
@@ -69,6 +70,10 @@ export default async function MedicoPage() {
       .from('imaging_results')
       .select('*')
       .order('data_realizado', { ascending: false }),
+    supabase
+      .from('financial_entries')
+      .select('*')
+      .order('date', { ascending: false }),
   ])
 
   return (
@@ -100,6 +105,7 @@ export default async function MedicoPage() {
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
         <MedicoDashboard
           currentRole={currentRole}
+          doctorId={user.id}
           patients={patients ?? []}
           documents={documents ?? []}
           patientExams={patientExams ?? []}
@@ -109,6 +115,7 @@ export default async function MedicoPage() {
           consultas={consultas ?? []}
           labResults={labResults ?? []}
           imagingResults={imagingResults ?? []}
+          financialEntries={(financialEntries ?? []) as any}
         />
       </Suspense>
     </div>

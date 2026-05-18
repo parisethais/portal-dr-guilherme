@@ -8,12 +8,15 @@ import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
 import PanoramaTab from './PanoramaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2 } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign } from 'lucide-react'
 import RelatoriosTab from './RelatoriosTab'
+import FinanceiroTab from './FinanceiroTab'
 import { cn } from '@/lib/utils'
+import type { FinancialEntry } from '@/app/actions/financial'
 
 interface MedicoDashboardProps {
   currentRole: string
+  doctorId: string
   patients: Profile[]
   documents: Document[]
   patientExams: PatientExam[]
@@ -23,14 +26,16 @@ interface MedicoDashboardProps {
   consultas: Consulta[]
   labResults: LabResult[]
   imagingResults: ImagingResult[]
+  financialEntries: FinancialEntry[]
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro'
 
-const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios']
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro']
 
 export default function MedicoDashboard({
   currentRole,
+  doctorId,
   patients,
   documents,
   patientExams,
@@ -40,6 +45,7 @@ export default function MedicoDashboard({
   consultas,
   labResults,
   imagingResults,
+  financialEntries,
 }: MedicoDashboardProps) {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -57,11 +63,12 @@ export default function MedicoDashboard({
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'panorama',   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'pacientes',  label: 'Pacientes',  icon: <Users className="w-4 h-4" /> },
-    { id: 'agenda',      label: 'Agenda',      icon: <CalendarDays className="w-4 h-4" /> },
-    { id: 'documentos',  label: 'Documentos',  icon: <Upload       className="w-4 h-4" /> },
-    { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2    className="w-4 h-4" /> },
+    { id: 'panorama',    label: 'Panorama',    icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'pacientes',   label: 'Pacientes',   icon: <Users           className="w-4 h-4" /> },
+    { id: 'agenda',      label: 'Agenda',      icon: <CalendarDays    className="w-4 h-4" /> },
+    { id: 'documentos',  label: 'Documentos',  icon: <Upload          className="w-4 h-4" /> },
+    { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2       className="w-4 h-4" /> },
+    { id: 'financeiro',  label: 'Financeiro',  icon: <DollarSign      className="w-4 h-4" /> },
   ]
 
   const headers: Record<Tab, { title: string; sub: string }> = {
@@ -70,6 +77,7 @@ export default function MedicoDashboard({
     agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
     documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
     relatorios: { title: 'Relatórios',         sub: 'Análise de dados dos seus pacientes. Filtre e cruze informações.' },
+    financeiro: { title: 'Financeiro',         sub: 'Controle receitas e despesas da clínica e renda pessoal profissional.' },
   }
 
   return (
@@ -154,6 +162,12 @@ export default function MedicoDashboard({
             consultas={consultas}
             labResults={labResults}
             imagingResults={imagingResults}
+          />
+        )}
+        {activeTab === 'financeiro' && (
+          <FinanceiroTab
+            initialEntries={financialEntries}
+            doctorId={doctorId}
           />
         )}
       </div>
