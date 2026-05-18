@@ -54,18 +54,24 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
-    const isStaff = role === 'medico' || role === 'secretaria'
+    const isStaff = role === 'medico' || role === 'secretaria' || role === 'superadmin'
+
+    // Superadmin tentando acessar /admin → deixa passar
+    if (pathname.startsWith('/admin') && role !== 'superadmin') {
+      return NextResponse.redirect(new URL('/medico', request.url))
+    }
 
     // Usuário autenticado na raiz → redireciona para o dashboard correto
     if (pathname === '/') {
-      if (role === 'paciente') return NextResponse.redirect(new URL('/paciente', request.url))
-      if (isStaff)            return NextResponse.redirect(new URL('/medico', request.url))
+      if (role === 'paciente')   return NextResponse.redirect(new URL('/paciente', request.url))
+      if (role === 'superadmin') return NextResponse.redirect(new URL('/admin', request.url))
+      if (isStaff)               return NextResponse.redirect(new URL('/medico', request.url))
       return supabaseResponse
     }
 
-    // Role errado em /paciente → manda para /medico
+    // Role errado em /paciente → manda para /medico (ou /admin)
     if (pathname.startsWith('/paciente') && isStaff) {
-      return NextResponse.redirect(new URL('/medico', request.url))
+      return NextResponse.redirect(new URL(role === 'superadmin' ? '/admin' : '/medico', request.url))
     }
 
     // Role errado em /medico → manda para /paciente
@@ -78,5 +84,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/paciente/:path*', '/medico/:path*', '/auth/callback'],
+  matcher: ['/', '/paciente/:path*', '/medico/:path*', '/admin/:path*', '/auth/callback'],
 }
