@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  // Remove headers que o cliente possa ter enviado (evita spoofing)
-  const sanitizedHeaders = new Headers(request.headers)
-  sanitizedHeaders.delete('x-user-id')
-  sanitizedHeaders.delete('x-user-role')
-  request = new NextRequest(request.url, { headers: sanitizedHeaders, method: request.method, body: request.body })
-
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -62,14 +56,25 @@ export async function middleware(request: NextRequest) {
 
     const isStaff = role === 'medico' || role === 'secretaria' || role === 'superadmin'
 
-    // Passa user info via headers para Server Components não precisarem chamar getUser() de novo
-    // (evita problema de refresh token já consumido pelo middleware)
-    const withUserHeaders = () => {
+    // Helper: cria resposta com user headers injetados + cookies do Supabase preservados
+    // Os headers são injetados no REQUEST (não no response) para que o Server Component possa lê-los via headers()
+    // Como fazemos h.set() APÓS copiar os headers do request, sobrescrevemos qualquer valor enviado pelo cliente
+    const withUserHeaders = (): NextResponse => {
       const h = new Headers(request.headers)
-      h.set('x-user-id', user.id)
+      h.set('x-user-id', user.id)           // sobrescreve qualquer header enviado pelo browser
       h.set('x-user-role', role!)
+
       const res = NextResponse.next({ request: { headers: h } })
-      supabaseResponse.cookies.getAll().forEach(c => res.cookies.set(c.name, c.value))
+
+      // Copia os Set-Cookie do supabaseResponse preservando todos os atributos (httpOnly, sameSite, etc.)
+      // getSetCookie() retorna array de strings raw, cada uma com todos os atributos
+      const rawSetCookies: string[] =
+        typeof (supabaseResponse.headers as any).getSetCookie === 'function'
+          ? (supabaseResponse.headers as any).getSetCookie()
+          : []
+
+      rawSetCookies.forEach(c => res.headers.append('set-cookie', c))
+
       return res
     }
 
@@ -101,7 +106,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/paciente', request.url))
     }
 
-    // Para /medico e /paciente com role correto, também passa os headers
+    // Médico/secretaria em /medico e paciente em /paciente: injeta headers também
     if (pathname.startsWith('/medico') || pathname.startsWith('/paciente')) {
       return withUserHeaders()
     }
