@@ -456,22 +456,22 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     if (!pri || c.data_hora < pri) primeiraConsultaMap.set(c.patient_id, c.data_hora)
   })
 
-  // "Sem retorno" = ativos que tiveram consulta nos últimos 18 meses e não têm retorno agendado
-  // (exclui pacientes que o dr. não vê há mais de 18 meses — clinicamente irrelevante)
-  const dezoitoMesesAtras = new Date(now)
-  dezoitoMesesAtras.setMonth(dezoitoMesesAtras.getMonth() - 18)
-  const cutoffISO = dezoitoMesesAtras.toISOString()
+  // "Ativo" = teve consulta realizada nos últimos 24 meses (está em acompanhamento)
+  // "Inativo" = nunca veio OU não aparece há mais de 24 meses (mas não é óbito)
+  const vintequatroMesesAtras = new Date(now)
+  vintequatroMesesAtras.setMonth(vintequatroMesesAtras.getMonth() - 24)
+  const cutoffISO = vintequatroMesesAtras.toISOString()
+
+  const isAtivo = (p: Profile) =>
+    p.status_paciente !== 'obito' && (ultimaConsultaMap.get(p.id) ?? '') >= cutoffISO
 
   // "Novos/mês" = pacientes cuja PRIMEIRA consulta realizada foi este mês
-  // (evita contar todos os migrados como "novos" por terem created_at de hoje)
   const totais = {
-    ativo:      patients.filter(p => p.status_paciente === 'ativo').length,
-    inativo:    patients.filter(p => p.status_paciente === 'inativo').length,
+    ativo:      patients.filter(isAtivo).length,
+    inativo:    patients.filter(p => p.status_paciente !== 'obito' && !isAtivo(p)).length,
     obito:      patients.filter(p => p.status_paciente === 'obito').length,
     semRetorno: patients.filter(p => {
-      if (p.status_paciente !== 'ativo') return false
-      const ultima = ultimaConsultaMap.get(p.id)
-      if (!ultima || ultima < cutoffISO) return false  // não atende há mais de 18 meses → ignora
+      if (!isAtivo(p)) return false
       return !getProxima(p.id)
     }).length,
     consultasMes: consultas.filter(c =>
@@ -511,13 +511,11 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       patient: patients.find(p => p.id === c.patient_id),
     }))
 
-  // ── Lista: ativos sem retorno (últimos 18 meses) ──────────────
+  // ── Lista: ativos sem retorno (últimos 24 meses) ──────────────
   const semRetornoLista = patients
     .filter(p => {
-      if (p.status_paciente !== 'ativo') return false
+      if (!isAtivo(p)) return false
       if (getProxima(p.id)) return false
-      const ultima = ultimaConsultaMap.get(p.id)
-      if (!ultima || ultima < cutoffISO) return false  // não aparece se sumiu há mais de 18 meses
       return getAlertRetorno(p) === 'atrasado' || getAlertRetorno(p) === 'chegando'
     })
     .sort((a, b) => {
@@ -529,8 +527,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
   // ── Contagens para filtros de alerta ──────────────────────
   const totaisAlerta = {
-    atrasado: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id) && getAlertRetorno(p) === 'atrasado').length,
-    chegando: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id) && getAlertRetorno(p) === 'chegando').length,
+    atrasado: patients.filter(p => isAtivo(p) && !getProxima(p.id) && getAlertRetorno(p) === 'atrasado').length,
+    chegando: patients.filter(p => isAtivo(p) && !getProxima(p.id) && getAlertRetorno(p) === 'chegando').length,
   }
 
   // ── Tabela filtrada ────────────────────────────────────────
@@ -538,8 +536,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
     const matchStatus =
       filterStatus === 'todos'    ? true :
-      filterStatus === 'ativo'    ? p.status_paciente === 'ativo' :
-      /* inativos */                p.status_paciente === 'inativo' || p.status_paciente === 'obito'
+      filterStatus === 'ativo'    ? isAtivo(p) :
+      /* inativos */                !isAtivo(p)
     const alerta = getAlertRetorno(p)
     const matchAlerta =
       filterAlerta === 'all'      ? true :
@@ -708,8 +706,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
             className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {([
-            { key: 'ativo',    label: `Ativos (${totais.ativo})`                    },
-            { key: 'inativos', label: `Inativos (${totais.inativo + totais.obito})` },
+            { key: 'ativo',    label: `Ativos — últimos 2 anos (${totais.ativo})`    },
+            { key: 'inativos', label: `Sem atividade (${totais.inativo + totais.obito})` },
             { key: 'todos',    label: `Todos (${patients.length})`                  },
           ] as const).map(s => (
             <button
