@@ -9,8 +9,16 @@ import MedicoDashboard from '@/components/medico/MedicoDashboard'
 export default async function MedicoPage() {
   // Auth via cookie client (sempre)
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/')
+
+  // getUser() valida o JWT na rede; se o token está sendo refreshed no middleware,
+  // pode retornar null neste Server Component. Usamos getSession() como fallback,
+  // que lê direto do cookie sem chamada de rede adicional.
+  let user = (await supabase.auth.getUser()).data.user
+  if (!user) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) redirect('/')
+    user = session.user
+  }
 
   const { data: currentProfile } = await supabase
     .from('profiles')
