@@ -171,3 +171,155 @@ export async function upsertClinicSetting(clinicId: string, key: string, value: 
   revalidatePath('/admin')
   return { success: true }
 }
+
+// ── Convênios ─────────────────────────────────────────────────────────────
+
+export interface ClinicConvenio {
+  id:            string
+  clinic_id:     string
+  name:          string
+  code:          string | null
+  default_value: number
+  active:        boolean
+  sort_order:    number
+  created_at:    string
+}
+
+export async function getClinicConvenios(clinicId: string): Promise<ClinicConvenio[]> {
+  const { supabase } = await assertSuperAdmin()
+  const { data, error } = await supabase
+    .from('clinic_convenios')
+    .select('*')
+    .eq('clinic_id', clinicId)
+    .order('sort_order')
+  if (error) { console.error(error); return [] }
+  return data ?? []
+}
+
+export async function createConvenio(clinicId: string, input: {
+  name: string; code?: string; default_value?: number
+}) {
+  const { supabase } = await assertSuperAdmin()
+  const { data: existing } = await supabase
+    .from('clinic_convenios').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
+  const sort_order = (existing?.sort_order ?? -1) + 1
+  const { data, error } = await supabase
+    .from('clinic_convenios')
+    .insert({ clinic_id: clinicId, ...input, sort_order })
+    .select().single()
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true, convenio: data }
+}
+
+export async function updateConvenio(id: string, input: Partial<Pick<ClinicConvenio, 'name' | 'code' | 'default_value' | 'active' | 'sort_order'>>) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase
+    .from('clinic_convenios')
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function deleteConvenio(id: string) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase.from('clinic_convenios').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ── Horários ──────────────────────────────────────────────────────────────
+
+export interface ClinicScheduleDay {
+  id:          string
+  clinic_id:   string
+  day_of_week: number   // 0=Dom … 6=Sáb
+  open_time:   string   // 'HH:MM'
+  close_time:  string
+  active:      boolean
+}
+
+export async function getClinicSchedule(clinicId: string): Promise<ClinicScheduleDay[]> {
+  const { supabase } = await assertSuperAdmin()
+  const { data, error } = await supabase
+    .from('clinic_schedule')
+    .select('*')
+    .eq('clinic_id', clinicId)
+    .order('day_of_week')
+  if (error) { console.error(error); return [] }
+  return data ?? []
+}
+
+export async function upsertScheduleDay(clinicId: string, day: Omit<ClinicScheduleDay, 'id' | 'clinic_id'>) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase
+    .from('clinic_schedule')
+    .upsert({ clinic_id: clinicId, ...day, updated_at: new Date().toISOString() },
+             { onConflict: 'clinic_id,day_of_week' })
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ── Tipos de Consulta ─────────────────────────────────────────────────────
+
+export interface ClinicConsultationType {
+  id:            string
+  clinic_id:     string
+  name:          string
+  duration_min:  number
+  color:         string
+  default_value: number
+  active:        boolean
+  sort_order:    number
+  created_at:    string
+}
+
+export async function getClinicConsultationTypes(clinicId: string): Promise<ClinicConsultationType[]> {
+  const { supabase } = await assertSuperAdmin()
+  const { data, error } = await supabase
+    .from('clinic_consultation_types')
+    .select('*')
+    .eq('clinic_id', clinicId)
+    .order('sort_order')
+  if (error) { console.error(error); return [] }
+  return data ?? []
+}
+
+export async function createConsultationType(clinicId: string, input: {
+  name: string; duration_min: number; color: string; default_value: number
+}) {
+  const { supabase } = await assertSuperAdmin()
+  const { data: existing } = await supabase
+    .from('clinic_consultation_types').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
+  const sort_order = (existing?.sort_order ?? -1) + 1
+  const { data, error } = await supabase
+    .from('clinic_consultation_types')
+    .insert({ clinic_id: clinicId, ...input, sort_order })
+    .select().single()
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true, tipo: data }
+}
+
+export async function updateConsultationType(id: string, input: Partial<Pick<ClinicConsultationType, 'name' | 'duration_min' | 'color' | 'default_value' | 'active' | 'sort_order'>>) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase
+    .from('clinic_consultation_types')
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function deleteConsultationType(id: string) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase.from('clinic_consultation_types').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
