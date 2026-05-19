@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useDeferredValue } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import { guardNavigation } from '@/lib/prontuario-dirty'
@@ -52,22 +52,41 @@ export default function PatientList({ currentRole, patients, patientExams, careP
     })
   }
 
-  const filtered = patients.filter((p) => {
-    const q = search.toLowerCase()
-    if (!q) return true
-    if (p.full_name?.toLowerCase().includes(q)) return true
-    if (p.diagnostico?.toLowerCase().includes(q)) return true
-    // Busca dentro dos diagnósticos JSON de cada consulta (nome + nota de evolução)
-    const hasDx = consultas
-      .filter(c => c.patient_id === p.id)
-      .some(c => {
-        const entries = parseDiagnosticos(c.diagnosticos ?? null)
-        return entries.some(
-          e => e.nome.toLowerCase().includes(q) || e.evolucao.toLowerCase().includes(q)
-        )
+  // Pré-computa índice de busca UMA VEZ (evita 809 × 442 parses por keystroke)
+  const searchIndex = useMemo(() => {
+    const consultasByPatient = new Map<string, Consulta[]>()
+    consultas.forEach(c => {
+      const list = consultasByPatient.get(c.patient_id) ?? []
+      list.push(c)
+      consultasByPatient.set(c.patient_id, list)
+    })
+
+    return new Map(patients.map(p => {
+      const parts: string[] = []
+      if (p.full_name)   parts.push(p.full_name.toLowerCase())
+      if (p.diagnostico) parts.push(p.diagnostico.toLowerCase())
+      const patientConsultas = consultasByPatient.get(p.id) ?? []
+      patientConsultas.forEach(c => {
+        try {
+          const entries = parseDiagnosticos(c.diagnosticos ?? null)
+          entries.forEach(e => {
+            if (e.nome)    parts.push(e.nome.toLowerCase())
+            if (e.evolucao) parts.push(e.evolucao.toLowerCase())
+          })
+        } catch { /* ignora consultas com JSON inválido */ }
       })
-    return hasDx
-  })
+      return [p.id, parts.join(' ')]
+    }))
+  }, [patients, consultas])
+
+  // useDeferredValue: mantém a UI responsiva enquanto filtra no background
+  const deferredSearch = useDeferredValue(search)
+
+  const filtered = useMemo(() => {
+    const q = deferredSearch.toLowerCase().trim()
+    if (!q) return patients
+    return patients.filter(p => searchIndex.get(p.id)?.includes(q) ?? false)
+  }, [deferredSearch, patients, searchIndex])
 
   if (selectedPatient) {
     const exames = patientExams.filter((e) => e.patient_id === selectedPatient.id)
