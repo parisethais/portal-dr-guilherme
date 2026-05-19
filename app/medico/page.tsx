@@ -1,17 +1,15 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
 
 export default async function MedicoPage() {
+  // Auth via cookie client (sempre)
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/')
 
   const { data: currentProfile } = await supabase
@@ -21,6 +19,10 @@ export default async function MedicoPage() {
     .single()
 
   const currentRole = currentProfile?.role ?? 'medico'
+
+  // Superadmin usa adminClient para ver todos os dados (bypassa RLS)
+  // Médico/secretaria usa client normal (RLS filtra pela clínica deles)
+  const db = currentRole === 'superadmin' ? createAdminClient() : supabase
 
   const [
     { data: patients },
@@ -34,46 +36,16 @@ export default async function MedicoPage() {
     { data: imagingResults },
     { data: financialEntries },
   ] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'paciente')
-      .order('full_name', { ascending: true }),
-    supabase
-      .from('documents')
-      .select('*, patient:profiles!patient_id(*)')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('patient_exams')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('care_plans')
-      .select('*'),
-    supabase
-      .from('care_plan_attachments')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('invoices')
-      .select('*')
-      .order('issue_date', { ascending: false }),
-    supabase
-      .from('consultas')
-      .select('*, patient:profiles!patient_id(*)')
-      .order('data_hora', { ascending: true }),
-    supabase
-      .from('lab_results')
-      .select('*')
-      .order('collected_at', { ascending: false }),
-    supabase
-      .from('imaging_results')
-      .select('*')
-      .order('data_realizado', { ascending: false }),
-    supabase
-      .from('financial_entries')
-      .select('*')
-      .order('date', { ascending: false }),
+    db.from('profiles').select('*').eq('role', 'paciente').order('full_name', { ascending: true }),
+    db.from('documents').select('*, patient:profiles!patient_id(*)').order('created_at', { ascending: false }),
+    db.from('patient_exams').select('*').order('created_at', { ascending: false }),
+    db.from('care_plans').select('*'),
+    db.from('care_plan_attachments').select('*').order('created_at', { ascending: false }),
+    db.from('invoices').select('*').order('issue_date', { ascending: false }),
+    db.from('consultas').select('*, patient:profiles!patient_id(*)').order('data_hora', { ascending: true }),
+    db.from('lab_results').select('*').order('collected_at', { ascending: false }),
+    db.from('imaging_results').select('*').order('data_realizado', { ascending: false }),
+    db.from('financial_entries').select('*').order('date', { ascending: false }),
   ])
 
   return (
