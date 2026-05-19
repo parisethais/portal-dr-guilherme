@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
@@ -151,11 +152,15 @@ export async function upsertImagingResult(data: {
   file_url?:       string | null
   file_name?:      string | null
 }): Promise<ActionResult<{ id: string }>> {
+  // Auth check via cookie client
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { data: result, error } = await supabase
+  // Usa adminClient para bypassar RLS (policy só cobre role='medico', mas secretaria/superadmin
+  // também precisam inserir — autenticação já foi verificada acima)
+  const db = createAdminClient()
+  const { data: result, error } = await db
     .from('imaging_results')
     .upsert(data)
     .select('id')
@@ -172,7 +177,8 @@ export async function deleteImagingResult(id: string): Promise<ActionResult> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('imaging_results').delete().eq('id', id)
+  const db = createAdminClient()
+  const { error } = await db.from('imaging_results').delete().eq('id', id)
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/medico')

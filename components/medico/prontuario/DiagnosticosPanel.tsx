@@ -316,11 +316,22 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <input
+              <textarea
                 value={entry.evolucao}
-                onChange={e => updateEvolucao(idx, e.target.value)}
+                onChange={e => {
+                  updateEvolucao(idx, e.target.value)
+                  // auto-height
+                  e.target.style.height = 'auto'
+                  e.target.style.height = e.target.scrollHeight + 'px'
+                }}
+                onKeyDown={e => {
+                  // Shift+Enter: nova linha (comportamento padrão do textarea)
+                  // Enter sozinho também é nova linha — textarea lida nativamente
+                }}
                 placeholder="Nota de evolução... (ex: Creatinina 1.8, estável)"
-                className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-700 placeholder:text-gray-400"
+                rows={1}
+                className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-700 placeholder:text-gray-400 resize-none overflow-hidden leading-relaxed"
+                style={{ minHeight: '2rem' }}
               />
             </div>
           ))}
