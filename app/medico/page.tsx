@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { redirect } from 'next/navigation'
@@ -7,29 +8,40 @@ import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
 
 export default async function MedicoPage() {
-  // Auth via cookie client (sempre)
-  const supabase = await createClient()
+  // Lê headers injetados pelo middleware (evita chamar getUser() de novo,
+  // o que causaria falha quando o refresh token já foi consumido pelo middleware)
+  const headersList = await headers()
+  const middlewareUserId = headersList.get('x-user-id')
+  const middlewareUserRole = headersList.get('x-user-role')
 
-  // getUser() valida o JWT na rede; se o token está sendo refreshed no middleware,
-  // pode retornar null neste Server Component. Usamos getSession() como fallback,
-  // que lê direto do cookie sem chamada de rede adicional.
-  let user = (await supabase.auth.getUser()).data.user
-  if (!user) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) redirect('/')
-    user = session.user
+  let userId: string
+  let currentRole: string
+
+  if (middlewareUserId && middlewareUserRole) {
+    // Middleware já validou o usuário — confiar nos headers
+    userId = middlewareUserId
+    currentRole = middlewareUserRole
+  } else {
+    // Fallback: validar auth diretamente (caso o middleware não tenha setado headers)
+    const supabase = await createClient()
+    let user = (await supabase.auth.getUser()).data.user
+    if (!user) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) redirect('/')
+      user = session.user
+    }
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    userId = user.id
+    currentRole = currentProfile?.role ?? 'medico'
   }
-
-  const { data: currentProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  const currentRole = currentProfile?.role ?? 'medico'
 
   // Superadmin usa adminClient para ver todos os dados (bypassa RLS)
   // Médico/secretaria usa client normal (RLS filtra pela clínica deles)
+  const supabase = await createClient()
   const db = currentRole === 'superadmin' ? createAdminClient() : supabase
 
   const [
@@ -85,7 +97,7 @@ export default async function MedicoPage() {
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
         <MedicoDashboard
           currentRole={currentRole}
-          doctorId={user.id}
+          doctorId={userId}
           patients={patients ?? []}
           documents={documents ?? []}
           patientExams={patientExams ?? []}

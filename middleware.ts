@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type SetAllCookies } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
+  // Remove headers que o cliente possa ter enviado (evita spoofing)
+  const sanitizedHeaders = new Headers(request.headers)
+  sanitizedHeaders.delete('x-user-id')
+  sanitizedHeaders.delete('x-user-role')
+  request = new NextRequest(request.url, { headers: sanitizedHeaders, method: request.method, body: request.body })
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -56,6 +62,17 @@ export async function middleware(request: NextRequest) {
 
     const isStaff = role === 'medico' || role === 'secretaria' || role === 'superadmin'
 
+    // Passa user info via headers para Server Components não precisarem chamar getUser() de novo
+    // (evita problema de refresh token já consumido pelo middleware)
+    const withUserHeaders = () => {
+      const h = new Headers(request.headers)
+      h.set('x-user-id', user.id)
+      h.set('x-user-role', role!)
+      const res = NextResponse.next({ request: { headers: h } })
+      supabaseResponse.cookies.getAll().forEach(c => res.cookies.set(c.name, c.value))
+      return res
+    }
+
     // Superadmin tentando acessar /admin → deixa passar
     if (pathname.startsWith('/admin') && role !== 'superadmin') {
       return NextResponse.redirect(new URL('/medico', request.url))
@@ -71,7 +88,7 @@ export async function middleware(request: NextRequest) {
 
     // Superadmin pode visitar /medico e /paciente livremente (preview)
     if (role === 'superadmin' && (pathname.startsWith('/medico') || pathname.startsWith('/paciente'))) {
-      return supabaseResponse
+      return withUserHeaders()
     }
 
     // Role errado em /paciente → manda para /medico
@@ -82,6 +99,11 @@ export async function middleware(request: NextRequest) {
     // Role errado em /medico → manda para /paciente
     if (pathname.startsWith('/medico') && role === 'paciente') {
       return NextResponse.redirect(new URL('/paciente', request.url))
+    }
+
+    // Para /medico e /paciente com role correto, também passa os headers
+    if (pathname.startsWith('/medico') || pathname.startsWith('/paciente')) {
+      return withUserHeaders()
     }
   }
 
