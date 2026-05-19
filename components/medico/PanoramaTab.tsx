@@ -445,17 +445,40 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     return null
   }
 
-  // ── Totais / cards ────────────────────────────────────────
+  // ── Índices pré-computados (evita O(n²) nos totais) ──────────
+  const ultimaConsultaMap = new Map<string, string>()
+  const primeiraConsultaMap = new Map<string, string>()
+  consultas.forEach(c => {
+    if (c.status !== 'realizada') return
+    const ult = ultimaConsultaMap.get(c.patient_id)
+    if (!ult || c.data_hora > ult) ultimaConsultaMap.set(c.patient_id, c.data_hora)
+    const pri = primeiraConsultaMap.get(c.patient_id)
+    if (!pri || c.data_hora < pri) primeiraConsultaMap.set(c.patient_id, c.data_hora)
+  })
+
+  // "Sem retorno" = ativos que tiveram consulta nos últimos 18 meses e não têm retorno agendado
+  // (exclui pacientes que o dr. não vê há mais de 18 meses — clinicamente irrelevante)
+  const dezoitoMesesAtras = new Date(now)
+  dezoitoMesesAtras.setMonth(dezoitoMesesAtras.getMonth() - 18)
+  const cutoffISO = dezoitoMesesAtras.toISOString()
+
+  // "Novos/mês" = pacientes cuja PRIMEIRA consulta realizada foi este mês
+  // (evita contar todos os migrados como "novos" por terem created_at de hoje)
   const totais = {
     ativo:      patients.filter(p => p.status_paciente === 'ativo').length,
     inativo:    patients.filter(p => p.status_paciente === 'inativo').length,
     obito:      patients.filter(p => p.status_paciente === 'obito').length,
-    semRetorno: patients.filter(p => p.status_paciente === 'ativo' && !getProxima(p.id)).length,
+    semRetorno: patients.filter(p => {
+      if (p.status_paciente !== 'ativo') return false
+      const ultima = ultimaConsultaMap.get(p.id)
+      if (!ultima || ultima < cutoffISO) return false  // não atende há mais de 18 meses → ignora
+      return !getProxima(p.id)
+    }).length,
     consultasMes: consultas.filter(c =>
       c.data_hora.startsWith(mesAtual) && c.status === 'realizada'
     ).length,
     novosMes: patients.filter(p =>
-      p.created_at?.startsWith(mesAtual)
+      primeiraConsultaMap.get(p.id)?.startsWith(mesAtual)
     ).length,
   }
 
@@ -488,13 +511,15 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       patient: patients.find(p => p.id === c.patient_id),
     }))
 
-  // ── Lista: ativos sem retorno ──────────────────────────────
+  // ── Lista: ativos sem retorno (últimos 18 meses) ──────────────
   const semRetornoLista = patients
-    .filter(p =>
-      p.status_paciente === 'ativo' &&
-      !getProxima(p.id) &&
-      (getAlertRetorno(p) === 'atrasado' || getAlertRetorno(p) === 'chegando')
-    )
+    .filter(p => {
+      if (p.status_paciente !== 'ativo') return false
+      if (getProxima(p.id)) return false
+      const ultima = ultimaConsultaMap.get(p.id)
+      if (!ultima || ultima < cutoffISO) return false  // não aparece se sumiu há mais de 18 meses
+      return getAlertRetorno(p) === 'atrasado' || getAlertRetorno(p) === 'chegando'
+    })
     .sort((a, b) => {
       const pa = getAlertRetorno(a) === 'atrasado' ? 0 : 1
       const pb = getAlertRetorno(b) === 'atrasado' ? 0 : 1
