@@ -69,9 +69,14 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
-    // Role errado em /paciente → manda para /medico (ou /admin)
+    // Superadmin pode visitar /medico e /paciente livremente (preview)
+    if (role === 'superadmin' && (pathname.startsWith('/medico') || pathname.startsWith('/paciente'))) {
+      return supabaseResponse
+    }
+
+    // Role errado em /paciente → manda para /medico
     if (pathname.startsWith('/paciente') && isStaff) {
-      return NextResponse.redirect(new URL(role === 'superadmin' ? '/admin' : '/medico', request.url))
+      return NextResponse.redirect(new URL('/medico', request.url))
     }
 
     // Role errado em /medico → manda para /paciente
