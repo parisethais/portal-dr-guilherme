@@ -20,6 +20,29 @@ import { guardNavigation } from '@/lib/prontuario-dirty'
 
 type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem' | 'historico'
 
+// ── Helpers para conteúdo rico (HTML do Quill / iClinic) ─────
+function isHtml(text: string) {
+  return /<[a-z][\s\S]*?>/i.test(text)
+}
+
+/** Remove tags HTML para previews de uma linha */
+function stripHtml(text: string) {
+  return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** Renderiza HTML do Quill ou texto puro */
+function RichText({ value, className = '' }: { value: string; className?: string }) {
+  if (isHtml(value)) {
+    return (
+      <div
+        className={`prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5 [&_strong]:font-semibold ${className}`}
+        dangerouslySetInnerHTML={{ __html: value }}
+      />
+    )
+  }
+  return <p className={`text-sm leading-relaxed whitespace-pre-wrap text-gray-700 ${className}`}>{value}</p>
+}
+
 // ── Aba Histórico completo ────────────────────────────────────
 function HistoricoTab({ consultas }: { consultas: Consulta[] }) {
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -69,7 +92,9 @@ function HistoricoTab({ consultas }: { consultas: Consulta[] }) {
                 </div>
                 {/* Preview */}
                 {!isOpen && c.evolucao && (
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{c.evolucao}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">
+                    {isHtml(c.evolucao) ? stripHtml(c.evolucao) : c.evolucao}
+                  </p>
                 )}
               </div>
 
@@ -131,9 +156,7 @@ function HistField({ label, value, private: isPrivate }: { label: string; value:
         {label}
         {isPrivate && <span className="text-[9px] text-gray-300 normal-case">(privado)</span>}
       </p>
-      <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isPrivate ? 'text-gray-500 italic' : 'text-gray-700'}`}>
-        {value}
-      </p>
+      <RichText value={value} className={isPrivate ? 'opacity-70 italic' : ''} />
     </div>
   )
 }
@@ -399,12 +422,16 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
                       </div>
                     )}
                     {activeTab === 'evolucao' && c.evolucao && (
-                      <p className="text-gray-600 leading-relaxed whitespace-pre-wrap line-clamp-4">{c.evolucao}</p>
+                      <div className="line-clamp-4 overflow-hidden">
+                        <RichText value={c.evolucao} className="!text-gray-600" />
+                      </div>
                     )}
                     {activeTab === 'evolucao' && c.conduta && (
                       <div className="border-t border-gray-100 pt-2">
                         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Conduta</p>
-                        <p className="text-gray-600 whitespace-pre-wrap line-clamp-3">{c.conduta}</p>
+                        <div className="line-clamp-3 overflow-hidden">
+                          <RichText value={c.conduta} className="!text-gray-600" />
+                        </div>
                       </div>
                     )}
                     {activeTab === 'diagnosticos' && c.diagnosticos && (() => {
