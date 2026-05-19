@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import type { ActionResult, ImagingTipo } from '@/lib/types'
 
 // ── Upload de arquivo de exame de imagem ─────────────────────
@@ -20,13 +21,15 @@ export async function uploadImagingFile(
   const ext = file.name.split('.').pop() ?? 'bin'
   const path = `prontuario/${patientId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-  const { error: uploadError } = await supabase.storage
+  // Usa adminClient para storage (bypassa RLS do bucket — auth já verificada acima)
+  const admin = createAdminClient()
+  const { error: uploadError } = await admin.storage
     .from('exames')
     .upload(path, file, { contentType: file.type, upsert: false })
 
   if (uploadError) return { success: false, error: `Erro ao enviar: ${uploadError.message}` }
 
-  const { data: { publicUrl } } = supabase.storage.from('exames').getPublicUrl(path)
+  const { data: { publicUrl } } = admin.storage.from('exames').getPublicUrl(path)
 
   return { success: true, data: { url: publicUrl, fileName: file.name } }
 }
