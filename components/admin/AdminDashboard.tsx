@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import {
   Plus, Building2, Users, Settings2, ChevronRight,
   X, Check, Loader2, Trash2, ArrowLeft, Palette,
+  ExternalLink, LayoutDashboard, UserCircle,
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -342,6 +343,34 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
           clinic.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
           {clinic.active ? 'Ativa' : 'Inativa'}
         </span>
+
+        {/* Acesso rápido */}
+        <div className="flex items-center gap-2 ml-3">
+          <a
+            href="/medico"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 transition-colors"
+            title="Abrir CRM em nova aba"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            CRM
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
+          <a
+            href="/paciente"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-600 text-xs font-medium hover:bg-sky-100 transition-colors"
+            title="Ver portal do paciente em nova aba"
+          >
+            <UserCircle className="w-3.5 h-3.5" />
+            Portal
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -475,7 +504,29 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                    <div className="flex items-center gap-2 justify-end">
+                      <a
+                        href="/medico"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Acessar CRM"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                      </a>
+                      <a
+                        href="/paciente"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="p-1.5 text-sky-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                        title="Ver portal do paciente"
+                      >
+                        <UserCircle className="w-4 h-4" />
+                      </a>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
                   </td>
                 </tr>
               ))}
