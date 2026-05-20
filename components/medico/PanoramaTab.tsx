@@ -49,12 +49,29 @@ function calcIdade(dataNasc: string | null): string {
 
 function normalizarComoConheceu(raw: string | null): string {
   if (!raw) return 'Não informado'
-  const s = raw.trim()
-  if (s.toLowerCase().startsWith('indicaç')) return 'Indicação'
-  if (s.toLowerCase() === 'google') return 'Google'
-  if (s.toLowerCase() === 'instagram') return 'Instagram'
-  if (s.toLowerCase().startsWith('outro')) return 'Outro'
-  return 'Outro'
+  const s = raw.trim().toLowerCase()
+
+  // Internet / redes sociais
+  if (s === 'internet' || s === 'instagram' || s === 'google' ||
+      s.includes('doctoralia') || s.includes('instagram') || s.includes('google'))
+    return 'Internet'
+
+  // Hospital
+  if (s === 'hospital' || s.includes('hospital') || s.includes('sírio') || s.includes('sirio') ||
+      s.includes('santa casa') || s.includes('einstein') || s.includes('síria'))
+    return 'Hospital'
+
+  // Indicação de paciente (nomes de pessoas sem "dr" no início)
+  if (s === 'indicação de paciente') return 'Indicação de paciente'
+
+  // Indicação médica — quando começa com Dr, Dra, Prof, etc.
+  if (/^(dr\.?|dra\.?|prof\.?|prof\s)/i.test(raw.trim())) return 'Indicação médica'
+
+  // Outro explícito
+  if (s === 'outro') return 'Outro'
+
+  // Qualquer texto preenchido que não se encaixa → "Indicação" (nome de pessoa/clínica)
+  return 'Indicação'
 }
 
 // Retorna os últimos N meses no formato { key: 'YYYY-MM', label: 'Mai/25' }
