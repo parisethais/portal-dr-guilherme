@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Plus_Jakarta_Sans, Archivo } from 'next/font/google'
 import './globals.css'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -8,9 +8,15 @@ const jakarta = Plus_Jakarta_Sans({
   variable: '--font-jakarta',
 })
 
+const archivo = Archivo({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-archivo',
+})
+
 export const metadata: Metadata = {
-  title: 'Portal Dr. Guilherme',
-  description: 'Portal de atendimento ao paciente — Dr. Guilherme',
+  title: 'MedEn — Portal de Saúde',
+  description: 'Portal de atendimento ao paciente — Dr. Guilherme Santa Catharina',
   icons: {
     icon: '/favicon.ico',
   },
@@ -18,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={jakarta.variable}>
+    <html lang="pt-BR" className={`${jakarta.variable} ${archivo.variable}`}>
       <body>{children}</body>
     </html>
   )

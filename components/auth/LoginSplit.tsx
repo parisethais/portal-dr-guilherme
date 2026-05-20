@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { login, signup } from '@/app/actions/auth'
 import { Eye, EyeOff, UserRound, Stethoscope, ArrowRight } from 'lucide-react'
 
-// ── Paleta ────────────────────────────────────────────────────
-// #1A1F2E  grafite       → headings, botões
-// #7EB8D4  azul claro    → acentos, aba ativa, ícones, focus
-// #F2F4F8  ice blue      → inputs de fundo
-// #F5F2EC  paper         → painel esquerdo (fundo da página também)
+// ── Paleta MedEn ──────────────────────────────────────────────
+// #2D2B6B  índigo         → headings, botões
+// #7A9E7E  sage           → acentos, aba ativa, ícones, focus
+// #F5F0E8  warm bone      → painel esquerdo / fundo
+// #F2F4F8  ice            → inputs de fundo
 
 type Tab = 'paciente' | 'medico'
 
@@ -19,10 +19,10 @@ const inputBase: React.CSSProperties = {
   width: '100%',
   padding: '11px 14px',
   backgroundColor: '#F2F4F8',
-  border: '1px solid rgba(26,31,46,0.1)',
+  border: '1px solid rgba(45,43,107,0.12)',
   borderRadius: 9,
   fontSize: 14,
-  color: '#1A1F2E',
+  color: '#2D2B6B',
   outline: 'none',
   transition: 'border-color .15s, box-shadow .15s, background-color .15s',
   boxSizing: 'border-box',
@@ -30,12 +30,12 @@ const inputBase: React.CSSProperties = {
 }
 
 function focusIn(e: React.FocusEvent<HTMLInputElement>) {
-  e.target.style.borderColor = '#7EB8D4'
-  e.target.style.boxShadow = '0 0 0 3px rgba(126,184,212,0.18)'
+  e.target.style.borderColor = '#7A9E7E'
+  e.target.style.boxShadow = '0 0 0 3px rgba(122,158,126,0.18)'
   e.target.style.backgroundColor = '#FFFFFF'
 }
 function focusOut(e: React.FocusEvent<HTMLInputElement>) {
-  e.target.style.borderColor = 'rgba(26,31,46,0.1)'
+  e.target.style.borderColor = 'rgba(45,43,107,0.12)'
   e.target.style.boxShadow = 'none'
   e.target.style.backgroundColor = '#F2F4F8'
 }
@@ -72,7 +72,7 @@ function MsgSuccess({ text }: { text: string }) {
 
 const btnSubmit: React.CSSProperties = {
   width: '100%', padding: '12px 16px',
-  backgroundColor: '#1A1F2E',
+  backgroundColor: '#2D2B6B',
   color: '#FFFFFF',
   fontFamily: 'var(--font-jakarta)',
   fontWeight: 600, fontSize: 14,
@@ -90,7 +90,7 @@ function BrandPanel() {
     <div style={{
       width: 360,
       flexShrink: 0,
-      backgroundColor: '#F5F2EC',
+      backgroundColor: '#F5F0E8',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
@@ -105,7 +105,7 @@ function BrandPanel() {
         bottom: -80, right: -80,
         width: 260, height: 260,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(126,184,212,0.13) 0%, transparent 68%)',
+        background: 'radial-gradient(circle, rgba(122,158,126,0.15) 0%, transparent 68%)',
         pointerEvents: 'none',
       }} />
 
@@ -113,15 +113,15 @@ function BrandPanel() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <div style={{
           width: 7, height: 7, borderRadius: '50%',
-          backgroundColor: '#7EB8D4',
-          boxShadow: '0 0 0 2px rgba(126,184,212,0.25)',
+          backgroundColor: '#7A9E7E',
+          boxShadow: '0 0 0 2px rgba(122,158,126,0.28)',
           flexShrink: 0,
         }} />
         <span style={{
           fontFamily: 'var(--font-jakarta)',
           fontSize: 10, fontWeight: 600,
           letterSpacing: '0.16em',
-          color: 'rgba(26,31,46,0.38)',
+          color: 'rgba(45,43,107,0.38)',
           textTransform: 'uppercase',
         }}>
           Portal de Saúde
@@ -131,18 +131,39 @@ function BrandPanel() {
       {/* ZONAS 2+3 agrupadas na base — logo ancorado com consultório */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/Clinical.png"
-          alt="Clinical Intelligence OS"
-          style={{ width: '85%', height: 'auto', display: 'block' }}
-        />
+        {/* Logotipo MedEn */}
+        <div style={{ display: 'flex', alignItems: 'baseline' }}>
+          <span style={{
+            fontFamily: 'var(--font-archivo)',
+            fontSize: 40,
+            fontWeight: 800,
+            color: '#2D2B6B',
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
+          }}>Med</span>
+          <span style={{
+            fontFamily: 'var(--font-archivo)',
+            fontSize: 40,
+            fontWeight: 800,
+            color: '#7A9E7E',
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
+          }}>E</span>
+          <span style={{
+            fontFamily: 'var(--font-archivo)',
+            fontSize: 40,
+            fontWeight: 800,
+            color: '#2D2B6B',
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
+          }}>n</span>
+        </div>
 
         {/* Consultório */}
         <div>
           <div style={{
             width: 28, height: 2,
-            backgroundColor: '#7EB8D4',
+            backgroundColor: '#7A9E7E',
             borderRadius: 2,
             marginBottom: 12,
             opacity: 0.7,
@@ -151,7 +172,7 @@ function BrandPanel() {
             fontFamily: 'var(--font-jakarta)',
             fontSize: 10, fontWeight: 600,
             letterSpacing: '0.13em',
-            color: 'rgba(26,31,46,0.38)',
+            color: 'rgba(45,43,107,0.38)',
             textTransform: 'uppercase',
             margin: '0 0 5px',
           }}>
@@ -160,7 +181,7 @@ function BrandPanel() {
           <p style={{
             fontFamily: 'var(--font-jakarta)',
             fontSize: 16, fontWeight: 600,
-            color: '#1A1F2E',
+            color: '#2D2B6B',
             margin: 0,
             lineHeight: 1.35,
             letterSpacing: '-0.01em',
@@ -217,7 +238,7 @@ function PatientForm() {
         <p style={{
           fontFamily: 'var(--font-jakarta)',
           fontSize: 13, fontWeight: 400,
-          color: 'rgba(26,31,46,0.48)',
+          color: 'rgba(45,43,107,0.48)',
           margin: 0,
         }}>
           {mode === 'login' ? 'Acesse seus documentos e mensagens.' : 'Crie sua conta para acessar o portal.'}
@@ -241,7 +262,7 @@ function PatientForm() {
             style={{ ...inputBase, paddingRight: 44 }}
             onFocus={focusIn} onBlur={focusOut} />
           <button type="button" tabIndex={-1} onClick={() => setShowPass(s => !s)}
-            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(26,31,46,0.3)', padding: 2 }}>
+            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(45,43,107,0.32)', padding: 2 }}>
             {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
@@ -249,18 +270,18 @@ function PatientForm() {
         {mode === 'signup' && (
           <div style={{
             display: 'flex', gap: 9, padding: '10px 12px',
-            backgroundColor: 'rgba(126,184,212,0.07)',
-            border: '1px solid rgba(126,184,212,0.2)',
+            backgroundColor: 'rgba(122,158,126,0.07)',
+            border: '1px solid rgba(122,158,126,0.22)',
             borderRadius: 8,
           }}>
             <input type="checkbox" id="lgpd-chk" checked={lgpdAccepted}
               onChange={e => setLgpdAccepted(e.target.checked)}
-              style={{ marginTop: 2, width: 14, height: 14, accentColor: '#7EB8D4', flexShrink: 0, cursor: 'pointer' }} />
-            <label htmlFor="lgpd-chk" style={{ fontSize: 11, color: 'rgba(26,31,46,0.5)', lineHeight: 1.55, cursor: 'pointer', fontFamily: 'var(--font-jakarta)' }}>
+              style={{ marginTop: 2, width: 14, height: 14, accentColor: '#7A9E7E', flexShrink: 0, cursor: 'pointer' }} />
+            <label htmlFor="lgpd-chk" style={{ fontSize: 11, color: 'rgba(45,43,107,0.5)', lineHeight: 1.55, cursor: 'pointer', fontFamily: 'var(--font-jakarta)' }}>
               Li e aceito os{' '}
-              <span style={{ color: '#5FA0BD', fontWeight: 500 }}>Termos de Uso</span>
+              <span style={{ color: '#4E7A52', fontWeight: 500 }}>Termos de Uso</span>
               {' '}e a{' '}
-              <span style={{ color: '#5FA0BD', fontWeight: 500 }}>Política de Privacidade</span>
+              <span style={{ color: '#4E7A52', fontWeight: 500 }}>Política de Privacidade</span>
               {' '}(LGPD — Lei nº 13.709/2018).
             </label>
           </div>
@@ -279,12 +300,12 @@ function PatientForm() {
 
       <p style={{
         textAlign: 'center', fontSize: 12,
-        color: 'rgba(26,31,46,0.35)', marginTop: 4,
+        color: 'rgba(45,43,107,0.35)', marginTop: 4,
         fontFamily: 'var(--font-jakarta)',
       }}>
         {mode === 'login' ? 'Ainda não tem conta?' : 'Já tem conta?'}{' '}
         <button type="button" onClick={toggleMode}
-          style={{ background: 'none', border: 'none', color: '#5FA0BD', fontWeight: 600, fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-jakarta)' }}>
+          style={{ background: 'none', border: 'none', color: '#4E7A52', fontWeight: 600, fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'var(--font-jakarta)' }}>
           {mode === 'login' ? 'Cadastre-se' : 'Entrar'}
         </button>
       </p>
@@ -317,7 +338,7 @@ function MedicalForm() {
         <p style={{
           fontFamily: 'var(--font-jakarta)',
           fontSize: 13, fontWeight: 400,
-          color: 'rgba(26,31,46,0.48)',
+          color: 'rgba(45,43,107,0.48)',
           margin: 0,
         }}>
           Painel clínico, prontuários e acompanhamento dos pacientes.
@@ -336,7 +357,7 @@ function MedicalForm() {
             style={{ ...inputBase, paddingRight: 44 }}
             onFocus={focusIn} onBlur={focusOut} />
           <button type="button" tabIndex={-1} onClick={() => setShowPass(s => !s)}
-            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(26,31,46,0.3)', padding: 2 }}>
+            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(45,43,107,0.32)', padding: 2 }}>
             {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
@@ -354,8 +375,8 @@ function MedicalForm() {
       <div style={{
         marginTop: 8,
         padding: '9px 13px',
-        backgroundColor: 'rgba(26,31,46,0.04)',
-        border: '1px solid rgba(26,31,46,0.08)',
+        backgroundColor: 'rgba(45,43,107,0.04)',
+        border: '1px solid rgba(45,43,107,0.08)',
         borderRadius: 8,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
@@ -365,7 +386,7 @@ function MedicalForm() {
           boxShadow: '0 0 5px rgba(34,197,94,0.5)',
         }} />
         <p style={{
-          fontSize: 11, color: 'rgba(26,31,46,0.42)', margin: 0,
+          fontSize: 11, color: 'rgba(45,43,107,0.42)', margin: 0,
           fontFamily: 'var(--font-jakarta)', lineHeight: 1.5,
         }}>
           Acesso restrito — credenciais fornecidas pelo consultório
@@ -397,7 +418,7 @@ function FormPanel() {
       {/* Tab bar */}
       <div style={{
         display: 'flex',
-        borderBottom: '1px solid rgba(26,31,46,0.07)',
+        borderBottom: '1px solid rgba(45,43,107,0.07)',
       }}>
         {tabs.map(t => {
           const active = tab === t.id
@@ -414,10 +435,10 @@ function FormPanel() {
                 fontSize: 13,
                 fontWeight: active ? 600 : 400,
                 fontFamily: 'var(--font-jakarta)',
-                color: active ? '#1A1F2E' : 'rgba(26,31,46,0.38)',
+                color: active ? '#2D2B6B' : 'rgba(45,43,107,0.38)',
                 background: 'none',
                 border: 'none',
-                borderBottom: active ? '2px solid #7EB8D4' : '2px solid transparent',
+                borderBottom: active ? '2px solid #7A9E7E' : '2px solid transparent',
                 marginBottom: -1,
                 cursor: 'pointer',
                 transition: 'color .15s',
@@ -436,8 +457,8 @@ function FormPanel() {
 
         {/* Heading da aba */}
         <h2 style={{
-          fontFamily: 'var(--font-jakarta)',
-          fontSize: 20, fontWeight: 600, color: '#1A1F2E',
+          fontFamily: 'var(--font-archivo)',
+          fontSize: 20, fontWeight: 700, color: '#2D2B6B',
           margin: '0 0 16px', letterSpacing: '-0.02em',
         }}>
           {tab === 'paciente' ? 'Área do Paciente' : 'Área Médica'}
@@ -459,15 +480,15 @@ export default function LoginSplit() {
       borderRadius: 18,
       overflow: 'hidden',
       display: 'flex',
-      border: '1px solid rgba(26,31,46,0.09)',
-      boxShadow: '0 4px 36px rgba(26,31,46,0.1), 0 1px 4px rgba(26,31,46,0.06)',
+      border: '1px solid rgba(45,43,107,0.1)',
+      boxShadow: '0 4px 36px rgba(45,43,107,0.12), 0 1px 4px rgba(45,43,107,0.06)',
     }}>
       <BrandPanel />
 
       {/* Divisória vertical */}
       <div style={{
         width: 1, flexShrink: 0,
-        background: 'linear-gradient(to bottom, transparent 5%, rgba(26,31,46,0.08) 20%, rgba(26,31,46,0.08) 80%, transparent 95%)',
+        background: 'linear-gradient(to bottom, transparent 5%, rgba(45,43,107,0.08) 20%, rgba(45,43,107,0.08) 80%, transparent 95%)',
       }} />
 
       <FormPanel />
