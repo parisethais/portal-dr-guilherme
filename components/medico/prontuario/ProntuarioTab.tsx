@@ -30,17 +30,38 @@ function stripHtml(text: string) {
   return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * Pré-processa HTML do iClinic:
+ * - Converte **texto** (digitado manualmente) em <strong>texto</strong>
+ * - Converte *texto* simples em <em>texto</em> (quando não for **)
+ */
+function preprocessIclinicHtml(html: string): string {
+  return html
+    // **texto** → <strong>texto</strong> (incluindo ** texto **)
+    .replace(/\*\*\s*(.*?)\s*\*\*/g, (_, t) => t ? `<strong>${t}</strong>` : '')
+    // *texto* → <em>texto</em> (somente simples, não duplo)
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+}
+
 /** Renderiza HTML do Quill ou texto puro */
 function RichText({ value, className = '' }: { value: string; className?: string }) {
   if (isHtml(value)) {
     return (
       <div
-        className={`prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5 [&_strong]:font-semibold ${className}`}
-        dangerouslySetInnerHTML={{ __html: value }}
+        className={`prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5 [&_strong]:font-semibold [&_em]:text-gray-500 ${className}`}
+        dangerouslySetInnerHTML={{ __html: preprocessIclinicHtml(value) }}
       />
     )
   }
-  return <p className={`text-sm leading-relaxed whitespace-pre-wrap text-gray-700 ${className}`}>{value}</p>
+  // Texto puro: também processa markdown simples
+  const processed = value
+    .replace(/\*\*\s*(.*?)\s*\*\*/g, (_, t) => t ? `<strong>${t}</strong>` : '')
+  return (
+    <p
+      className={`text-sm leading-relaxed whitespace-pre-wrap text-gray-700 ${className}`}
+      dangerouslySetInnerHTML={{ __html: processed }}
+    />
+  )
 }
 
 // ── Aba Histórico completo ────────────────────────────────────

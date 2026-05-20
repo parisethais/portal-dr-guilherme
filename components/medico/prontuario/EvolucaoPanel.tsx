@@ -300,6 +300,12 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
 function isHtml(text: string) { return /<[a-z][\s\S]*?>/i.test(text) }
 function stripHtml(text: string) { return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() }
 
+function preprocessIclinicHtml(html: string): string {
+  return html
+    .replace(/\*\*\s*(.*?)\s*\*\*/g, (_, t) => t ? `<strong>${t}</strong>` : '')
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+}
+
 function ReadField({ label, value, labelExtra }: { label: string; value: string; labelExtra?: React.ReactNode }) {
   if (!label && !value) return null
   const hasHtml = value && isHtml(value)
@@ -313,8 +319,8 @@ function ReadField({ label, value, labelExtra }: { label: string; value: string;
       {value ? (
         hasHtml ? (
           <div
-            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5"
-            dangerouslySetInnerHTML={{ __html: value }}
+            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5 [&_strong]:font-semibold [&_em]:text-gray-500"
+            dangerouslySetInnerHTML={{ __html: preprocessIclinicHtml(value) }}
           />
         ) : (
           <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
