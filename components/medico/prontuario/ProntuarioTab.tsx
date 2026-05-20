@@ -375,7 +375,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
       )}
 
       {/* Conteúdo das abas */}
-      <div className="px-5 pt-5 pb-7">
+      <div className="px-5 pt-5 pb-5">
         {activeTab === 'diagnosticos' && selectedConsulta && (
           <DiagnosticosPanel
             consulta={selectedConsulta}
@@ -469,16 +469,16 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
 
       {/* ── Seção de finalização (só nas abas clínicas, só se não finalizado) ── */}
       {isClinicTab && !isHistorico && !isFinalized && selectedConsulta && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
           {!confirmFinalizar ? (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <p className="text-xs text-gray-400">
                 Salve o rascunho quantas vezes precisar. Finalize quando o prontuário estiver completo.
               </p>
               <button
                 type="button"
                 onClick={() => setConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:border-gray-400 hover:text-gray-800 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:border-gray-400 hover:text-gray-800 transition-colors flex-shrink-0"
               >
                 <Lock className="w-3.5 h-3.5" />
                 Finalizar prontuário
