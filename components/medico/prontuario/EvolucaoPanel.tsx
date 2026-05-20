@@ -90,14 +90,20 @@ function VitaisHistorico({ consultas, currentId }: { consultas: Consulta[]; curr
   )
 }
 
+function sanitizeForEdit(value: string | null | undefined): string {
+  if (!value) return ''
+  // Se vier HTML do iClinic, converte para texto puro para edição
+  return isHtml(value) ? stripHtml(value) : value
+}
+
 export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
-  const [evolucao,    setEvolucao]    = useState(consulta.evolucao    ?? '')
-  const [exameFisico, setExameFisico] = useState(consulta.exame_fisico ?? '')
+  const [evolucao,    setEvolucao]    = useState(sanitizeForEdit(consulta.evolucao))
+  const [exameFisico, setExameFisico] = useState(sanitizeForEdit(consulta.exame_fisico))
   const [pas,         setPas]         = useState(fmt(consulta.pas))
   const [pad,         setPad]         = useState(fmt(consulta.pad))
   const [fc,          setFc]          = useState(fmt(consulta.fc))
-  const [impressao,   setImpressao]   = useState(consulta.impressao   ?? '')
-  const [conduta,     setConduta]     = useState(consulta.conduta     ?? '')
+  const [impressao,   setImpressao]   = useState(sanitizeForEdit(consulta.impressao))
+  const [conduta,     setConduta]     = useState(sanitizeForEdit(consulta.conduta))
   const [saved,       setSaved]       = useState(false)
   const [error,       setError]       = useState('')
   const [isPending,   startTransition] = useTransition()
@@ -121,13 +127,13 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
   }, [isDirty]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    setEvolucao(consulta.evolucao       ?? '')
-    setExameFisico(consulta.exame_fisico ?? '')
+    setEvolucao(sanitizeForEdit(consulta.evolucao))
+    setExameFisico(sanitizeForEdit(consulta.exame_fisico))
     setPas(fmt(consulta.pas))
     setPad(fmt(consulta.pad))
     setFc(fmt(consulta.fc))
-    setImpressao(consulta.impressao     ?? '')
-    setConduta(consulta.conduta         ?? '')
+    setImpressao(sanitizeForEdit(consulta.impressao))
+    setConduta(sanitizeForEdit(consulta.conduta))
     setSaved(false)
     setError('')
   }, [consulta.id])
@@ -291,8 +297,12 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
 }
 
 // ── Helpers de leitura ────────────────────────────────────────
+function isHtml(text: string) { return /<[a-z][\s\S]*?>/i.test(text) }
+function stripHtml(text: string) { return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() }
+
 function ReadField({ label, value, labelExtra }: { label: string; value: string; labelExtra?: React.ReactNode }) {
   if (!label && !value) return null
+  const hasHtml = value && isHtml(value)
   return (
     <div className="space-y-1.5">
       {label && (
@@ -301,9 +311,16 @@ function ReadField({ label, value, labelExtra }: { label: string; value: string;
         </p>
       )}
       {value ? (
-        <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-          {value}
-        </div>
+        hasHtml ? (
+          <div
+            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-0.5"
+            dangerouslySetInnerHTML={{ __html: value }}
+          />
+        ) : (
+          <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {value}
+          </div>
+        )
       ) : (
         <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-400 italic">
           Não preenchido.

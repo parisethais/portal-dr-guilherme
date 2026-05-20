@@ -216,9 +216,17 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
           <div className="space-y-2">
             {entries.map((entry, idx) => (
               <div key={idx} className="border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 space-y-1">
-                <p className="text-sm font-semibold text-gray-900">{entry.nome}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {/<[a-z][\s\S]*?>/i.test(entry.nome)
+                    ? entry.nome.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                    : entry.nome}
+                </p>
                 {entry.evolucao && (
-                  <p className="text-xs text-gray-600 leading-relaxed">{entry.evolucao}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {/<[a-z][\s\S]*?>/i.test(entry.evolucao)
+                      ? entry.evolucao.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                      : entry.evolucao}
+                  </p>
                 )}
               </div>
             ))}
