@@ -375,7 +375,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
       )}
 
       {/* Conteúdo das abas */}
-      <div className="px-5 py-5">
+      <div className="px-5 pt-5 pb-7">
         {activeTab === 'diagnosticos' && selectedConsulta && (
           <DiagnosticosPanel
             consulta={selectedConsulta}
@@ -437,9 +437,10 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
                         const diags = JSON.parse(c.diagnosticos) as { nome: string }[]
                         return diags.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {diags.map((d, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">{d.nome}</span>
-                            ))}
+                            {diags.map((d, i) => {
+                              const label = isHtml(d.nome) ? stripHtml(d.nome) : d.nome
+                              return <span key={i} className="px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">{label}</span>
+                            })}
                           </div>
                         ) : null
                       } catch { return <RichText value={c.diagnosticos} className="!text-gray-600" /> }
