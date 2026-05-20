@@ -134,6 +134,7 @@ export interface Consulta {
   status:       ConsultaStatus
   observacoes:  string | null
   // Prontuário
+  obs_consulta:              string | null
   diagnosticos:              string | null
   evolucao:                  string | null
   exame_fisico:              string | null

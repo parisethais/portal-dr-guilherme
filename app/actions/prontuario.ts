@@ -9,6 +9,7 @@ import type { ActionResult } from '@/lib/types'
 export async function salvarConsultaFields(
   consultaId: string,
   fields: {
+    obs_consulta?: string | null
     diagnosticos?: string | null
     evolucao?:     string | null
     exame_fisico?: string | null

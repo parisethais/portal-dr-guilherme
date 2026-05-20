@@ -114,6 +114,13 @@ function HistoricoTab({ consultas }: { consultas: Consulta[] }) {
             {isOpen && (
               <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-4 bg-white">
 
+                {/* Observação da consulta */}
+                {c.obs_consulta && (
+                  <p className="text-xs italic text-gray-400 border-l-2 border-gray-200 pl-3 py-0.5 mt-2">
+                    {c.obs_consulta}
+                  </p>
+                )}
+
                 {/* Sinais vitais */}
                 {(c.pas != null || c.pad != null || c.fc != null) && (
                   <div className="flex gap-5 py-2">

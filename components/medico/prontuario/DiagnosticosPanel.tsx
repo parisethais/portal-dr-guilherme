@@ -88,6 +88,7 @@ interface Props {
 }
 
 export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
+  const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
   const [isDirty, setIsDirty]           = useState(false)
   const [saved, setSaved]               = useState(false)
@@ -121,6 +122,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
 
   // Sincroniza quando a consulta selecionada muda
   useEffect(() => {
+    setObsConsulta(consulta.obs_consulta ?? '')
     setEntries(parseDiagnosticos(consulta.diagnosticos))
     setIsDirty(false)
     setSaved(false)
@@ -194,6 +196,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
     setError('')
     startTransition(async () => {
       const res = await salvarConsultaFields(consulta.id, {
+        obs_consulta: obsConsulta.trim() || null,
         diagnosticos: entries.length > 0 ? JSON.stringify(entries) : null,
       })
       if (!res.success) { setError(res.error); return }
@@ -208,6 +211,12 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   if (isFinalized) {
     return (
       <div className="space-y-3">
+        {/* Observação da consulta */}
+        {consulta.obs_consulta && (
+          <p className="text-xs italic text-gray-400 border-l-2 border-gray-200 pl-3 py-0.5">
+            {consulta.obs_consulta}
+          </p>
+        )}
         {entries.length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-100 text-gray-400 text-sm">
             Nenhum diagnóstico registrado nesta consulta.
@@ -243,6 +252,23 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   // ── Modo edição ───────────────────────────────────────────
   return (
     <div className="space-y-4">
+
+      {/* Observação da consulta */}
+      <div className="relative">
+        <textarea
+          value={obsConsulta}
+          onChange={e => { setObsConsulta(e.target.value); markDirty() }}
+          placeholder="Observação desta consulta... (ex: Nova Odessa, indicada por Dra Ana — Nutri PUCC)"
+          rows={1}
+          className="w-full px-3 py-2 text-xs italic text-gray-500 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-gray-50 placeholder:text-gray-300 placeholder:not-italic resize-none overflow-hidden leading-relaxed"
+          style={{ minHeight: '2rem' }}
+          onInput={e => {
+            const t = e.currentTarget
+            t.style.height = 'auto'
+            t.style.height = t.scrollHeight + 'px'
+          }}
+        />
+      </div>
 
       {/* Carry-forward */}
       {carrySource && (
