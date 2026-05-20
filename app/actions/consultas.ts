@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
@@ -31,7 +32,10 @@ export async function createConsulta(data: {
     return { success: false, error: 'Preencha todos os campos obrigatórios.' }
   }
 
-  const { data: result, error } = await supabase
+  // Usa adminClient para bypass de RLS — autenticação já foi validada acima
+  const db = createAdminClient()
+
+  const { data: result, error } = await db
     .from('consultas')
     .insert({
       patient_id:  data.patient_id,

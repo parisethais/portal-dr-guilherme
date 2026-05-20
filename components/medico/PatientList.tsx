@@ -1,85 +1,61 @@
 'use client'
 
-import { useState, useMemo, useDeferredValue } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import { useState, useMemo, useDeferredValue, useEffect } from 'react'
+import type { Profile, Consulta } from '@/lib/types'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
 import InvitePatientModal from './InvitePatientModal'
-import { Search, UserRound, Users, ChevronRight, UserPlus, AlertTriangle, AlertCircle } from 'lucide-react'
-import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
-import { countLabAlerts } from '@/lib/lab-alerts'
+import { Search, UserRound, Users, ChevronRight, UserPlus, Loader2 } from 'lucide-react'
+import { getPatientDetailData, type PatientDetailData } from '@/app/actions/patient-detail'
 
 interface PatientListProps {
-  currentRole: string
-  patients: Profile[]
-  patientExams: PatientExam[]
-  carePlans: CarePlan[]
-  carePlanAttachments: CarePlanAttachment[]
-  invoices: Invoice[]
-  consultas: Consulta[]
-  labResults: LabResult[]
-  imagingResults: ImagingResult[]
+  currentRole:      string
+  patients:         Profile[]
+  consultas:        Consulta[]
+  selectedPatientId: string | null
+  onSelectPatient:  (patientId: string | null) => void
 }
 
-export default function PatientList({ currentRole, patients, patientExams, carePlans, carePlanAttachments, invoices, consultas, labResults, imagingResults }: PatientListProps) {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const [search, setSearch]       = useState('')
-  const [inviteOpen, setInviteOpen] = useState(false)
+export default function PatientList({
+  currentRole,
+  patients,
+  consultas,
+  selectedPatientId,
+  onSelectPatient,
+}: PatientListProps) {
+  const [search,      setSearch]      = useState('')
+  const [inviteOpen,  setInviteOpen]  = useState(false)
+  const [detailData,    setDetailData]    = useState<PatientDetailData | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
-  const patientId     = searchParams.get('p')
-  const selectedPatient = patientId ? (patients.find(p => p.id === patientId) ?? null) : null
+  const selectedPatient = selectedPatientId
+    ? (patients.find(p => p.id === selectedPatientId) ?? null)
+    : null
 
-  function selectPatient(patient: Profile) {
-    guardNavigation(() => {
-      const p = new URLSearchParams(searchParams.toString())
-      p.set('p', patient.id)
-      router.push(`?${p.toString()}`, { scroll: false })
-    })
-  }
+  // Carrega dados pesados quando o paciente selecionado muda
+  useEffect(() => {
+    if (!selectedPatient) { setDetailData(null); return }
+    setLoadingDetail(true)
+    setDetailData(null)
+    getPatientDetailData(selectedPatient.id)
+      .then(data  => { setDetailData(data);  setLoadingDetail(false) })
+      .catch(()   => setLoadingDetail(false))
+  }, [selectedPatient?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function goBack() {
-    guardNavigation(() => {
-      const p = new URLSearchParams(searchParams.toString())
-      p.delete('p')
-      p.delete('dtab')
-      p.delete('stab')
-      p.delete('consulta')
-      router.push(`?${p.toString()}`, { scroll: false })
-    })
-  }
-
-  // Pré-computa índice de busca UMA VEZ (evita 809 × 442 parses por keystroke)
+  // Índice de busca — apenas nome, CPF, email e diagnóstico do perfil
   const searchIndex = useMemo(() => {
-    const consultasByPatient = new Map<string, Consulta[]>()
-    consultas.forEach(c => {
-      const list = consultasByPatient.get(c.patient_id) ?? []
-      list.push(c)
-      consultasByPatient.set(c.patient_id, list)
-    })
-
     return new Map(patients.map(p => {
       const parts: string[] = []
       if (p.full_name)   parts.push(p.full_name.toLowerCase())
+      if (p.cpf)         parts.push(p.cpf.replace(/\D/g, ''))
       if (p.diagnostico) parts.push(p.diagnostico.toLowerCase())
-      const patientConsultas = consultasByPatient.get(p.id) ?? []
-      patientConsultas.forEach(c => {
-        try {
-          const entries = parseDiagnosticos(c.diagnosticos ?? null)
-          entries.forEach(e => {
-            if (e.nome)    parts.push(e.nome.toLowerCase())
-            if (e.evolucao) parts.push(e.evolucao.toLowerCase())
-          })
-        } catch { /* ignora consultas com JSON inválido */ }
-      })
+      if (p.email)       parts.push(p.email.toLowerCase())
       return [p.id, parts.join(' ')]
     }))
-  }, [patients, consultas])
+  }, [patients])
 
-  // useDeferredValue: mantém a UI responsiva enquanto filtra no background
   const deferredSearch = useDeferredValue(search)
 
   const filtered = useMemo(() => {
@@ -88,32 +64,38 @@ export default function PatientList({ currentRole, patients, patientExams, careP
     return patients.filter(p => searchIndex.get(p.id)?.includes(q) ?? false)
   }, [deferredSearch, patients, searchIndex])
 
+  // ── Paciente selecionado ──────────────────────────────────────
   if (selectedPatient) {
-    const exames = patientExams.filter((e) => e.patient_id === selectedPatient.id)
-    const carePlan = carePlans.find((c) => c.patient_id === selectedPatient.id) ?? null
-    const attachments = carePlanAttachments.filter((a) => a.patient_id === selectedPatient.id)
-    const patientInvoices = invoices.filter((i) => i.patient_id === selectedPatient.id)
-    const patientConsultas = consultas
-      .filter(c => c.patient_id === selectedPatient.id)
+    if (loadingDetail || !detailData) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <p className="text-sm text-gray-400">Carregando dados do paciente…</p>
+        </div>
+      )
+    }
+
+    const patientConsultas = detailData.consultas
+      .slice()
       .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
-    const patientLabs = labResults.filter(r => r.patient_id === selectedPatient.id)
-    const patientImaging = imagingResults.filter(r => r.patient_id === selectedPatient.id)
+
     return (
       <PatientDetail
         currentRole={currentRole}
         patient={selectedPatient}
-        exames={exames}
-        carePlan={carePlan}
-        attachments={attachments}
-        invoices={patientInvoices}
+        exames={detailData.patientExams}
+        carePlan={detailData.carePlans[0] ?? null}
+        attachments={detailData.carePlanAttachments}
+        invoices={detailData.invoices}
         consultas={patientConsultas}
-        labResults={patientLabs}
-        imagingResults={patientImaging}
-        onBack={goBack}
+        labResults={detailData.labResults}
+        imagingResults={detailData.imagingResults}
+        onBack={() => guardNavigation(() => onSelectPatient(null))}
       />
     )
   }
 
+  // ── Lista de pacientes ────────────────────────────────────────
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -140,7 +122,7 @@ export default function PatientList({ currentRole, patients, patientExams, careP
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Buscar paciente..."
+          placeholder="Buscar paciente por nome, CPF ou e-mail..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -157,24 +139,13 @@ export default function PatientList({ currentRole, patients, patientExams, careP
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((patient) => {
-            const examCount   = patientExams.filter((e) => e.patient_id === patient.id).length
-            const hasCarePlan = carePlans.some((c) => c.patient_id === patient.id)
-            const patientLabs = labResults.filter(r => r.patient_id === patient.id)
-            const alertCounts = countLabAlerts(patientLabs)
-            const hasCritical = alertCounts.critical > 0
-            const hasWarning  = alertCounts.warning > 0
+            const consultaCount = consultas.filter(c => c.patient_id === patient.id).length
             return (
               <Card
                 key={patient.id}
                 padding="sm"
-                className={`cursor-pointer transition-all duration-150 hover:-translate-y-0.5 ${
-                  hasCritical
-                    ? 'border-red-200 hover:border-red-300 hover:shadow-md'
-                    : hasWarning
-                    ? 'border-amber-200 hover:border-amber-300 hover:shadow-md'
-                    : 'hover:border-primary/20 hover:shadow-md'
-                }`}
-                onClick={() => selectPatient(patient)}
+                className="cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+                onClick={() => guardNavigation(() => onSelectPatient(patient.id))}
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -207,26 +178,9 @@ export default function PatientList({ currentRole, patients, patientExams, careP
                   >
                     {patient.lgpd_accepted ? 'LGPD aceita' : 'LGPD pendente'}
                   </span>
-                  {examCount > 0 && (
+                  {consultaCount > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium">
-                      {examCount} exame{examCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {hasCarePlan && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
-                      Plano ativo
-                    </span>
-                  )}
-                  {hasCritical && (
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
-                      <AlertCircle className="w-3 h-3" />
-                      {alertCounts.critical} crítico{alertCounts.critical > 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {!hasCritical && hasWarning && (
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
-                      <AlertTriangle className="w-3 h-3" />
-                      {alertCounts.warning} alerta{alertCounts.warning > 1 ? 's' : ''}
+                      {consultaCount} consulta{consultaCount > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>

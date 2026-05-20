@@ -1,5 +1,8 @@
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
+
+// Aumenta o timeout da rota para suportar análise OCR de PDFs via Anthropic
+export const maxDuration = 60
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { redirect } from 'next/navigation'
@@ -44,28 +47,29 @@ export default async function MedicoPage() {
   const supabase = await createClient()
   const db = currentRole === 'superadmin' ? createAdminClient() : supabase
 
+  // Carrega só o essencial para a lista e agenda.
+  // Dados pesados (consultas completas, lab, imagem, faturas) são
+  // buscados por paciente via getPatientDetailData() quando o usuário abre um paciente.
   const [
     { data: patients },
     { data: documents },
-    { data: patientExams },
-    { data: carePlans },
-    { data: carePlanAttachments },
-    { data: invoices },
-    { data: consultas },
-    { data: labResults },
-    { data: imagingResults },
     { data: financialEntries },
+    { data: consultas },
   ] = await Promise.all([
-    db.from('profiles').select('*').eq('role', 'paciente').order('full_name', { ascending: true }),
-    db.from('documents').select('*, patient:profiles!patient_id(*)').order('created_at', { ascending: false }),
-    db.from('patient_exams').select('*').order('created_at', { ascending: false }),
-    db.from('care_plans').select('*'),
-    db.from('care_plan_attachments').select('*').order('created_at', { ascending: false }),
-    db.from('invoices').select('*').order('issue_date', { ascending: false }),
-    db.from('consultas').select('*, patient:profiles!patient_id(*)').order('data_hora', { ascending: true }),
-    db.from('lab_results').select('*').order('collected_at', { ascending: false }),
-    db.from('imaging_results').select('*').order('data_realizado', { ascending: false }),
-    db.from('financial_entries').select('*').order('date', { ascending: false }),
+    db.from('profiles')
+      .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
+      .eq('role', 'paciente')
+      .order('full_name', { ascending: true }),
+    db.from('documents')
+      .select('id, patient_id, title, file_type, file_size, file_url, created_at, patient:profiles!patient_id(id, full_name)')
+      .order('created_at', { ascending: false }),
+    db.from('financial_entries')
+      .select('*')
+      .order('date', { ascending: false }),
+    // Consultas leves: só campos para lista, panorama e agenda (sem textos longos nem diagnosticos JSON)
+    db.from('consultas')
+      .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
+      .order('data_hora', { ascending: true }),
   ])
 
   return (
@@ -98,15 +102,9 @@ export default async function MedicoPage() {
         <MedicoDashboard
           currentRole={currentRole}
           doctorId={userId}
-          patients={patients ?? []}
-          documents={documents ?? []}
-          patientExams={patientExams ?? []}
-          carePlans={carePlans ?? []}
-          carePlanAttachments={carePlanAttachments ?? []}
-          invoices={invoices ?? []}
-          consultas={consultas ?? []}
-          labResults={labResults ?? []}
-          imagingResults={imagingResults ?? []}
+          patients={(patients ?? []) as any}
+          documents={(documents ?? []) as any}
+          consultas={(consultas ?? []) as any}
           financialEntries={(financialEntries ?? []) as any}
         />
       </Suspense>

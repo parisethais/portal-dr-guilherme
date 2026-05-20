@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -60,19 +60,20 @@ export default function PatientDetail({
   imagingResults,
   onBack,
 }: PatientDetailProps) {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-
   const canSeeProntuario = currentRole !== 'secretaria'
   const defaultTab: DetailTab = canSeeProntuario ? 'prontuario' : 'exames'
 
-  const rawDtab = searchParams.get('dtab') as DetailTab | null
-  const activeDetailTab: DetailTab = rawDtab && VALID_DETAIL_TABS.includes(rawDtab) ? rawDtab : defaultTab
+  const [activeDetailTab, setActiveDetailTabState] = useState<DetailTab>(() => {
+    if (typeof window === 'undefined') return defaultTab
+    const raw = new URLSearchParams(window.location.search).get('dtab') as DetailTab | null
+    return raw && VALID_DETAIL_TABS.includes(raw) ? raw : defaultTab
+  })
 
   function setActiveDetailTab(tab: DetailTab) {
-    const p = new URLSearchParams(searchParams.toString())
+    setActiveDetailTabState(tab)
+    const p = new URLSearchParams(window.location.search)
     p.set('dtab', tab)
-    router.push(`?${p.toString()}`, { scroll: false })
+    window.history.pushState(null, '', `?${p.toString()}`)
   }
 
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [

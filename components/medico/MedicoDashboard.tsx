@@ -1,31 +1,36 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import type { Profile, Document, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import { useState } from 'react'
+import type { Profile, Document, Consulta } from '@/lib/types'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import PanoramaTab from './PanoramaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2 } from 'lucide-react'
 import RelatoriosTab from './RelatoriosTab'
 import FinanceiroTab from './FinanceiroTab'
+import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
 import type { FinancialEntry } from '@/app/actions/financial'
+
+// PanoramaTab importa Recharts (~300 KB) — carregado só quando a aba é ativada
+const PanoramaTab = dynamic(() => import('./PanoramaTab'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+      <Loader2 className="w-4 h-4 animate-spin" />
+      <span className="text-sm">Carregando panorama…</span>
+    </div>
+  ),
+})
 
 interface MedicoDashboardProps {
   currentRole: string
   doctorId: string
   patients: Profile[]
   documents: Document[]
-  patientExams: PatientExam[]
-  carePlans: CarePlan[]
-  carePlanAttachments: CarePlanAttachment[]
-  invoices: Invoice[]
   consultas: Consulta[]
-  labResults: LabResult[]
-  imagingResults: ImagingResult[]
   financialEntries: FinancialEntry[]
 }
 
@@ -33,33 +38,55 @@ type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | '
 
 const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro']
 
+// Lê o tab inicial da URL sem chamar useSearchParams (evita re-render do servidor)
+function getInitialTab(): Tab {
+  if (typeof window === 'undefined') return 'panorama'
+  const raw = new URLSearchParams(window.location.search).get('tab') as Tab | null
+  return raw && VALID_TABS.includes(raw) ? raw : 'panorama'
+}
+
+function getInitialPatientId(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.search).get('p') ?? null
+}
+
+// Atualiza a URL sem acionar o router do Next.js (sem re-render do servidor)
+function pushUrl(params: Record<string, string | null>) {
+  const p = new URLSearchParams(window.location.search)
+  for (const [key, val] of Object.entries(params)) {
+    if (val === null) p.delete(key)
+    else p.set(key, val)
+  }
+  window.history.pushState(null, '', `?${p.toString()}`)
+}
+
 export default function MedicoDashboard({
   currentRole,
   doctorId,
   patients,
   documents,
-  patientExams,
-  carePlans,
-  carePlanAttachments,
-  invoices,
   consultas,
-  labResults,
-  imagingResults,
   financialEntries,
 }: MedicoDashboardProps) {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-
-  const rawTab   = searchParams.get('tab') as Tab | null
-  const activeTab: Tab = rawTab && VALID_TABS.includes(rawTab) ? rawTab : 'panorama'
+  // ── Estado local — sem useRouter/useSearchParams ──────────────
+  const [activeTab,        setActiveTabState]   = useState<Tab>(getInitialTab)
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(getInitialPatientId)
 
   function setActiveTab(tab: Tab) {
     guardNavigation(() => {
-      const p = new URLSearchParams(searchParams.toString())
-      p.set('tab', tab)
-      p.delete('p')
-      router.push(`?${p.toString()}`, { scroll: false })
+      setActiveTabState(tab)
+      setSelectedPatientId(null)
+      pushUrl({ tab, p: null, dtab: null, stab: null, consulta: null })
     })
+  }
+
+  function handleSelectPatient(patientId: string | null) {
+    setSelectedPatientId(patientId)
+    if (patientId) {
+      pushUrl({ p: patientId })
+    } else {
+      pushUrl({ p: null, dtab: null, stab: null, consulta: null })
+    }
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -71,7 +98,7 @@ export default function MedicoDashboard({
     { id: 'financeiro',  label: 'Financeiro',  icon: <DollarSign      className="w-4 h-4" /> },
   ]
 
-  const headers: Record<Tab, { title: string; sub: string }> = {
+  const tabHeaders: Record<Tab, { title: string; sub: string }> = {
     panorama:   { title: 'Panorama',          sub: 'Clique no nome ou no lápis para editar o cadastro completo do paciente.' },
     pacientes:  { title: 'Lista de Pacientes', sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
     agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
@@ -113,8 +140,8 @@ export default function MedicoDashboard({
         <div className="flex items-start gap-3">
           <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7EB8D4' }} />
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">{headers[activeTab].title}</h2>
-            <p className="text-sm text-gray-500 mt-0.5">{headers[activeTab].sub}</p>
+            <h2 className="text-lg font-semibold text-gray-900">{tabHeaders[activeTab].title}</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{tabHeaders[activeTab].sub}</p>
           </div>
         </div>
       </div>
@@ -128,13 +155,9 @@ export default function MedicoDashboard({
           <PatientList
             currentRole={currentRole}
             patients={patients}
-            patientExams={patientExams}
-            carePlans={carePlans}
-            carePlanAttachments={carePlanAttachments}
-            invoices={invoices}
             consultas={consultas}
-            labResults={labResults}
-            imagingResults={imagingResults}
+            selectedPatientId={selectedPatientId}
+            onSelectPatient={handleSelectPatient}
           />
         )}
         {activeTab === 'agenda' && (
@@ -160,8 +183,8 @@ export default function MedicoDashboard({
           <RelatoriosTab
             patients={patients}
             consultas={consultas}
-            labResults={labResults}
-            imagingResults={imagingResults}
+            labResults={[]}
+            imagingResults={[]}
           />
         )}
         {activeTab === 'financeiro' && (

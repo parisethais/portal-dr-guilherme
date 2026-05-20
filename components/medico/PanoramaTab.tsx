@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useMemo } from 'react'
 import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
@@ -428,147 +428,169 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
 
-  const now      = new Date()
-  const nowISO   = now.toISOString()
-  const em7Dias  = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-  const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  // Datas estáveis — calculadas uma só vez por montagem do componente
+  const { nowISO, em7Dias, mesAtual, cutoffISO } = useMemo(() => {
+    const now = new Date()
+    const em7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const vin  = new Date(now)
+    vin.setMonth(vin.getMonth() - 24)
+    return {
+      nowISO:    now.toISOString(),
+      em7Dias:   em7.toISOString(),
+      mesAtual:  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+      cutoffISO: vin.toISOString(),
+    }
+  }, [])
 
-  // ── Helpers por paciente ──────────────────────────────────
-  function getUltima(patientId: string) {
-    return consultas
-      .filter(c => c.patient_id === patientId && c.data_hora < nowISO && c.status === 'realizada')
-      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))[0]?.data_hora ?? null
+  // ── UMA única passagem sobre consultas (de O(n²) para O(n)) ───
+  const {
+    ultimaConsultaMap,
+    primeiraConsultaMap,
+    proximaConsultaMap,
+    ultimoTipoMap,
+    dadosConsultasMes,
+    proximasConsultas,
+    consultasMesCount,
+  } = useMemo(() => {
+    const ultimaConsultaMap    = new Map<string, string>()
+    const primeiraConsultaMap  = new Map<string, string>()
+    const proximaConsultaMap   = new Map<string, string>()
+    const ultimoTipoMap        = new Map<string, string>()
+    const mesesBuckets: Record<string, number> = {}
+    const proximas7dias: typeof consultas = []
+
+    consultas.forEach(c => {
+      // Última + primeira consulta realizada
+      if (c.status === 'realizada') {
+        const ult = ultimaConsultaMap.get(c.patient_id)
+        if (!ult || c.data_hora > ult) {
+          ultimaConsultaMap.set(c.patient_id, c.data_hora)
+          ultimoTipoMap.set(c.patient_id, c.tipo)
+        }
+        const pri = primeiraConsultaMap.get(c.patient_id)
+        if (!pri || c.data_hora < pri) primeiraConsultaMap.set(c.patient_id, c.data_hora)
+        // Bucket por mês para o gráfico
+        const key = c.data_hora.slice(0, 7)
+        mesesBuckets[key] = (mesesBuckets[key] ?? 0) + 1
+      }
+      // Próxima consulta agendada/confirmada
+      if (['agendada', 'confirmada'].includes(c.status) && c.data_hora >= nowISO) {
+        const prox = proximaConsultaMap.get(c.patient_id)
+        if (!prox || c.data_hora < prox) proximaConsultaMap.set(c.patient_id, c.data_hora)
+        if (c.data_hora <= em7Dias) proximas7dias.push(c)
+      }
+    })
+
+    const meses = ultimosMeses(6)
+    const dadosConsultasMes = meses.map(({ key, label }) => ({
+      label,
+      total: mesesBuckets[key] ?? 0,
+    }))
+
+    const proximasConsultas = proximas7dias
+      .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
+      .slice(0, 8)
+      .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
+
+    return {
+      ultimaConsultaMap,
+      primeiraConsultaMap,
+      proximaConsultaMap,
+      ultimoTipoMap,
+      dadosConsultasMes,
+      proximasConsultas,
+      consultasMesCount: mesesBuckets[mesAtual] ?? 0,
+    }
+  }, [consultas, patients, nowISO, em7Dias, mesAtual])
+
+  // ── Helpers O(1) usando os mapas pré-computados ───────────────
+  const getUltima     = (id: string) => ultimaConsultaMap.get(id)   ?? null
+  const getProxima    = (id: string) => proximaConsultaMap.get(id)  ?? null
+  const getUltimoTipo = (id: string) => {
+    const tipo = ultimoTipoMap.get(id)
+    return tipo ? (TIPO_LABEL[tipo as keyof typeof TIPO_LABEL] ?? tipo) : null
   }
 
-  function getProxima(patientId: string) {
-    return consultas
-      .filter(c => c.patient_id === patientId && c.data_hora >= nowISO && ['agendada', 'confirmada'].includes(c.status))
-      .sort((a, b) => a.data_hora.localeCompare(b.data_hora))[0]?.data_hora ?? null
-  }
-
-  // Tipo da última consulta
-  function getUltimoTipo(patientId: string): string | null {
-    const ultima = consultas
-      .filter(c => c.patient_id === patientId)
-      .sort((a, b) => b.data_hora.localeCompare(a.data_hora))[0]
-    if (!ultima) return null
-    return TIPO_LABEL[ultima.tipo] ?? ultima.tipo
-  }
-
-  // Alerta de retorno baseado em retorno_previsto
-  function getAlertRetorno(patient: Profile): 'atrasado' | 'chegando' | null {
+  const getAlertRetorno = (patient: Profile): 'atrasado' | 'chegando' | null => {
     const rp = patient.retorno_previsto
     if (!rp) return null
-    if (getProxima(patient.id)) return null   // já tem consulta agendada
-    const hoje   = new Date(); hoje.setHours(0,0,0,0)
+    if (getProxima(patient.id)) return null
+    const hoje   = new Date(); hoje.setHours(0, 0, 0, 0)
     const data   = new Date(rp + 'T00:00:00')
-    const diffMs = data.getTime() - hoje.getTime()
-    const dias   = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-    if (dias < 0)  return 'atrasado'
+    const dias   = Math.ceil((data.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
+    if (dias < 0)   return 'atrasado'
     if (dias <= 30) return 'chegando'
     return null
   }
 
-  // ── Índices pré-computados (evita O(n²) nos totais) ──────────
-  const ultimaConsultaMap = new Map<string, string>()
-  const primeiraConsultaMap = new Map<string, string>()
-  consultas.forEach(c => {
-    if (c.status !== 'realizada') return
-    const ult = ultimaConsultaMap.get(c.patient_id)
-    if (!ult || c.data_hora > ult) ultimaConsultaMap.set(c.patient_id, c.data_hora)
-    const pri = primeiraConsultaMap.get(c.patient_id)
-    if (!pri || c.data_hora < pri) primeiraConsultaMap.set(c.patient_id, c.data_hora)
-  })
+  // ── Derivados — todos com useMemo para não recomputar a cada render ─
+  const isAtivo = useMemo(() =>
+    (p: Profile) => p.status_paciente !== 'obito' && (ultimaConsultaMap.get(p.id) ?? '') >= cutoffISO
+  , [ultimaConsultaMap, cutoffISO])
 
-  // "Ativo" = teve consulta realizada nos últimos 24 meses (está em acompanhamento)
-  // "Inativo" = nunca veio OU não aparece há mais de 24 meses (mas não é óbito)
-  const vintequatroMesesAtras = new Date(now)
-  vintequatroMesesAtras.setMonth(vintequatroMesesAtras.getMonth() - 24)
-  const cutoffISO = vintequatroMesesAtras.toISOString()
+  const { totais, dadosComo, semRetornoLista, totaisAlerta } = useMemo(() => {
+    const comoMap: Record<string, number> = {}
+    let semRetornoCount = 0
+    const semRetornoLista: Profile[] = []
 
-  const isAtivo = (p: Profile) =>
-    p.status_paciente !== 'obito' && (ultimaConsultaMap.get(p.id) ?? '') >= cutoffISO
-
-  // "Novos/mês" = pacientes cuja PRIMEIRA consulta realizada foi este mês
-  const totais = {
-    ativo:      patients.filter(isAtivo).length,
-    inativo:    patients.filter(p => p.status_paciente !== 'obito' && !isAtivo(p)).length,
-    obito:      patients.filter(p => p.status_paciente === 'obito').length,
-    semRetorno: patients.filter(p => {
-      if (!isAtivo(p)) return false
-      return !getProxima(p.id)
-    }).length,
-    consultasMes: consultas.filter(c =>
-      c.data_hora.startsWith(mesAtual) && c.status === 'realizada'
-    ).length,
-    novosMes: patients.filter(p =>
-      primeiraConsultaMap.get(p.id)?.startsWith(mesAtual)
-    ).length,
-  }
-
-  // ── Gráfico: consultas por mês (últimos 6) ─────────────────
-  const meses = ultimosMeses(6)
-  const dadosConsultasMes = meses.map(({ key, label }) => ({
-    label,
-    total: consultas.filter(c =>
-      c.data_hora.startsWith(key) && c.status === 'realizada'
-    ).length,
-  }))
-
-  // ── Gráfico: como conheceu (pizza) ─────────────────────────
-  const comoMap: Record<string, number> = {}
-  patients.forEach(p => {
-    const cat = normalizarComoConheceu(p.como_conheceu)
-    comoMap[cat] = (comoMap[cat] ?? 0) + 1
-  })
-  const dadosComo = Object.entries(comoMap)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, value]) => ({ name, value }))
-
-  // ── Lista: próximas consultas (7 dias) ─────────────────────
-  const proximasConsultas = consultas
-    .filter(c => c.data_hora >= nowISO && c.data_hora <= em7Dias && ['agendada', 'confirmada'].includes(c.status))
-    .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
-    .slice(0, 8)
-    .map(c => ({
-      ...c,
-      patient: patients.find(p => p.id === c.patient_id),
-    }))
-
-  // ── Lista: ativos sem retorno (últimos 24 meses) ──────────────
-  const semRetornoLista = patients
-    .filter(p => {
-      if (!isAtivo(p)) return false
-      if (getProxima(p.id)) return false
-      return getAlertRetorno(p) === 'atrasado' || getAlertRetorno(p) === 'chegando'
+    patients.forEach(p => {
+      // Como conheceu
+      const cat = normalizarComoConheceu(p.como_conheceu)
+      comoMap[cat] = (comoMap[cat] ?? 0) + 1
+      // Sem retorno
+      if (isAtivo(p) && !getProxima(p.id)) semRetornoCount++
     })
-    .sort((a, b) => {
+
+    const ativo   = patients.filter(isAtivo).length
+    const inativo = patients.filter(p => p.status_paciente !== 'obito' && !isAtivo(p)).length
+    const obito   = patients.filter(p => p.status_paciente === 'obito').length
+    const novosMes = patients.filter(p => primeiraConsultaMap.get(p.id)?.startsWith(mesAtual)).length
+
+    const dadosComo = Object.entries(comoMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }))
+
+    let atrasadoCount = 0, chegandoCount = 0
+    patients.forEach(p => {
+      if (!isAtivo(p) || getProxima(p.id)) return
+      const alerta = getAlertRetorno(p)
+      if (!alerta) return
+      semRetornoLista.push(p)
+      if (alerta === 'atrasado') atrasadoCount++
+      else chegandoCount++
+    })
+
+    semRetornoLista.sort((a, b) => {
       const pa = getAlertRetorno(a) === 'atrasado' ? 0 : 1
       const pb = getAlertRetorno(b) === 'atrasado' ? 0 : 1
-      if (pa !== pb) return pa - pb          // atrasados primeiro
-      return (a.retorno_previsto ?? '').localeCompare(b.retorno_previsto ?? '') // mais antigo primeiro
+      if (pa !== pb) return pa - pb
+      return (a.retorno_previsto ?? '').localeCompare(b.retorno_previsto ?? '')
     })
 
-  // ── Contagens para filtros de alerta ──────────────────────
-  const totaisAlerta = {
-    atrasado: patients.filter(p => isAtivo(p) && !getProxima(p.id) && getAlertRetorno(p) === 'atrasado').length,
-    chegando: patients.filter(p => isAtivo(p) && !getProxima(p.id) && getAlertRetorno(p) === 'chegando').length,
-  }
+    return {
+      totais: { ativo, inativo, obito, semRetorno: semRetornoCount, consultasMes: consultasMesCount, novosMes },
+      dadosComo,
+      semRetornoLista,
+      totaisAlerta: { atrasado: atrasadoCount, chegando: chegandoCount },
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patients, isAtivo, primeiraConsultaMap, mesAtual, consultasMesCount, proximaConsultaMap])
 
   // ── Tabela filtrada ────────────────────────────────────────
-  const filtered = patients.filter(p => {
+  const filtered = useMemo(() => patients.filter(p => {
     const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
     const matchStatus =
-      filterStatus === 'todos'    ? true :
-      filterStatus === 'ativo'    ? isAtivo(p) :
-      /* inativos */                !isAtivo(p)
+      filterStatus === 'todos'   ? true :
+      filterStatus === 'ativo'   ? isAtivo(p) :
+      /* inativos */               !isAtivo(p)
     const alerta = getAlertRetorno(p)
     const matchAlerta =
       filterAlerta === 'all'      ? true :
       filterAlerta === 'atrasado' ? (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'atrasado') :
       /* chegando */                (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'chegando')
     return matchSearch && matchStatus && matchAlerta
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [patients, search, filterStatus, filterAlerta, isAtivo, proximaConsultaMap])
 
   // ── Render ─────────────────────────────────────────────────
   return (

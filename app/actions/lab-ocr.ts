@@ -10,8 +10,12 @@ export async function extractLabResultsFromFile(
   fileBase64: string,
   mimeType: string,
 ): Promise<ActionResult<OcrExtracted>> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { success: false, error: 'Chave da API Anthropic não configurada. Configure ANTHROPIC_API_KEY nas variáveis de ambiente.' }
+  }
+
   try {
-    const client = new Anthropic()
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
     const examList = EXAM_CATALOG.map(e => `"${e.name}"`).join(', ')
 

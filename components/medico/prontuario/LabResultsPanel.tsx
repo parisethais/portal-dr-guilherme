@@ -355,17 +355,22 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={ocrLoading || !pickerDate || !selectedFileName}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light disabled:opacity-40 transition-colors"
-          >
-            {ocrLoading
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analisando laudo...</>
-              : <><Sparkles className="w-3.5 h-3.5" /> Analisar automaticamente</>
-            }
-          </button>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={ocrLoading || !pickerDate || !selectedFileName}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light disabled:opacity-40 transition-colors"
+            >
+              {ocrLoading
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analisando laudo...</>
+                : <><Sparkles className="w-3.5 h-3.5" /> Analisar automaticamente</>
+              }
+            </button>
+            {ocrLoading && (
+              <p className="text-[11px] text-gray-400 italic">Isso pode levar até 30 segundos para PDFs grandes…</p>
+            )}
+          </div>
         </div>
       )}
 
