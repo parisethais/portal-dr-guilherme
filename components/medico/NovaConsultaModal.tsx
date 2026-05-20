@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createConsulta } from '@/app/actions/consultas'
+import { getConsultationTypes } from '@/app/actions/consultation-types'
 import type { ConsultaTipo, ConsultaLocal } from '@/lib/types'
 import { X, CalendarPlus, Loader2 } from 'lucide-react'
 
@@ -12,12 +13,13 @@ interface Props {
   onClose:     () => void
 }
 
-const TIPOS: { value: ConsultaTipo; label: string; duracao: number }[] = [
-  { value: 'primeira_consulta',          label: 'Primeira consulta',           duracao: 75 },
-  { value: 'primeira_consulta_desconto', label: 'Primeira consulta (desconto)', duracao: 75 },
-  { value: 'nova_consulta',              label: 'Nova consulta',               duracao: 45 },
-  { value: 'nova_consulta_desconto',     label: 'Nova consulta (desconto)',    duracao: 45 },
-  { value: 'retorno',                    label: 'Retorno',                     duracao: 30 },
+// Fallback estático enquanto o DB não carrega
+const TIPOS_FALLBACK: { value: ConsultaTipo; label: string; duracao: number }[] = [
+  { value: 'primeira_consulta',          label: 'Primeira Consulta',            duracao: 75 },
+  { value: 'nova_consulta',              label: 'Nova Consulta',                duracao: 45 },
+  { value: 'retorno',                    label: 'Retorno',                      duracao: 30 },
+  { value: 'primeira_consulta_desconto', label: 'Primeira Consulta (Desconto)', duracao: 75 },
+  { value: 'nova_consulta_desconto',     label: 'Nova Consulta (Desconto)',     duracao: 45 },
 ]
 
 const LOCAIS: { value: ConsultaLocal; label: string }[] = [
@@ -39,6 +41,22 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
+  const [tipos, setTipos] = useState(TIPOS_FALLBACK)
+
+  // Carrega tipos do DB ao montar
+  useEffect(() => {
+    getConsultationTypes()
+      .then(types => {
+        if (types.length > 0) {
+          setTipos(types.map(t => ({
+            value: t.slug as ConsultaTipo,
+            label: t.name,
+            duracao: t.duration_min,
+          })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const [form, setForm] = useState({
     tipo:        'retorno'     as ConsultaTipo,
@@ -52,7 +70,7 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
     (v: (typeof form)[K]) => setForm(f => ({ ...f, [k]: v }))
 
   function handleTipoChange(tipo: ConsultaTipo) {
-    const duracao = TIPOS.find(t => t.value === tipo)?.duracao ?? 30
+    const duracao = tipos.find(t => t.value === tipo)?.duracao ?? 30
     setForm(f => ({ ...f, tipo, duracao_min: String(duracao) }))
   }
 
@@ -109,7 +127,7 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
                 onChange={e => handleTipoChange(e.target.value as ConsultaTipo)}
                 className={inputCls}
               >
-                {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {tipos.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div className="space-y-1">

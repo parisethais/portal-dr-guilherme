@@ -7,6 +7,8 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
 import { createConsulta, updateConsulta, updateConsultaStatus } from '@/app/actions/consultas'
+import { getConsultationTypes } from '@/app/actions/consultation-types'
+import type { ConsultationTypeDB } from '@/app/actions/consultation-types'
 import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
@@ -14,7 +16,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown,
 } from 'lucide-react'
 
-// ── Labels ────────────────────────────────────────────────
+// ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
 
 export const TIPO_LABEL: Record<ConsultaTipo, string> = {
   primeira_consulta:          'Primeira Consulta',
@@ -31,6 +33,29 @@ export const TIPO_INFO: Record<ConsultaTipo, { duracao: number; preco: string }>
   primeira_consulta_desconto: { duracao: 75, preco: 'R$500'   },
   nova_consulta_desconto:     { duracao: 45, preco: 'R$500'   },
 }
+
+// ── Helpers ───────────────────────────────────────────────
+
+function formatPreco(valor: number): string {
+  if (valor === 0) return 'Gratuito'
+  return `R$${valor.toLocaleString('pt-BR')}`
+}
+
+function tipoOptionsFromDB(types: ConsultationTypeDB[]) {
+  return types.map(t => ({
+    value: t.slug as ConsultaTipo,
+    label: t.name,
+    duracao: t.duration_min,
+    preco: formatPreco(t.default_value),
+  }))
+}
+
+const TIPO_OPTIONS_FALLBACK = (Object.keys(TIPO_LABEL) as ConsultaTipo[]).map(key => ({
+  value: key,
+  label: TIPO_LABEL[key],
+  duracao: TIPO_INFO[key].duracao,
+  preco: TIPO_INFO[key].preco,
+}))
 
 export const LOCAL_LABEL: Record<ConsultaLocal, string> = {
   consultorio:  'Consultório',
@@ -176,6 +201,15 @@ export default function ConsultaModal({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
+
+  // Tipos de consulta carregados do DB (fallback para hardcoded)
+  const [tipoOptions, setTipoOptions] = useState(TIPO_OPTIONS_FALLBACK)
+
+  useEffect(() => {
+    getConsultationTypes()
+      .then(types => { if (types.length > 0) setTipoOptions(tipoOptionsFromDB(types)) })
+      .catch(() => {})
+  }, [])
 
   // Create / Edit form state
   const [selectedPatient, setSelectedPatient] = useState<Profile | null>(null)
@@ -441,17 +475,23 @@ export default function ConsultaModal({
                 value={tipo}
                 onChange={(e) => {
                   const t = e.target.value as ConsultaTipo
+                  const opt = tipoOptions.find(o => o.value === t)
                   setTipo(t)
-                  setDuracao(TIPO_INFO[t].duracao)
+                  if (opt) setDuracao(opt.duracao)
                 }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="primeira_consulta">Primeira Consulta — 1h15 · R$1.000</option>
-                <option value="nova_consulta">Nova Consulta — 45min · R$1.000</option>
-                <option value="retorno">Retorno — 30min · Gratuito</option>
-                <option value="primeira_consulta_desconto">Primeira Consulta (Desconto) — 1h15 · R$500</option>
-                <option value="nova_consulta_desconto">Nova Consulta (Desconto) — 45min · R$500</option>
+                {tipoOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label} — {opt.duracao < 60
+                      ? `${opt.duracao}min`
+                      : opt.duracao % 60 === 0
+                        ? `${opt.duracao / 60}h`
+                        : `${Math.floor(opt.duracao / 60)}h${opt.duracao % 60}`
+                    } · {opt.preco}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -26,12 +26,13 @@ const FullCalendarComponent = dynamic(
 
 // ── Cores por tipo de consulta ─────────────────────────────
 
+// Cores distintas para cada tipo — fáceis de diferenciar na legenda e no calendário
 export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; text: string }> = {
-  primeira_consulta:          { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' },
-  primeira_consulta_desconto: { bg: '#2563eb', border: '#3b82f6', text: '#ffffff' },
-  nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' },
-  nova_consulta_desconto:     { bg: '#14b8a6', border: '#0d9488', text: '#ffffff' },
-  retorno:                    { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
+  primeira_consulta:          { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' }, // azul escuro
+  nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' }, // verde-azulado
+  retorno:                    { bg: '#475569', border: '#334155', text: '#ffffff' }, // cinza-ardósia
+  primeira_consulta_desconto: { bg: '#b45309', border: '#d97706', text: '#ffffff' }, // âmbar/laranja
+  nova_consulta_desconto:     { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' }, // roxo
 }
 
 // Mantido para compatibilidade com DayViewModal/outros componentes
