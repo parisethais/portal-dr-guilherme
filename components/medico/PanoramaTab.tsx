@@ -16,7 +16,15 @@ import {
 // ── Cores ────────────────────────────────────────────────────
 const PRIMARY    = '#1A1F2E'
 // Cores bem distintas para o donut
-const COLORS_PIE = ['#1e3a8a', '#0891b2', '#7c3aed', '#be185d', '#059669']
+// Cores do gráfico "Como conheceram" — 5 categorias fixas
+const COLORS_PIE: Record<string, string> = {
+  'Indicação':      '#7c3aed',   // roxo
+  'Hospital':       '#059669',   // verde
+  'Internet':       '#f59e0b',   // âmbar
+  'Outro':          '#ef4444',   // vermelho
+  'Não informado':  '#1e3a8a',   // azul escuro
+}
+const COLORS_PIE_LIST = Object.values(COLORS_PIE)
 
 // Label customizado fora do donut
 const RADIAN = Math.PI / 180
@@ -51,26 +59,25 @@ function normalizarComoConheceu(raw: string | null): string {
   if (!raw) return 'Não informado'
   const s = raw.trim().toLowerCase()
 
-  // Internet / redes sociais
-  if (s === 'internet' || s === 'instagram' || s === 'google' ||
-      s.includes('doctoralia') || s.includes('instagram') || s.includes('google'))
+  // Internet / redes sociais / plataformas digitais
+  if (s === 'internet' || s.includes('instagram') || s.includes('google') ||
+      s.includes('doctoralia') || s.includes('linkedin') || s.includes('facebook') ||
+      s.includes('youtube') || s.includes('site') || s.includes('internet'))
     return 'Internet'
 
-  // Hospital
+  // Hospital / clínica / instituição de saúde
   if (s === 'hospital' || s.includes('hospital') || s.includes('sírio') || s.includes('sirio') ||
-      s.includes('santa casa') || s.includes('einstein') || s.includes('síria'))
+      s.includes('santa casa') || s.includes('einstein') || s.includes('síria') ||
+      s.includes('clínica') || s.includes('clinica') || s.includes('ubs') || s.includes('upa'))
     return 'Hospital'
-
-  // Indicação de paciente (nomes de pessoas sem "dr" no início)
-  if (s === 'indicação de paciente') return 'Indicação de paciente'
-
-  // Indicação médica — quando começa com Dr, Dra, Prof, etc.
-  if (/^(dr\.?|dra\.?|prof\.?|prof\s)/i.test(raw.trim())) return 'Indicação médica'
 
   // Outro explícito
   if (s === 'outro') return 'Outro'
 
-  // Qualquer texto preenchido que não se encaixa → "Indicação" (nome de pessoa/clínica)
+  // Não informado explícito
+  if (s === 'não informado' || s === 'nao informado') return 'Não informado'
+
+  // Tudo mais (nomes de médicos, pacientes, clínicas não mapeadas, texto livre) = Indicação
   return 'Indicação'
 }
 
@@ -640,8 +647,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                   labelLine={false}
                   label={<PieLabel />}
                 >
-                  {dadosComo.map((_, i) => (
-                    <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
+                  {dadosComo.map((entry, i) => (
+                    <Cell key={i} fill={COLORS_PIE[entry.name] ?? COLORS_PIE_LIST[i % COLORS_PIE_LIST.length]} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomPieTooltip />} />
