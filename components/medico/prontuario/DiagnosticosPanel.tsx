@@ -107,6 +107,18 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   const inputRef                        = useRef<HTMLInputElement>(null)
   const dropdownRef                     = useRef<HTMLDivElement>(null)
 
+  // Refs para as textareas de evolução — necessário para auto-height no mount
+  const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+
+  // Auto-expande todas as textareas quando os entries carregam ou mudam
+  useEffect(() => {
+    textareaRefs.current.forEach(el => {
+      if (!el) return
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    })
+  }, [entries])
+
   // Sincroniza quando a consulta selecionada muda
   useEffect(() => {
     setEntries(parseDiagnosticos(consulta.diagnosticos))
@@ -115,6 +127,8 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
     setError('')
     setSearchText('')
     setShowDropdown(false)
+    // Limpa refs antigas ao trocar de consulta
+    textareaRefs.current = []
   }, [consulta.id])
 
   // Carry-forward: consulta anterior com diagnósticos
@@ -317,16 +331,13 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
                 </button>
               </div>
               <textarea
+                ref={el => { textareaRefs.current[idx] = el }}
                 value={entry.evolucao}
                 onChange={e => {
                   updateEvolucao(idx, e.target.value)
-                  // auto-height
+                  // auto-height ao digitar
                   e.target.style.height = 'auto'
                   e.target.style.height = e.target.scrollHeight + 'px'
-                }}
-                onKeyDown={e => {
-                  // Shift+Enter: nova linha (comportamento padrão do textarea)
-                  // Enter sozinho também é nova linha — textarea lida nativamente
                 }}
                 placeholder="Nota de evolução... (ex: Creatinina 1.8, estável)"
                 rows={1}

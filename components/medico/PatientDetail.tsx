@@ -111,18 +111,18 @@ export default function PatientDetail({
         </div>
       </div>
 
-      {/* Main tab bar */}
-      <div className="flex border-b border-gray-200 gap-0">
+      {/* Main tab bar — estilo segmento para diferenciar dos sub-tabs */}
+      <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
         {detailTabs.map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => guardNavigation(() => setActiveDetailTab(tab.id))}
             className={cn(
-              'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px',
+              'flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all',
               activeDetailTab === tab.id
-                ? 'text-primary border-primary'
-                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-200'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
             )}
           >
             {tab.icon}
