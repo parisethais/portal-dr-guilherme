@@ -1,7 +1,13 @@
 'use server'
 
+// IMPORTANTE: este arquivo só pode exportar funções async (server actions).
+// Constantes e interfaces estão em @/lib/admin-constants para não quebrar o bundle.
+
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
+import type { MemberPermissions } from '@/lib/admin-constants'
+
+export type { MemberPermissions }
 
 export interface Clinic {
   id:            string
@@ -13,20 +19,6 @@ export interface Clinic {
   owner_id:      string | null
   created_at:    string
   member_count?: number
-}
-
-export interface MemberPermissions {
-  prontuario: boolean
-  agenda:     boolean
-  financeiro: boolean
-  pacientes:  boolean
-  mensagens:  boolean
-}
-
-export const DEFAULT_PERMISSIONS: Record<string, MemberPermissions> = {
-  owner:      { prontuario: true,  agenda: true, financeiro: true,  pacientes: true, mensagens: true },
-  medico:     { prontuario: true,  agenda: true, financeiro: true,  pacientes: true, mensagens: true },
-  secretaria: { prontuario: false, agenda: true, financeiro: false, pacientes: true, mensagens: true },
 }
 
 export interface ClinicMember {
@@ -89,9 +81,36 @@ export async function updateClinic(id: string, input: Partial<Pick<Clinic, 'name
 
 // ── Members ───────────────────────────────────────────────────────────────
 
-// DEBUG: retorna hardcoded para confirmar se infrastructure funciona
-export async function getClinicMembers(clinicId: string): Promise<ClinicMember[] | { __error: string }> {
-  return { __error: `INFRA-OK: clinicId=${clinicId} t=${Date.now()}` }
+export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]> {
+  const supabase = db()
+  const { data, error } = await supabase
+    .from('clinic_members')
+    .select('id, clinic_id, user_id, role, created_at, permissions, notes')
+    .eq('clinic_id', clinicId)
+    .order('created_at')
+
+  if (error) { console.error('[getClinicMembers]', error.message); return [] }
+  if (!data?.length) return []
+
+  const userIds = data.map((m: any) => m.user_id as string)
+  const { data: profiles, error: profilesErr } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role')
+    .in('id', userIds)
+
+  if (profilesErr) console.error('[getClinicMembers] profiles:', profilesErr.message)
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
+
+  return data.map((m: any) => {
+    const p = profileMap.get(m.user_id)
+    return {
+      ...m,
+      permissions: (m.permissions as MemberPermissions | null) ?? null,
+      notes:       (m.notes as string | null) ?? null,
+      profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
+    }
+  })
 }
 
 export async function updateMemberRole(memberId: string, role: 'medico' | 'secretaria') {
