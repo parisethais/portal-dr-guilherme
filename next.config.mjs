@@ -5,13 +5,6 @@ const nextConfig = {
       bodySizeLimit: '20mb',
     },
   },
-  transpilePackages: [
-    '@fullcalendar/core',
-    '@fullcalendar/react',
-    '@fullcalendar/daygrid',
-    '@fullcalendar/timegrid',
-    '@fullcalendar/interaction',
-  ],
   images: {
     remotePatterns: [
       {
