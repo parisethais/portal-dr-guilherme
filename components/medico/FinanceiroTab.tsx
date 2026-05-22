@@ -415,7 +415,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
       </div>
 
       {/* ── Projeções ──────────────────────────────────────────────────── */}
-      {ticketMedio > 0 && (
+      {(
         <div className="grid sm:grid-cols-2 gap-3">
 
           {/* Projeção do mês */}
@@ -431,20 +431,27 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                 <CalendarCheck className="w-4 h-4" style={{ color: '#7A9E7E' }} />
               </div>
             </div>
-            <div className="space-y-1.5 text-xs text-gray-500">
-              <div className="flex justify-between">
-                <span>Realizado no mês</span>
-                <span className="font-medium text-gray-700">{fmtBRL(receita)}</span>
+            {ticketMedio > 0 ? (
+              <div className="space-y-1.5 text-xs text-gray-500">
+                <div className="flex justify-between">
+                  <span>Realizado no mês</span>
+                  <span className="font-medium text-gray-700">{fmtBRL(receita)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Consultas agendadas ({agendadasMes.length}× {fmtBRL(ticketMedio)})</span>
+                  <span className="font-medium" style={{ color: '#7A9E7E' }}>+{fmtBRL(agendadasMes.length * ticketMedio)}</span>
+                </div>
+                <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                  <Info className="w-3 h-3 shrink-0" />
+                  Baseado no ticket médio histórico ({fmtBRL(ticketMedio)}/consulta)
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Consultas agendadas ({agendadasMes.length}× {fmtBRL(ticketMedio)})</span>
-                <span className="font-medium" style={{ color: '#7A9E7E' }}>+{fmtBRL(agendadasMes.length * ticketMedio)}</span>
+            ) : (
+              <div className="flex items-start gap-1.5 text-xs text-gray-400 mt-1">
+                <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>Adicione lançamentos de receita para calcular a projeção. Há <strong className="text-gray-600">{agendadasMes.length}</strong> consulta{agendadasMes.length !== 1 ? 's' : ''} agendada{agendadasMes.length !== 1 ? 's' : ''} este mês.</span>
               </div>
-              <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
-                <Info className="w-3 h-3 shrink-0" />
-                Baseado no ticket médio histórico ({fmtBRL(ticketMedio)}/consulta)
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Receita potencial de inativos */}
@@ -460,20 +467,27 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                 <UserMinus className="w-4 h-4" style={{ color: '#B8943F' }} />
               </div>
             </div>
-            <div className="space-y-1.5 text-xs text-gray-500">
-              <div className="flex justify-between">
-                <span>Pacientes sem consulta há +2 anos</span>
-                <span className="font-medium text-gray-700">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</span>
+            {ticketMedio > 0 ? (
+              <div className="space-y-1.5 text-xs text-gray-500">
+                <div className="flex justify-between">
+                  <span>Pacientes inativos (+2 anos)</span>
+                  <span className="font-medium text-gray-700">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Ticket médio</span>
+                  <span className="font-medium text-gray-700">{fmtBRL(ticketMedio)}</span>
+                </div>
+                <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                  <Info className="w-3 h-3 shrink-0" />
+                  Estimativa anual baseada na frequência histórica da base ativa
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Ticket médio</span>
-                <span className="font-medium text-gray-700">{fmtBRL(ticketMedio)}</span>
+            ) : (
+              <div className="flex items-start gap-1.5 text-xs text-gray-400 mt-1">
+                <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>Adicione lançamentos de receita para calcular o potencial. Há <strong className="text-gray-600">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</strong> pacientes inativos na base.</span>
               </div>
-              <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
-                <Info className="w-3 h-3 shrink-0" />
-                Estimativa anual baseada na frequência histórica da base ativa
-              </div>
-            </div>
+            )}
           </div>
 
         </div>
