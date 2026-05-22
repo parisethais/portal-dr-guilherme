@@ -83,6 +83,7 @@ export default async function MedicoPage() {
     { data: financialEntries },
     { data: consultas },
     { data: currentProfile },
+    { data: clinicMember },
   ] = await Promise.all([
     db.from('profiles')
       .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
@@ -100,7 +101,21 @@ export default async function MedicoPage() {
       .order('data_hora', { ascending: true }),
     // Perfil do usuário logado (para saudação personalizada)
     db.from('profiles').select('full_name, sexo').eq('id', userId).single(),
+    // Clínica do médico (para buscar settings financeiros)
+    supabase.from('clinic_members').select('clinic_id').eq('user_id', userId).maybeSingle(),
   ])
+
+  // Ticket médio configurado manualmente (fallback quando não há histórico financeiro)
+  let ticketMedioDefault = 0
+  if (clinicMember?.clinic_id) {
+    const { data: tmSetting } = await supabase
+      .from('clinic_settings')
+      .select('value')
+      .eq('clinic_id', clinicMember.clinic_id)
+      .eq('key', 'ticket_medio_consulta')
+      .maybeSingle()
+    ticketMedioDefault = tmSetting?.value ? parseFloat(tmSetting.value) : 0
+  }
 
   // Subtítulo contextual de consultas (fuso Brasília)
   const nowBR   = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
@@ -190,6 +205,7 @@ export default async function MedicoPage() {
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
           financialEntries={(financialEntries ?? []) as any}
+          ticketMedioDefault={ticketMedioDefault}
         />
       </Suspense>
     </div>

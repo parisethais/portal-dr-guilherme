@@ -125,3 +125,23 @@ export async function notifyPatientNota({
   revalidatePath('/paciente')
   return { success: true }
 }
+
+// ── Configurações da clínica ──────────────────────────────────────────────
+
+export async function upsertClinicSetting(key: string, value: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const { data: member } = await supabase
+    .from('clinic_members').select('clinic_id').eq('user_id', user.id).maybeSingle()
+  if (!member?.clinic_id) return { error: 'Clínica não encontrada.' }
+
+  const { error } = await supabase
+    .from('clinic_settings')
+    .upsert({ clinic_id: member.clinic_id, key, value }, { onConflict: 'clinic_id,key' })
+
+  if (error) return { error: error.message }
+  revalidatePath('/medico')
+  return { success: true }
+}

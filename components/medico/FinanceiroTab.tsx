@@ -14,6 +14,7 @@ import {
   Pencil, Trash2, X, Check, Loader2, ChevronDown,
   CalendarCheck, UserMinus, Info, FileText, Send,
 } from 'lucide-react'
+import { upsertClinicSetting } from '@/app/actions/financial'
 import PatientCombobox from '@/components/ui/PatientCombobox'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -345,9 +346,10 @@ interface Props {
   doctorId: string
   consultas?: Consulta[]
   patients?: Profile[]
+  ticketMedioDefault?: number
 }
 
-export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [] }: Props) {
+export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [], ticketMedioDefault = 0 }: Props) {
   const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
   const [period, setPeriod]   = useState<'mes' | 'trimestre' | 'ano' | 'tudo'>('mes')
   const [scope,  setScope]    = useState<'all' | 'clinic' | 'personal'>('all')
@@ -356,6 +358,22 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
   const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null)
   const [pending, startTransition] = useTransition()
   const [saving, setSaving] = useState(false)
+
+  // Ticket médio configurável manualmente (fallback quando não há histórico)
+  const [ticketCustom, setTicketCustom]         = useState(ticketMedioDefault)
+  const [editingTicket, setEditingTicket]       = useState(false)
+  const [ticketInput, setTicketInput]           = useState(String(ticketMedioDefault || ''))
+  const [savingTicket, setSavingTicket]         = useState(false)
+
+  async function handleSaveTicket() {
+    const val = parseFloat(ticketInput.replace(',', '.'))
+    if (isNaN(val) || val < 0) return
+    setSavingTicket(true)
+    await upsertClinicSetting('ticket_medio_consulta', String(val))
+    setTicketCustom(val)
+    setEditingTicket(false)
+    setSavingTicket(false)
+  }
 
   // ── Filtro ──────────────────────────────────────────────────────────────
 
@@ -388,7 +406,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
   const saldo = receita - despesa
 
   // ── Projeções financeiras ────────────────────────────────────────────────
-  const { projecaoMes, receitaPotencial, ticketMedio, agendadasMes } = useMemo(() => {
+  const { projecaoMes, receitaPotencial, ticketMedio, ticketEfetivo, agendadasMes } = useMemo(() => {
     const hoje  = new Date()
     const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
 
@@ -397,6 +415,9 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
     const ticketMedio = receitasHistoricas.length > 0
       ? receitasHistoricas.reduce((s, e) => s + e.amount, 0) / receitasHistoricas.length
       : 0
+
+    // Ticket efetivo: usa histórico quando disponível, senão o valor configurado manualmente
+    const ticketEfetivo = ticketMedio > 0 ? ticketMedio : ticketCustom
 
     // Consultas agendadas/confirmadas ainda não ocorridas neste mês
     const agora = hoje.toISOString()
@@ -411,7 +432,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
       .filter(e => e.type === 'receita' && e.status === 'pago' && monthKey(e.date) === mesAtual)
       .reduce((s, e) => s + e.amount, 0)
 
-    const projecaoMes = receitaMesAtual + (agendadasMes.length * ticketMedio)
+    const projecaoMes = receitaMesAtual + (agendadasMes.length * ticketEfetivo)
 
     // Pacientes inativos: sem consulta realizada nos últimos 2 anos
     const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 2)
@@ -439,10 +460,10 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
       ? totalRealizadas / ativosComHistorico.length / mesesHistorico
       : 0
 
-    const receitaPotencial = inativos.length * freqMensal * ticketMedio * 12 // anual
+    const receitaPotencial = inativos.length * freqMensal * ticketEfetivo * 12 // anual
 
-    return { projecaoMes, receitaPotencial, ticketMedio, agendadasMes }
-  }, [entries, consultas, patients])
+    return { projecaoMes, receitaPotencial, ticketMedio, ticketEfetivo, agendadasMes }
+  }, [entries, consultas, patients, ticketCustom])
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
@@ -540,27 +561,63 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                 <CalendarCheck className="w-4 h-4" style={{ color: '#7A9E7E' }} />
               </div>
             </div>
-            {ticketMedio > 0 ? (
-              <div className="space-y-1.5 text-xs text-gray-500">
+            <div className="space-y-1.5 text-xs text-gray-500">
+              {receita > 0 && (
                 <div className="flex justify-between">
                   <span>Realizado no mês</span>
                   <span className="font-medium text-gray-700">{fmtBRL(receita)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Consultas agendadas ({agendadasMes.length}× {fmtBRL(ticketMedio)})</span>
-                  <span className="font-medium" style={{ color: '#7A9E7E' }}>+{fmtBRL(agendadasMes.length * ticketMedio)}</span>
-                </div>
-                <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
-                  <Info className="w-3 h-3 shrink-0" />
-                  Baseado no ticket médio histórico ({fmtBRL(ticketMedio)}/consulta)
-                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span>Agendadas ({agendadasMes.length} consulta{agendadasMes.length !== 1 ? 's' : ''})</span>
+                <span className="font-medium" style={{ color: '#7A9E7E' }}>
+                  {ticketEfetivo > 0 ? `+${fmtBRL(agendadasMes.length * ticketEfetivo)}` : '—'}
+                </span>
               </div>
-            ) : (
-              <div className="flex items-start gap-1.5 text-xs text-gray-400 mt-1">
-                <Info className="w-3 h-3 shrink-0 mt-0.5" />
-                <span>Adicione lançamentos de receita para calcular a projeção. Há <strong className="text-gray-600">{agendadasMes.length}</strong> consulta{agendadasMes.length !== 1 ? 's' : ''} agendada{agendadasMes.length !== 1 ? 's' : ''} este mês.</span>
+
+              {/* Linha do ticket médio — editável */}
+              <div className="pt-1.5 mt-1 border-t border-gray-100">
+                {editingTicket ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-400" style={{ fontSize: 10 }}>R$</span>
+                    <input
+                      autoFocus
+                      type="number"
+                      value={ticketInput}
+                      onChange={e => setTicketInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveTicket(); if (e.key === 'Escape') setEditingTicket(false) }}
+                      className="w-24 text-xs border border-primary/30 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                      placeholder="0,00"
+                      min={0}
+                    />
+                    <button onClick={handleSaveTicket} disabled={savingTicket}
+                      className="flex items-center gap-0.5 px-2 py-0.5 bg-primary text-white rounded text-[10px] font-medium disabled:opacity-50">
+                      {savingTicket ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Check className="w-2.5 h-2.5" />}
+                      OK
+                    </button>
+                    <button onClick={() => setEditingTicket(false)}
+                      className="text-gray-300 hover:text-gray-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setTicketInput(String(ticketEfetivo || '')); setEditingTicket(true) }}
+                    className="flex items-center gap-1 text-gray-400 hover:text-gray-600 group transition-colors"
+                    style={{ fontSize: 10 }}
+                  >
+                    <Info className="w-3 h-3 shrink-0" />
+                    {ticketMedio > 0
+                      ? <>Ticket médio histórico: <span className="font-medium text-gray-600 ml-0.5">{fmtBRL(ticketMedio)}/consulta</span></>
+                      : ticketCustom > 0
+                        ? <>Valor por consulta: <span className="font-medium text-gray-600 ml-0.5">{fmtBRL(ticketCustom)}</span> — <span className="underline group-hover:no-underline">editar</span></>
+                        : <><span className="underline group-hover:no-underline">Defina o valor por consulta</span> para calcular a projeção</>
+                    }
+                    <Pencil className="w-2.5 h-2.5 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Receita potencial de inativos */}
@@ -576,27 +633,34 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                 <UserMinus className="w-4 h-4" style={{ color: '#B8943F' }} />
               </div>
             </div>
-            {ticketMedio > 0 ? (
-              <div className="space-y-1.5 text-xs text-gray-500">
-                <div className="flex justify-between">
-                  <span>Pacientes inativos (+2 anos)</span>
-                  <span className="font-medium text-gray-700">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</span>
+            {(() => {
+              const cutoff2 = new Date(); cutoff2.setFullYear(cutoff2.getFullYear() - 2)
+              const nInativos = patients.filter(p =>
+                p.status_paciente !== 'obito' &&
+                !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= cutoff2.toISOString())
+              ).length
+              return (
+                <div className="space-y-1.5 text-xs text-gray-500">
+                  <div className="flex justify-between">
+                    <span>Pacientes inativos (+2 anos)</span>
+                    <span className="font-medium text-gray-700">{nInativos}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Ticket por consulta</span>
+                    <span className="font-medium text-gray-700">
+                      {ticketEfetivo > 0 ? fmtBRL(ticketEfetivo) : '—'}
+                    </span>
+                  </div>
+                  <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                    <Info className="w-3 h-3 shrink-0" />
+                    {ticketEfetivo > 0
+                      ? 'Estimativa anual baseada na frequência histórica da base ativa'
+                      : <button onClick={() => { setTicketInput(''); setEditingTicket(true) }} className="underline hover:no-underline">Defina o valor por consulta acima para calcular</button>
+                    }
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Ticket médio</span>
-                  <span className="font-medium text-gray-700">{fmtBRL(ticketMedio)}</span>
-                </div>
-                <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
-                  <Info className="w-3 h-3 shrink-0" />
-                  Estimativa anual baseada na frequência histórica da base ativa
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-1.5 text-xs text-gray-400 mt-1">
-                <Info className="w-3 h-3 shrink-0 mt-0.5" />
-                <span>Adicione lançamentos de receita para calcular o potencial. Há <strong className="text-gray-600">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</strong> pacientes inativos na base.</span>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
         </div>
