@@ -93,24 +93,47 @@ export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]
   if (!data?.length) return []
 
   const userIds = data.map((m: any) => m.user_id as string)
-  const { data: profiles, error: profilesErr } = await supabase
+
+  // Busca profiles (pode ter email nulo)
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name, email, role')
     .in('id', userIds)
 
-  if (profilesErr) console.error('[getClinicMembers] profiles:', profilesErr.message)
-
   const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
+
+  // Para membros sem email no profiles, busca de auth.users via admin API
+  const missingEmailIds = userIds.filter(uid => !profileMap.get(uid)?.email)
+  const authEmailMap = new Map<string, string>()
+  for (const uid of missingEmailIds) {
+    const { data: authUser } = await supabase.auth.admin.getUserById(uid)
+    if (authUser?.user?.email) authEmailMap.set(uid, authUser.user.email)
+  }
 
   return data.map((m: any) => {
     const p = profileMap.get(m.user_id)
+    const email = p?.email ?? authEmailMap.get(m.user_id) ?? null
     return {
       ...m,
       permissions: (m.permissions as MemberPermissions | null) ?? null,
       notes:       (m.notes as string | null) ?? null,
-      profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
+      profile: {
+        full_name: p?.full_name ?? null,
+        email,
+        role: p?.role ?? null,
+      },
     }
   })
+}
+
+// Gera uma senha temporária e a aplica via admin API
+export async function generateMemberPassword(userId: string): Promise<{ password?: string; error?: string }> {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const password = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    + '!'
+  const { error } = await db().auth.admin.updateUserById(userId, { password })
+  if (error) return { error: error.message }
+  return { password }
 }
 
 export async function updateMemberRole(memberId: string, role: 'medico' | 'secretaria') {
