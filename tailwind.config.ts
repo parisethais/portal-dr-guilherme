@@ -10,14 +10,21 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1A1F2E',
-          light: '#7EB8D4',
-          lighter: '#A8D4E8',
-          dark: '#0F1219',
+          DEFAULT: '#2D2B6B',   // MedEn índigo
+          light:   '#7A9E7E',   // sage
+          lighter: '#A8C5AC',   // sage claro
+          dark:    '#1E1C4A',   // índigo escuro
         },
+        sage: {
+          DEFAULT: '#7A9E7E',
+          light:   '#A8C5AC',
+          dark:    '#4E7A52',
+        },
+        bone: '#F5F0E8',        // warm bone background
       },
       fontFamily: {
-        sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        sans:    ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-archivo)', 'system-ui', 'sans-serif'],
       },
     },
   },

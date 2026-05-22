@@ -58,7 +58,7 @@ function NewClinicForm({ onCreated, onCancel }: {
 }) {
   const [name, setName]   = useState('')
   const [slug, setSlug]   = useState('')
-  const [color, setColor] = useState('#7EB8D4')
+  const [color, setColor] = useState('#7A9E7E')
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
 
@@ -74,7 +74,7 @@ function NewClinicForm({ onCreated, onCancel }: {
   }
 
   return (
-    <div className="px-6 py-5 border-b border-indigo-100 bg-indigo-50/40">
+    <div className="px-6 py-5 border-b border-primary/10 bg-primary/5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-semibold text-gray-800">Nova clínica</p>
         <button onClick={onCancel} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -87,13 +87,13 @@ function NewClinicForm({ onCreated, onCancel }: {
             <label className="block text-xs font-medium text-gray-600 mb-1">Nome da clínica *</label>
             <input value={name} onChange={e => handleName(e.target.value)}
               placeholder="Ex: Clínica São Lucas"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Slug (URL) *</label>
             <input value={slug} onChange={e => setSlug(e.target.value)}
               placeholder="sao-lucas"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
         </div>
         <div>
@@ -113,7 +113,7 @@ function NewClinicForm({ onCreated, onCancel }: {
           <button onClick={handleSubmit} disabled={!name || !slug || saving}
             className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               name && slug && !saving
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                ? 'bg-primary text-white hover:bg-primary-dark'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
             Criar clínica
@@ -164,15 +164,15 @@ function MembersTab({ clinicId, members, loading, onRefresh }: {
           <input value={email} onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             placeholder="email@exemplo.com"
-            className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
           <select value={role} onChange={e => setRole(e.target.value as any)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="medico">Médico</option>
             <option value="secretaria">Secretaria</option>
           </select>
           <button onClick={handleAdd} disabled={!email || saving}
             className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-              email && !saving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
+              email && !saving ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             Adicionar
           </button>
@@ -278,18 +278,18 @@ function SettingsTab({ clinicId, settings, loading }: {
               <input type="text" value={local[field.key] ?? ''}
                 onChange={e => setLocal(l => ({ ...l, [field.key]: e.target.value }))}
                 placeholder={field.placeholder}
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
           ) : (
             <input type={field.type} value={local[field.key] ?? ''}
               onChange={e => setLocal(l => ({ ...l, [field.key]: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleSave(field.key)}
               placeholder={field.placeholder}
-              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
           )}
           <button onClick={() => handleSave(field.key)} disabled={saving === field.key}
             className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all shrink-0',
-              saved === field.key ? 'bg-green-100 text-green-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100')}>
+              saved === field.key ? 'bg-green-100 text-green-700' : 'bg-primary/8 text-primary hover:bg-primary/12')}>
             {saving === field.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
               : saved === field.key ? <Check className="w-3.5 h-3.5" />
               : 'Salvar'}
@@ -363,32 +363,32 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <p className="text-sm font-medium text-gray-700">Planos e convênios aceitos</p>
           <button onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Adicionar
           </button>
         </div>
 
         {showAdd && (
-          <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/30">
+          <div className="px-4 py-3 border-b border-gray-100 bg-primary/5">
             <div className="flex gap-2 flex-wrap items-end">
               <div className="flex-1 min-w-36">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Nome *</label>
                 <input value={newData.name} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))}
                   placeholder="Ex: UNIMED" autoFocus
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="w-28">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Código</label>
                 <input value={newData.code} onChange={e => setNewData(d => ({ ...d, code: e.target.value }))}
                   placeholder="unimed"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="w-32">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Valor padrão (R$)</label>
                 <input type="number" min="0" step="0.01" value={newData.default_value}
                   onChange={e => setNewData(d => ({ ...d, default_value: e.target.value }))}
                   placeholder="0,00"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowAdd(false)}
@@ -397,7 +397,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
                 </button>
                 <button onClick={handleAdd} disabled={!newData.name || saving}
                   className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                    newData.name && !saving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
+                    newData.name && !saving ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
                   {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   Salvar
                 </button>
@@ -422,20 +422,20 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {list.map(c => editing === c.id ? (
-                <tr key={c.id} className="bg-indigo-50/30">
+                <tr key={c.id} className="bg-primary/5">
                   <td className="px-4 py-2">
                     <input value={editData.name ?? c.name} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
-                      className="w-full text-sm border border-indigo-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                      className="w-full text-sm border border-primary/20 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </td>
                   <td className="px-4 py-2 hidden md:table-cell">
                     <input value={editData.code ?? c.code ?? ''} onChange={e => setEditData(d => ({ ...d, code: e.target.value }))}
-                      className="w-full text-sm border border-indigo-200 rounded-lg px-2 py-1.5 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                      className="w-full text-sm border border-primary/20 rounded-lg px-2 py-1.5 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </td>
                   <td className="px-4 py-2">
                     <input type="number" min="0" step="0.01"
                       value={editData.default_value ?? c.default_value}
                       onChange={e => setEditData(d => ({ ...d, default_value: parseFloat(e.target.value) || 0 }))}
-                      className="w-28 text-sm border border-indigo-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                      className="w-28 text-sm border border-primary/20 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </td>
                   <td />
                   <td className="px-4 py-2">
@@ -445,7 +445,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleSaveEdit(c.id)} disabled={saving}
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                        className="p-1.5 text-primary hover:bg-primary/8 rounded-lg transition-colors">
                         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -467,7 +467,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
                       <button onClick={() => { setEditing(c.id); setEditData({ name: c.name, code: c.code ?? '', default_value: c.default_value }) }}
-                        className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleDelete(c.id)}
@@ -546,17 +546,17 @@ function ScheduleTab({ clinicId, schedule: initial, loading }: {
               <input type="time" value={day.open_time}
                 onChange={e => update(i, { open_time: e.target.value })}
                 disabled={!day.active}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-40" />
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40" />
               <span className="text-gray-400 text-xs">até</span>
               <input type="time" value={day.close_time}
                 onChange={e => update(i, { close_time: e.target.value })}
                 disabled={!day.active}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-40" />
+                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-40" />
             </div>
             {/* Save */}
             <button onClick={() => handleSave(i)}
               className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all shrink-0',
-                saved === i ? 'bg-green-100 text-green-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100')}>
+                saved === i ? 'bg-green-100 text-green-700' : 'bg-primary/8 text-primary hover:bg-primary/12')}>
               {saving === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 : saved === i ? <Check className="w-3.5 h-3.5" />
                 : 'Salvar'}
@@ -579,7 +579,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
   const [editing, setEditing] = useState<string | null>(null)
   const [editData, setEditData] = useState<Partial<ClinicConsultationType>>({})
   const [showAdd, setShowAdd]   = useState(false)
-  const [newData, setNewData]   = useState({ name: '', duration_min: 30, color: '#7EB8D4', default_value: '' })
+  const [newData, setNewData]   = useState({ name: '', duration_min: 30, color: '#7A9E7E', default_value: '' })
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
 
@@ -633,24 +633,24 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <p className="text-sm font-medium text-gray-700">Tipos de consulta</p>
           <button onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Adicionar
           </button>
         </div>
 
         {showAdd && (
-          <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/30">
+          <div className="px-4 py-3 border-b border-gray-100 bg-primary/5">
             <div className="flex gap-2 flex-wrap items-end">
               <div className="flex-1 min-w-36">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Nome *</label>
                 <input value={newData.name} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))}
                   placeholder="Ex: Telemedicina" autoFocus
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="w-28">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Duração</label>
                 <select value={newData.duration_min} onChange={e => setNewData(d => ({ ...d, duration_min: parseInt(e.target.value) }))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
                   {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d} min</option>)}
                 </select>
               </div>
@@ -659,7 +659,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                 <input type="number" min="0" step="0.01" value={newData.default_value}
                   onChange={e => setNewData(d => ({ ...d, default_value: e.target.value }))}
                   placeholder="0,00"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Cor</label>
@@ -673,7 +673,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                 </button>
                 <button onClick={handleAdd} disabled={!newData.name || saving}
                   className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                    newData.name && !saving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
+                    newData.name && !saving ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed')}>
                   {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   Salvar
                 </button>
@@ -698,7 +698,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {list.map(t => editing === t.id ? (
-                <tr key={t.id} className="bg-indigo-50/30">
+                <tr key={t.id} className="bg-primary/5">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
                       <input type="color" value={editData.color ?? t.color}
@@ -706,13 +706,13 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                         className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 shrink-0" />
                       <input value={editData.name ?? t.name}
                         onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
-                        className="flex-1 text-sm border border-indigo-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                        className="flex-1 text-sm border border-primary/20 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                     </div>
                   </td>
                   <td className="px-4 py-2">
                     <select value={editData.duration_min ?? t.duration_min}
                       onChange={e => setEditData(d => ({ ...d, duration_min: parseInt(e.target.value) }))}
-                      className="text-sm border border-indigo-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                      className="text-sm border border-primary/20 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
                       {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d} min</option>)}
                     </select>
                   </td>
@@ -720,7 +720,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                     <input type="number" min="0" step="0.01"
                       value={editData.default_value ?? t.default_value}
                       onChange={e => setEditData(d => ({ ...d, default_value: parseFloat(e.target.value) || 0 }))}
-                      className="w-28 text-sm border border-indigo-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                      className="w-28 text-sm border border-primary/20 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </td>
                   <td />
                   <td className="px-4 py-2">
@@ -730,7 +730,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleSaveEdit(t.id)} disabled={saving}
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                        className="p-1.5 text-primary hover:bg-primary/8 rounded-lg transition-colors">
                         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -757,7 +757,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
                       <button onClick={() => { setEditing(t.id); setEditData({ name: t.name, duration_min: t.duration_min, color: t.color, default_value: t.default_value }) }}
-                        className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleDelete(t.id)}
@@ -840,7 +840,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
         {/* Acesso rápido */}
         <div className="flex items-center gap-2 ml-auto">
           <a href="/medico" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
             <LayoutDashboard className="w-3.5 h-3.5" />
             CRM
             <ExternalLink className="w-3 h-3 opacity-60" />
@@ -885,7 +885,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
   if (selectedClinic) {
     return (
       <div className="rounded-2xl overflow-hidden border border-white/60 p-6"
-        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(26,31,46,0.08)' }}>
+        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
         <ClinicDetail clinic={selectedClinic} onBack={() => setSelected(null)} />
       </div>
     )
@@ -897,11 +897,11 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Clínicas ativas',   value: clinics.filter(c => c.active).length,                  color: 'text-green-600',  bg: 'bg-green-50'  },
-          { label: 'Total de clínicas', value: clinics.length,                                          color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Membros totais',    value: clinics.reduce((a, c) => a + (c.member_count ?? 0), 0), color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { label: 'Total de clínicas', value: clinics.length,                                          color: 'text-primary', bg: 'bg-primary/8' },
+          { label: 'Membros totais',    value: clinics.reduce((a, c) => a + (c.member_count ?? 0), 0), color: 'text-sage',       bg: 'bg-sage/10'   },
         ].map(s => (
           <div key={s.label} className="rounded-xl border border-white/60 p-4"
-            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}>
+            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(45,43,107,0.07)' }}>
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
             <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
           </div>
@@ -910,16 +910,16 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
 
       {/* Clinics list */}
       <div className="rounded-2xl overflow-hidden border border-white/60"
-        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(26,31,46,0.08)' }}>
+        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.05]">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-indigo-400" />
+            <Building2 className="w-4 h-4 text-primary/60" />
             <h2 className="font-semibold text-gray-900">Clínicas</h2>
           </div>
           {!showNewForm && (
             <button onClick={() => setShowNewForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors">
               <Plus className="w-4 h-4" />
               Nova clínica
             </button>
@@ -974,7 +974,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
                     <div className="flex items-center gap-2 justify-end">
                       <a href="/medico" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        className="p-1.5 text-primary/60 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors"
                         title="Acessar CRM">
                         <LayoutDashboard className="w-4 h-4" />
                       </a>
