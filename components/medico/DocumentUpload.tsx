@@ -5,6 +5,7 @@ import type { Profile } from '@/lib/types'
 import { uploadDocument } from '@/app/actions/documents'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import PatientCombobox from '@/components/ui/PatientCombobox'
 import { Upload, X, FileText, CheckCircle } from 'lucide-react'
 
 interface DocumentUploadProps {
@@ -85,18 +86,7 @@ export default function DocumentUpload({ patients }: DocumentUploadProps) {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Paciente <span className="text-red-500">*</span>
           </label>
-          <select
-            name="patient_id"
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-          >
-            <option value="">Selecione o paciente...</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name || 'Nome não informado'}
-              </option>
-            ))}
-          </select>
+          <PatientCombobox patients={patients} required />
         </div>
 
         <Input
