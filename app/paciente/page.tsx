@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import LgpdModal from '@/components/paciente/LgpdModal'
 import PacienteDashboard from '@/components/paciente/PacienteDashboard'
 import ProximaConsulta from '@/components/paciente/ProximaConsulta'
+import ClinicCard from '@/components/paciente/ClinicCard'
 
 function getGreeting(): string {
   const brHour = (new Date().getUTCHours() - 3 + 24) % 24
@@ -73,6 +74,32 @@ export default async function PacientePage() {
   const proximaConsulta = proximaConsultaArr?.[0] ?? null
   const firstName = profile.full_name?.replace(/^\[TESTE\]\s*/i, '').split(' ')[0] ?? 'Paciente'
 
+  // ── Dados da clínica para o cartão de identidade ──────────────────────
+  const adminDb = createAdminClient()
+  const { data: clinic } = await adminDb.from('clinics').select('id, name').eq('active', true).limit(1).single()
+
+  let clinicSettings: Record<string, string> = {}
+  let doctorName: string | null = null
+
+  if (clinic?.id) {
+    const [{ data: settings }, { data: medicoMember }] = await Promise.all([
+      adminDb.from('clinic_settings').select('key, value').eq('clinic_id', clinic.id),
+      adminDb
+        .from('clinic_members')
+        .select('user_id, profiles!inner(full_name)')
+        .eq('clinic_id', clinic.id)
+        .eq('role', 'medico')
+        .limit(1)
+        .single(),
+    ])
+    clinicSettings = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value ?? '']))
+    const memberProfile = (medicoMember as any)?.profiles
+    const rawName = memberProfile?.full_name as string | null
+    if (rawName) {
+      doctorName = rawName.startsWith('Dr') ? rawName : `Dr. ${rawName.split(' ').slice(0, 2).join(' ')}`
+    }
+  }
+
   return (
     <>
       {!isSuperadmin && !profile.lgpd_accepted && <LgpdModal />}
@@ -90,6 +117,16 @@ export default async function PacientePage() {
             Seus documentos, consultas e orientações em um só lugar.
           </p>
         </div>
+
+        {/* Cartão de identidade do consultório */}
+        <ClinicCard
+          clinicName={clinic?.name ?? 'Consultório'}
+          doctorName={doctorName}
+          especialidade={clinicSettings['especialidade'] ?? null}
+          crm={clinicSettings['crm_medico'] ?? null}
+          endereco={clinicSettings['endereco'] ?? null}
+          telefone={clinicSettings['telefone'] ?? null}
+        />
 
         {/* Card próxima consulta */}
         <ProximaConsulta consulta={proximaConsulta} />
