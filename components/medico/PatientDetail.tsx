@@ -7,12 +7,13 @@ import Card from '@/components/ui/Card'
 import {
   ArrowLeft, UserRound, FileText, Image, File, Video,
   Download, ClipboardList,
-  Stethoscope, Receipt, Contact,
+  Stethoscope, Receipt, Contact, Activity,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
 import ProntuarioTab from './prontuario/ProntuarioTab'
 import PatientCadastroTab from './PatientCadastroTab'
+import MonitoramentoTab from './prontuario/MonitoramentoTab'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
@@ -33,7 +34,7 @@ function actionLabel(fileType: string | null): string {
   return 'Baixar'
 }
 
-type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro'
+type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento'
 
 interface PatientDetailProps {
   currentRole: string
@@ -48,7 +49,7 @@ interface PatientDetailProps {
   onBack: () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro']
+const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento']
 
 export default function PatientDetail({
   currentRole,
@@ -78,9 +79,10 @@ export default function PatientDetail({
 
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [
     ...(canSeeProntuario ? [{ id: 'prontuario' as DetailTab, label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> }] : []),
-    { id: 'exames',   label: 'Exames',   icon: <ClipboardList className="w-4 h-4" /> },
-    { id: 'faturas',  label: 'Faturas',  icon: <Receipt       className="w-4 h-4" /> },
-    { id: 'cadastro', label: 'Cadastro', icon: <Contact       className="w-4 h-4" /> },
+    { id: 'monitoramento', label: 'Monitoramento', icon: <Activity      className="w-4 h-4" /> },
+    { id: 'exames',        label: 'Exames',        icon: <ClipboardList className="w-4 h-4" /> },
+    { id: 'faturas',       label: 'Faturas',       icon: <Receipt       className="w-4 h-4" /> },
+    { id: 'cadastro',      label: 'Cadastro',      icon: <Contact       className="w-4 h-4" /> },
   ]
 
   return (
@@ -131,6 +133,14 @@ export default function PatientDetail({
           </button>
         ))}
       </div>
+
+      {/* ── Tab: Monitoramento ── */}
+      {activeDetailTab === 'monitoramento' && (
+        <MonitoramentoTab
+          patientId={patient.id}
+          patientName={patient.full_name ?? 'Paciente'}
+        />
+      )}
 
       {/* ── Tab: Prontuário ── */}
       {activeDetailTab === 'prontuario' && canSeeProntuario && (
