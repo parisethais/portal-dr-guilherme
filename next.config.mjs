@@ -1,9 +1,8 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '20mb', // PDFs base64 podem passar de 1MB (limite padrão)
+      bodySizeLimit: '20mb',
     },
   },
   transpilePackages: [
