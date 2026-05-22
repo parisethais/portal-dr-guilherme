@@ -133,9 +133,9 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
   }
 
   async function handleAnalyze() {
-    if (!pickerDate) { setOcrError('Selecione a data da coleta.'); return }
+    if (!pickerDate) { setOcrError('Selecione a data da coleta antes de analisar.'); return }
     const file = fileInputRef.current?.files?.[0]
-    if (!file) { setOcrError('Selecione um arquivo PDF ou imagem.'); return }
+    if (!file) { setOcrError('Selecione um arquivo PDF ou imagem antes de analisar.'); return }
 
     // Limite de 20 MB
     if (file.size > 20 * 1024 * 1024) {
@@ -149,7 +149,9 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     try {
       const base64 = await fileToBase64(file)
       const mimeType = file.type || 'application/pdf'
+      console.log('[lab-ocr] Enviando para análise:', { mimeType, sizeKb: Math.round(file.size / 1024) })
       const res = await extractLabResultsFromFile(base64, mimeType)
+      console.log('[lab-ocr] Resposta recebida:', res.success ? 'OK' : res.error)
 
       if (!res.success) {
         setOcrError(res.error)
@@ -268,7 +270,7 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
           <p className="text-xs font-semibold text-gray-500 mr-1">Como deseja inserir?</p>
           <button
             type="button"
-            onClick={() => { setMode('upload-picker'); setPickerDate(''); setOcrError(''); setSelectedFileName('') }}
+            onClick={() => { setMode('upload-picker'); setPickerDate(new Date().toISOString().slice(0, 10)); setOcrError(''); setSelectedFileName('') }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
@@ -321,6 +323,7 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
               type="date"
               value={pickerDate}
               onChange={e => setPickerDate(e.target.value)}
+              onInput={e => setPickerDate((e.target as HTMLInputElement).value)}
               className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <button type="button" onClick={cancelAll} className="ml-auto text-gray-400 hover:text-gray-600">
