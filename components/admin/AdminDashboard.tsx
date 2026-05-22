@@ -989,17 +989,18 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      getClinicMembers(clinic.id),
-      getClinicSettings(clinic.id),
-      getClinicConvenios(clinic.id),
-      getClinicSchedule(clinic.id),
-      getClinicConsultationTypes(clinic.id),
+      getClinicMembers(clinic.id).catch(err => { console.error('[members]', err); return [] as ClinicMember[] }),
+      getClinicSettings(clinic.id).catch(err => { console.error('[settings]', err); return {} as Record<string, string> }),
+      getClinicConvenios(clinic.id).catch(err => { console.error('[convenios]', err); return [] }),
+      getClinicSchedule(clinic.id).catch(err => { console.error('[schedule]', err); return [] }),
+      getClinicConsultationTypes(clinic.id).catch(err => { console.error('[tipos]', err); return [] }),
     ]).then(([m, s, cv, sc, tp]) => {
-      setMembers(m)
-      setSettings(s)
+      setMembers(m as ClinicMember[])
+      setSettings(s as Record<string, string>)
       setConvenios(cv)
       setSchedule(sc)
       setTipos(tp)
+    }).finally(() => {
       setLoading(false)
     })
   }, [clinic.id])
