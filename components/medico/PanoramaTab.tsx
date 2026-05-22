@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect } from 'react'
 import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock, Users, UserMinus, UserPlus } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock, Users, UserMinus, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
 import { updateRetornoPrevisto } from '@/app/actions/profile'
 import { TIPO_LABEL } from './ConsultaModal'
@@ -12,6 +12,14 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LabelList, PieChart, Pie, Cell, Legend,
 } from 'recharts'
+
+// ── Paginação ─────────────────────────────────────────────────
+const PAGE_SIZE = 15
+
+// ── Busca sem acento ──────────────────────────────────────────
+function normalizeStr(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
 
 // ── Cores ────────────────────────────────────────────────────
 const PRIMARY    = '#2D2B6B'
@@ -427,6 +435,10 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+
+  // Volta pra página 1 sempre que filtros mudam
+  useEffect(() => { setPage(1) }, [search, filterStatus, filterAlerta])
 
   // Datas estáveis — calculadas uma só vez por montagem do componente
   const { nowISO, em7Dias, mesAtual, cutoffISO } = useMemo(() => {
@@ -578,7 +590,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
   // ── Tabela filtrada ────────────────────────────────────────
   const filtered = useMemo(() => patients.filter(p => {
-    const matchSearch = !search || p.full_name?.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || normalizeStr(p.full_name ?? '').includes(normalizeStr(search))
     const matchStatus =
       filterStatus === 'todos'   ? true :
       filterStatus === 'ativo'   ? isAtivo(p) :
@@ -862,48 +874,117 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           )}
         </div>
 
-        <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
-          <table className="w-full text-sm" style={{ minWidth: 950 }}>
-            <colgroup>
-              <col style={{ width:  60 }} />
-              <col style={{ width: 190 }} />
-              <col style={{ width: 160 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 170 }} />
-              <col style={{ width: 150 }} />
-              <col style={{ width: 160 }} />
-            </colgroup>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
-                {['', 'Paciente', 'Como conheceu', 'Última consulta', 'Retorno previsto', 'Status', 'Observações'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
-                    Nenhum paciente encontrado.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map(p => (
-                  <PanoramaRow
-                    key={p.id}
-                    patient={p}
-                    ultimaConsulta={getUltima(p.id)}
-                    proximaConsulta={getProxima(p.id)}
-                    ultimoTipo={getUltimoTipo(p.id)}
-                    alertRetorno={getAlertRetorno(p)}
-                  />
-                ))
+        {/* Tabela paginada */}
+        {(() => {
+          const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+          const safePage   = Math.min(page, totalPages)
+          const pageSlice  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+          const from       = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+          const to         = Math.min(safePage * PAGE_SIZE, filtered.length)
+
+          return (
+            <>
+              <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
+                <table className="w-full text-sm" style={{ minWidth: 950 }}>
+                  <colgroup>
+                    <col style={{ width:  60 }} />
+                    <col style={{ width: 190 }} />
+                    <col style={{ width: 160 }} />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 170 }} />
+                    <col style={{ width: 150 }} />
+                    <col style={{ width: 160 }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(26,31,46,0.08)', backgroundColor: 'rgba(26,31,46,0.03)' }}>
+                      {['', 'Paciente', 'Como conheceu', 'Última consulta', 'Retorno previsto', 'Status', 'Observações'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                          Nenhum paciente encontrado.
+                        </td>
+                      </tr>
+                    ) : (
+                      pageSlice.map(p => (
+                        <PanoramaRow
+                          key={p.id}
+                          patient={p}
+                          ultimaConsulta={getUltima(p.id)}
+                          proximaConsulta={getProxima(p.id)}
+                          ultimoTipo={getUltimoTipo(p.id)}
+                          alertRetorno={getAlertRetorno(p)}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginação */}
+              {filtered.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs text-gray-400">
+                    {from}–{to} de {filtered.length} pacientes
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={safePage === 1}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Números de página */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(n => n === 1 || n === totalPages || Math.abs(n - safePage) <= 1)
+                      .reduce<(number | '...')[]>((acc, n, i, arr) => {
+                        if (i > 0 && typeof arr[i - 1] === 'number' && (n as number) - (arr[i - 1] as number) > 1) acc.push('...')
+                        acc.push(n)
+                        return acc
+                      }, [])
+                      .map((n, i) =>
+                        n === '...' ? (
+                          <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-300 select-none">…</span>
+                        ) : (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setPage(n as number)}
+                            className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                              safePage === n
+                                ? 'bg-primary text-white'
+                                : 'text-gray-500 hover:bg-gray-100'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        )
+                      )
+                    }
+
+                    <button
+                      type="button"
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={safePage === totalPages}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </>
+          )
+        })()}
       </div>
     </div>
   )
