@@ -23,15 +23,15 @@ export default function Header({ profile }: HeaderProps) {
   return (
     <header
       className="bg-primary text-white h-14 flex items-center px-5 sm:px-6 sticky top-0 z-40"
-      style={{ boxShadow: '0 1px 0 rgba(126,184,212,0.1), 0 6px 28px rgba(15,18,25,0.38)' }}
+      style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.06), 0 6px 28px rgba(15,18,25,0.38)' }}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/1.png"
-          alt="Clinical Intelligence OS"
-          className="h-8 w-auto shrink-0 object-contain"
-        />
+        {/* MedEn logotype — inline para não depender de arquivo de imagem */}
+        <span className="font-display font-extrabold text-[22px] leading-none tracking-tight shrink-0 select-none">
+          <span style={{ color: '#FFFFFF' }}>Med</span>
+          <span style={{ color: '#7A9E7E' }}>E</span>
+          <span style={{ color: '#FFFFFF' }}>n</span>
+        </span>
 
         <div className="w-px h-4 bg-white/20 shrink-0" />
 

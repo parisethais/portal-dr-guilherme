@@ -323,7 +323,7 @@ export default function ExamCatalogSettings({ initialExams }: Props) {
       >
         <div className="flex items-start justify-between mb-1">
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-5 h-5" style={{ color: '#7EB8D4' }} />
+            <FlaskConical className="w-5 h-5" style={{ color: '#7A9E7E' }} />
             <h2 className="text-base font-semibold text-gray-900">Catálogo de Exames Laboratoriais</h2>
           </div>
           <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">

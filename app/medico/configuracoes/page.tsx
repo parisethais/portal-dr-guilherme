@@ -33,8 +33,8 @@ export default async function ConfiguracoesPage() {
           Voltar ao painel
         </Link>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(126,184,212,0.15)' }}>
-            <Settings className="w-5 h-5" style={{ color: '#7EB8D4' }} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(45,43,107,0.08)' }}>
+            <Settings className="w-5 h-5" style={{ color: '#2D2B6B' }} />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">Configurações</h1>

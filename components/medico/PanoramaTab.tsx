@@ -165,7 +165,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
         <PatientEditModal patient={patient} onClose={() => setModalOpen(false)} />
       )}
 
-      <tr className={`transition-colors ${patient.status_paciente === 'obito' ? 'opacity-50' : ''}`} style={{ borderBottom: '1px solid rgba(26,31,46,0.05)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(126,184,212,0.05)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
+      <tr className={`transition-colors ${patient.status_paciente === 'obito' ? 'opacity-50' : ''}`} style={{ borderBottom: '1px solid rgba(26,31,46,0.05)' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(122,158,126,0.06)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
 
         {/* Ações */}
         <td className="px-3 py-3">
@@ -603,8 +603,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           { label: 'Inativos',        value: totais.inativo,      valueColor: 'text-gray-400',      bg: 'rgba(255,255,255,0.60)', accent: '#D1D5DB' },
           { label: 'Óbitos',          value: totais.obito,        valueColor: 'text-red-500',       bg: 'rgba(254,242,242,0.65)', accent: '#EF4444' },
           { label: 'Sem retorno',     value: totais.semRetorno,   valueColor: 'text-amber-500',     bg: 'rgba(255,251,235,0.65)', accent: '#F59E0B' },
-          { label: 'Consultas / mês', value: totais.consultasMes, valueColor: 'text-primary',       bg: 'rgba(126,184,212,0.1)',  accent: '#7EB8D4' },
-          { label: 'Novos / mês',     value: totais.novosMes,     valueColor: 'text-primary',       bg: 'rgba(126,184,212,0.1)',  accent: '#7EB8D4' },
+          { label: 'Consultas / mês', value: totais.consultasMes, valueColor: 'text-primary',       bg: 'rgba(122,158,126,0.12)', accent: '#7A9E7E' },
+          { label: 'Novos / mês',     value: totais.novosMes,     valueColor: 'text-primary',       bg: 'rgba(122,158,126,0.12)', accent: '#7A9E7E' },
         ].map(card => (
           <div
             key={card.label}

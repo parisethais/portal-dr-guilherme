@@ -136,9 +136,9 @@ export default function MedicoDashboard({
       </div>
 
       {/* Tab header */}
-      <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid rgba(126,184,212,0.12)' }}>
+      <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid rgba(45,43,107,0.08)' }}>
         <div className="flex items-start gap-3">
-          <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7EB8D4' }} />
+          <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7A9E7E' }} />
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{tabHeaders[activeTab].title}</h2>
             <p className="text-sm text-gray-500 mt-0.5">{tabHeaders[activeTab].sub}</p>

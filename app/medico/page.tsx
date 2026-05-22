@@ -10,6 +10,33 @@ import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
 
+// ── Helpers de saudação ───────────────────────────────────────────────────────
+
+function getGreeting(): string {
+  // Usa fuso de Brasília (UTC-3) no servidor
+  const brHour = (new Date().getUTCHours() - 3 + 24) % 24
+  if (brHour >= 5 && brHour < 12) return 'Bom dia'
+  if (brHour >= 12 && brHour < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+function getDateLabel(): string {
+  return new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    day:     'numeric',
+    month:   'long',
+  })
+}
+
+function getDisplayName(fullName: string | null, sexo: string | null, role: string): string {
+  const first = fullName?.split(' ')[0] ?? 'você'
+  if (role === 'medico' || role === 'superadmin') {
+    return `${sexo === 'feminino' ? 'Dra.' : 'Dr.'} ${first}`
+  }
+  return first
+}
+
 export default async function MedicoPage() {
   // Lê headers injetados pelo middleware (evita chamar getUser() de novo,
   // o que causaria falha quando o refresh token já foi consumido pelo middleware)
@@ -33,13 +60,13 @@ export default async function MedicoPage() {
       if (!session) redirect('/')
       user = session.user
     }
-    const { data: currentProfile } = await supabase
+    const { data: roleProfile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
     userId = user.id
-    currentRole = currentProfile?.role ?? 'medico'
+    currentRole = roleProfile?.role ?? 'medico'
   }
 
   // Superadmin usa adminClient para ver todos os dados (bypassa RLS)
@@ -55,6 +82,7 @@ export default async function MedicoPage() {
     { data: documents },
     { data: financialEntries },
     { data: consultas },
+    { data: currentProfile },
   ] = await Promise.all([
     db.from('profiles')
       .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
@@ -70,26 +98,82 @@ export default async function MedicoPage() {
     db.from('consultas')
       .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
       .order('data_hora', { ascending: true }),
+    // Perfil do usuário logado (para saudação personalizada)
+    db.from('profiles').select('full_name, sexo').eq('id', userId).single(),
   ])
+
+  // Subtítulo contextual de consultas (fuso Brasília)
+  const nowBR   = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const todayBR = nowBR.toLocaleDateString('pt-BR')
+
+  const allConsultas = (consultas ?? []).filter(c => c.status !== 'cancelado')
+
+  const consultasHoje = allConsultas.filter(c =>
+    new Date(c.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) === todayBR
+  )
+
+  let subtitleMsg: string
+  const n = consultasHoje.length
+  if (n > 0) {
+    subtitleMsg = `Você tem ${n} consulta${n > 1 ? 's' : ''} agendada${n > 1 ? 's' : ''} para hoje.`
+  } else {
+    // Próxima consulta futura
+    const proxima = allConsultas
+      .map(c => ({ ...c, dt: new Date(c.data_hora) }))
+      .filter(c => c.dt > nowBR)
+      .sort((a, b) => a.dt.getTime() - b.dt.getTime())[0]
+
+    if (proxima) {
+      const label = proxima.dt.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        weekday: 'long',
+        day:     'numeric',
+        month:   'long',
+      })
+      const hora = proxima.dt.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour:   '2-digit',
+        minute: '2-digit',
+      })
+      subtitleMsg = `Próxima consulta: ${label} às ${hora}.`
+    } else {
+      subtitleMsg = 'Nenhuma consulta agendada.'
+    }
+  }
+
+  const displayName = getDisplayName(currentProfile?.full_name ?? null, currentProfile?.sexo ?? null, currentRole)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Hero */}
+      {/* Hero — saudação personalizada */}
       <div className="mb-8 pb-7 border-b border-black/[0.06]">
-        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-2.5" style={{ color: '#7EB8D4' }}>
-          Clinical Intelligence OS
-        </p>
-        <div className="flex items-start justify-between">
+
+        {/* Linha superior: label + data */}
+        <div className="flex items-center justify-between mb-3.5">
+          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase" style={{ color: '#7A9E7E' }}>
+            MedEn · Clinical Intelligence
+          </p>
+          <span className="text-[11px] text-gray-300 capitalize tracking-wide hidden sm:block">
+            {getDateLabel()}
+          </span>
+        </div>
+
+        {/* Linha principal: saudação + botão configurações */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Painel Médico</h1>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight leading-snug" style={{ color: '#2D2B6B' }}>
+              {getGreeting()},{' '}
+              <span style={{ color: '#2D2B6B' }}>{displayName}.</span>
+            </h1>
             <p className="text-gray-400 mt-1.5 text-sm font-normal">
-              Gerencie pacientes, documentos e agenda.
+              {subtitleMsg}
             </p>
           </div>
+
           {currentRole === 'medico' && (
             <Link
               href="/medico/configuracoes"
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100 shrink-0 mt-0.5"
             >
               <Settings className="w-4 h-4" />
               Configurações
