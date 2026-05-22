@@ -129,7 +129,7 @@ export default async function PacientePage() {
 
         {/* Cartão de identidade do consultório */}
         <ClinicCard
-          clinicName={clinic?.name ?? 'Consultório'}
+          clinicName={clinicSettings['nome_exibicao'] || clinic?.name || 'Consultório'}
           doctorName={doctorName}
           especialidade={clinicSettings['especialidade'] ?? null}
           crm={clinicSettings['crm_medico'] ?? null}
