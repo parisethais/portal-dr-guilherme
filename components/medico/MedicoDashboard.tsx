@@ -191,6 +191,8 @@ export default function MedicoDashboard({
           <FinanceiroTab
             initialEntries={financialEntries}
             doctorId={doctorId}
+            consultas={consultas}
+            patients={patients}
           />
         )}
       </div>

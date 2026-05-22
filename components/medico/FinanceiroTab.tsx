@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useMemo } from 'react'
 import type { FinancialEntry, EntryInput } from '@/app/actions/financial'
+import type { Profile, Consulta } from '@/lib/types'
 import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '@/app/actions/financial'
 import {
   FINANCIAL_CATEGORIES, PAYMENT_METHODS,
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils'
 import {
   Plus, TrendingUp, TrendingDown, Wallet, Clock,
   Pencil, Trash2, X, Check, Loader2, ChevronDown,
+  CalendarCheck, UserMinus, Info,
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -248,9 +250,11 @@ function EntryForm({
 interface Props {
   initialEntries: FinancialEntry[]
   doctorId: string
+  consultas?: Consulta[]
+  patients?: Profile[]
 }
 
-export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
+export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [] }: Props) {
   const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
   const [period, setPeriod]   = useState<'mes' | 'trimestre' | 'ano' | 'tudo'>('mes')
   const [scope,  setScope]    = useState<'all' | 'clinic' | 'personal'>('all')
@@ -289,6 +293,63 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
   }, [filtered])
 
   const saldo = receita - despesa
+
+  // ── Projeções financeiras ────────────────────────────────────────────────
+  const { projecaoMes, receitaPotencial, ticketMedio, agendadasMes } = useMemo(() => {
+    const hoje  = new Date()
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
+
+    // Ticket médio: média das receitas históricas registradas
+    const receitasHistoricas = entries.filter(e => e.type === 'receita' && e.status === 'pago' && e.amount > 0)
+    const ticketMedio = receitasHistoricas.length > 0
+      ? receitasHistoricas.reduce((s, e) => s + e.amount, 0) / receitasHistoricas.length
+      : 0
+
+    // Consultas agendadas/confirmadas ainda não ocorridas neste mês
+    const agora = hoje.toISOString()
+    const agendadasMes = consultas.filter(c =>
+      c.data_hora.startsWith(mesAtual) &&
+      (c.status === 'agendada' || c.status === 'confirmada') &&
+      c.data_hora > agora
+    )
+
+    // Receita já realizada no mês (registrada nos lançamentos)
+    const receitaMesAtual = entries
+      .filter(e => e.type === 'receita' && e.status === 'pago' && monthKey(e.date) === mesAtual)
+      .reduce((s, e) => s + e.amount, 0)
+
+    const projecaoMes = receitaMesAtual + (agendadasMes.length * ticketMedio)
+
+    // Pacientes inativos: sem consulta realizada nos últimos 2 anos
+    const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 2)
+    const cutoffISO = cutoff.toISOString()
+
+    const ultimaConsultaMap = new Map<string, string>()
+    consultas.forEach(c => {
+      if (c.status === 'realizada') {
+        const ult = ultimaConsultaMap.get(c.patient_id)
+        if (!ult || c.data_hora > ult) ultimaConsultaMap.set(c.patient_id, c.data_hora)
+      }
+    })
+
+    const inativos = patients.filter(p => {
+      if (p.status_paciente === 'obito') return false
+      const ultima = ultimaConsultaMap.get(p.id)
+      return !ultima || ultima < cutoffISO
+    })
+
+    // Frequência média: total de consultas realizadas ÷ pacientes com histórico ÷ meses de histórico
+    const ativosComHistorico = patients.filter(p => ultimaConsultaMap.has(p.id))
+    const totalRealizadas    = consultas.filter(c => c.status === 'realizada').length
+    const mesesHistorico     = 24 // janela de referência
+    const freqMensal         = ativosComHistorico.length > 0
+      ? totalRealizadas / ativosComHistorico.length / mesesHistorico
+      : 0
+
+    const receitaPotencial = inativos.length * freqMensal * ticketMedio * 12 // anual
+
+    return { projecaoMes, receitaPotencial, ticketMedio, agendadasMes }
+  }, [entries, consultas, patients])
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
@@ -352,6 +413,71 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
           </div>
         ))}
       </div>
+
+      {/* ── Projeções ──────────────────────────────────────────────────── */}
+      {ticketMedio > 0 && (
+        <div className="grid sm:grid-cols-2 gap-3">
+
+          {/* Projeção do mês */}
+          <div className="rounded-xl border border-white/60 p-4"
+            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: '#7A9E7E' }}>Projeção — este mês</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: '#2D2B6B' }}>{fmtBRL(projecaoMes)}</p>
+              </div>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'rgba(122,158,126,0.12)' }}>
+                <CalendarCheck className="w-4 h-4" style={{ color: '#7A9E7E' }} />
+              </div>
+            </div>
+            <div className="space-y-1.5 text-xs text-gray-500">
+              <div className="flex justify-between">
+                <span>Realizado no mês</span>
+                <span className="font-medium text-gray-700">{fmtBRL(receita)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Consultas agendadas ({agendadasMes.length}× {fmtBRL(ticketMedio)})</span>
+                <span className="font-medium" style={{ color: '#7A9E7E' }}>+{fmtBRL(agendadasMes.length * ticketMedio)}</span>
+              </div>
+              <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                <Info className="w-3 h-3 shrink-0" />
+                Baseado no ticket médio histórico ({fmtBRL(ticketMedio)}/consulta)
+              </div>
+            </div>
+          </div>
+
+          {/* Receita potencial de inativos */}
+          <div className="rounded-xl border border-white/60 p-4"
+            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: '#B8943F' }}>Receita potencial — inativos</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: '#2D2B6B' }}>{fmtBRL(receitaPotencial)}</p>
+              </div>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'rgba(184,148,63,0.10)' }}>
+                <UserMinus className="w-4 h-4" style={{ color: '#B8943F' }} />
+              </div>
+            </div>
+            <div className="space-y-1.5 text-xs text-gray-500">
+              <div className="flex justify-between">
+                <span>Pacientes sem consulta há +2 anos</span>
+                <span className="font-medium text-gray-700">{patients.filter(p => p.status_paciente !== 'obito' && !consultas.some(c => c.patient_id === p.id && c.status === 'realizada' && c.data_hora >= new Date(new Date().setFullYear(new Date().getFullYear()-2)).toISOString())).length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ticket médio</span>
+                <span className="font-medium text-gray-700">{fmtBRL(ticketMedio)}</span>
+              </div>
+              <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                <Info className="w-3 h-3 shrink-0" />
+                Estimativa anual baseada na frequência histórica da base ativa
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* ── Gráfico + Filtros ───────────────────────────────────────────── */}
       <div className="rounded-xl border border-white/60 p-5"
