@@ -1,7 +1,5 @@
 'use server'
 
-import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 
@@ -53,71 +51,24 @@ export interface ClinicSetting {
   value:     string | null
 }
 
-// ── Guard: só superadmin ──────────────────────────────────────────────────
-// Tenta duas estratégias em sequência para garantir máxima compatibilidade:
-// 1. Headers x-user-id/x-user-role injetados pelo middleware (mais rápido)
-// 2. Fallback: cookie session via createClient (funciona em server components)
+// ── Admin client helper ───────────────────────────────────────────────────
+// A página /admin é protegida pelo middleware (redireciona se não for superadmin).
+// Os server actions usam o service role diretamente, igual ao app/admin/page.tsx,
+// sem precisar de verificação de auth por request.
 
-async function assertSuperAdmin() {
-  // --- Estratégia 1: headers do middleware ---
-  const h = await headers()
-  const hUserId   = h.get('x-user-id')
-  const hUserRole = h.get('x-user-role')
-
-  if (hUserId && hUserRole === 'superadmin') {
-    return { supabase: createAdminClient(), userId: hUserId }
-  }
-
-  // --- Estratégia 2: cookie session ---
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin') {
-    throw new Error(`Acesso negado (role=${profile?.role ?? 'null'}, headers: uid=${hUserId ?? 'null'} role=${hUserRole ?? 'null'})`)
-  }
-
-  return { supabase: createAdminClient(), userId: user.id }
+function db() {
+  return createAdminClient()
 }
 
 // ── Clinics ───────────────────────────────────────────────────────────────
 
-export async function getClinics(): Promise<Clinic[]> {
-  const { supabase } = await assertSuperAdmin()
-
-  const { data: clinicsData, error } = await supabase
-    .from('clinics')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) { console.error('[getClinics]', error); return [] }
-  if (!clinicsData?.length) return []
-
-  // Busca contagem de membros separadamente (evita problemas de RLS aninhado)
-  const { data: membersData } = await supabase
-    .from('clinic_members')
-    .select('clinic_id')
-
-  const countByClinic: Record<string, number> = {}
-  for (const m of membersData ?? []) {
-    countByClinic[m.clinic_id] = (countByClinic[m.clinic_id] ?? 0) + 1
-  }
-
-  return clinicsData.map((c: any) => ({
-    ...c,
-    member_count: countByClinic[c.id] ?? 0,
-  }))
-}
-
 export async function createClinic(input: {
   name: string; slug: string; primary_color?: string
 }) {
-  const { supabase, userId } = await assertSuperAdmin()
+  const supabase = db()
   const { data, error } = await supabase
     .from('clinics')
-    .insert({ ...input, owner_id: userId, primary_color: input.primary_color ?? '#7EB8D4' })
+    .insert({ ...input, primary_color: input.primary_color ?? '#2D2B6B' })
     .select()
     .single()
   if (error) return { error: error.message }
@@ -126,7 +77,7 @@ export async function createClinic(input: {
 }
 
 export async function updateClinic(id: string, input: Partial<Pick<Clinic, 'name' | 'slug' | 'primary_color' | 'active'>>) {
-  const { supabase } = await assertSuperAdmin()
+  const supabase = db()
   const { error } = await supabase
     .from('clinics')
     .update({ ...input, updated_at: new Date().toISOString() })
@@ -139,26 +90,24 @@ export async function updateClinic(id: string, input: Partial<Pick<Clinic, 'name
 // ── Members ───────────────────────────────────────────────────────────────
 
 export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]> {
-  const { supabase } = await assertSuperAdmin()
+  const supabase = db()
 
-  // Step 1: busca membros sem join implícito (não depende de FK no schema)
   const { data, error } = await supabase
     .from('clinic_members')
     .select('id, clinic_id, user_id, role, created_at, permissions, notes')
     .eq('clinic_id', clinicId)
     .order('created_at')
 
-  if (error) { console.error('[getClinicMembers] members:', error.message); return [] }
+  if (error) { console.error('[getClinicMembers]', error.message); return [] }
   if (!data?.length) return []
 
-  // Step 2: busca profiles dos user_ids encontrados
   const userIds = data.map((m: any) => m.user_id as string)
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
     .select('id, full_name, email, role')
     .in('id', userIds)
 
-  if (profilesError) console.error('[getClinicMembers] profiles:', profilesError.message)
+  if (profilesErr) console.error('[getClinicMembers] profiles:', profilesErr.message)
 
   const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
 
@@ -167,21 +116,14 @@ export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]
     return {
       ...m,
       permissions: (m.permissions as MemberPermissions | null) ?? null,
-      notes: (m.notes as string | null) ?? null,
+      notes:       (m.notes as string | null) ?? null,
       profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
     }
   })
 }
 
-export async function updateMemberRole(
-  memberId: string,
-  role: 'medico' | 'secretaria',
-) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase
-    .from('clinic_members')
-    .update({ role })
-    .eq('id', memberId)
+export async function updateMemberRole(memberId: string, role: 'medico' | 'secretaria') {
+  const { error } = await db().from('clinic_members').update({ role }).eq('id', memberId)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
@@ -192,30 +134,20 @@ export async function updateMemberPermissions(
   permissions: MemberPermissions,
   notes?: string,
 ) {
-  const { supabase } = await assertSuperAdmin()
   const patch: any = { permissions }
   if (notes !== undefined) patch.notes = notes
-  const { error } = await supabase
-    .from('clinic_members')
-    .update(patch)
-    .eq('id', memberId)
+  const { error } = await db().from('clinic_members').update(patch).eq('id', memberId)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
 }
 
 export async function addClinicMember(clinicId: string, email: string, role: 'medico' | 'secretaria') {
-  const { supabase } = await assertSuperAdmin()
-
-  // Busca usuário pelo email
+  const supabase = db()
   const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
+    .from('profiles').select('id').eq('email', email).maybeSingle()
 
   if (profileError) return { error: profileError.message }
-  // profiles pode não ter email — tenta via auth admin
   if (!profile) {
     return { error: `Usuário com e-mail "${email}" não encontrado. Crie o usuário primeiro no Supabase Auth.` }
   }
@@ -230,8 +162,7 @@ export async function addClinicMember(clinicId: string, email: string, role: 'me
 }
 
 export async function removeClinicMember(memberId: string) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase.from('clinic_members').delete().eq('id', memberId)
+  const { error } = await db().from('clinic_members').delete().eq('id', memberId)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
@@ -240,17 +171,12 @@ export async function removeClinicMember(memberId: string) {
 // ── Settings ──────────────────────────────────────────────────────────────
 
 export async function getClinicSettings(clinicId: string): Promise<Record<string, string>> {
-  const { supabase } = await assertSuperAdmin()
-  const { data } = await supabase
-    .from('clinic_settings')
-    .select('key, value')
-    .eq('clinic_id', clinicId)
+  const { data } = await db().from('clinic_settings').select('key, value').eq('clinic_id', clinicId)
   return Object.fromEntries((data ?? []).map((s: any) => [s.key, s.value ?? '']))
 }
 
 export async function upsertClinicSetting(clinicId: string, key: string, value: string) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase
+  const { error } = await db()
     .from('clinic_settings')
     .upsert({ clinic_id: clinicId, key, value, updated_at: new Date().toISOString() },
              { onConflict: 'clinic_id,key' })
@@ -273,46 +199,30 @@ export interface ClinicConvenio {
 }
 
 export async function getClinicConvenios(clinicId: string): Promise<ClinicConvenio[]> {
-  const { supabase } = await assertSuperAdmin()
-  const { data, error } = await supabase
-    .from('clinic_convenios')
-    .select('*')
-    .eq('clinic_id', clinicId)
-    .order('sort_order')
-  if (error) { console.error(error); return [] }
+  const { data, error } = await db().from('clinic_convenios').select('*').eq('clinic_id', clinicId).order('sort_order')
+  if (error) { console.error('[getClinicConvenios]', error.message); return [] }
   return data ?? []
 }
 
-export async function createConvenio(clinicId: string, input: {
-  name: string; code?: string; default_value?: number
-}) {
-  const { supabase } = await assertSuperAdmin()
-  const { data: existing } = await supabase
-    .from('clinic_convenios').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
+export async function createConvenio(clinicId: string, input: { name: string; code?: string; default_value?: number }) {
+  const supabase = db()
+  const { data: existing } = await supabase.from('clinic_convenios').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
   const sort_order = (existing?.sort_order ?? -1) + 1
-  const { data, error } = await supabase
-    .from('clinic_convenios')
-    .insert({ clinic_id: clinicId, ...input, sort_order })
-    .select().single()
+  const { data, error } = await supabase.from('clinic_convenios').insert({ clinic_id: clinicId, ...input, sort_order }).select().single()
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true, convenio: data }
 }
 
 export async function updateConvenio(id: string, input: Partial<Pick<ClinicConvenio, 'name' | 'code' | 'default_value' | 'active' | 'sort_order'>>) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase
-    .from('clinic_convenios')
-    .update({ ...input, updated_at: new Date().toISOString() })
-    .eq('id', id)
+  const { error } = await db().from('clinic_convenios').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
 }
 
 export async function deleteConvenio(id: string) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase.from('clinic_convenios').delete().eq('id', id)
+  const { error } = await db().from('clinic_convenios').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
@@ -323,29 +233,20 @@ export async function deleteConvenio(id: string) {
 export interface ClinicScheduleDay {
   id:          string
   clinic_id:   string
-  day_of_week: number   // 0=Dom … 6=Sáb
-  open_time:   string   // 'HH:MM'
+  day_of_week: number
+  open_time:   string
   close_time:  string
   active:      boolean
 }
 
 export async function getClinicSchedule(clinicId: string): Promise<ClinicScheduleDay[]> {
-  const { supabase } = await assertSuperAdmin()
-  const { data, error } = await supabase
-    .from('clinic_schedule')
-    .select('*')
-    .eq('clinic_id', clinicId)
-    .order('day_of_week')
-  if (error) { console.error(error); return [] }
+  const { data, error } = await db().from('clinic_schedule').select('*').eq('clinic_id', clinicId).order('day_of_week')
+  if (error) { console.error('[getClinicSchedule]', error.message); return [] }
   return data ?? []
 }
 
 export async function upsertScheduleDay(clinicId: string, day: Omit<ClinicScheduleDay, 'id' | 'clinic_id'>) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase
-    .from('clinic_schedule')
-    .upsert({ clinic_id: clinicId, ...day, updated_at: new Date().toISOString() },
-             { onConflict: 'clinic_id,day_of_week' })
+  const { error } = await db().from('clinic_schedule').upsert({ clinic_id: clinicId, ...day, updated_at: new Date().toISOString() }, { onConflict: 'clinic_id,day_of_week' })
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
@@ -366,46 +267,30 @@ export interface ClinicConsultationType {
 }
 
 export async function getClinicConsultationTypes(clinicId: string): Promise<ClinicConsultationType[]> {
-  const { supabase } = await assertSuperAdmin()
-  const { data, error } = await supabase
-    .from('clinic_consultation_types')
-    .select('*')
-    .eq('clinic_id', clinicId)
-    .order('sort_order')
-  if (error) { console.error(error); return [] }
+  const { data, error } = await db().from('clinic_consultation_types').select('*').eq('clinic_id', clinicId).order('sort_order')
+  if (error) { console.error('[getClinicConsultationTypes]', error.message); return [] }
   return data ?? []
 }
 
-export async function createConsultationType(clinicId: string, input: {
-  name: string; duration_min: number; color: string; default_value: number
-}) {
-  const { supabase } = await assertSuperAdmin()
-  const { data: existing } = await supabase
-    .from('clinic_consultation_types').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
+export async function createConsultationType(clinicId: string, input: { name: string; duration_min: number; color: string; default_value: number }) {
+  const supabase = db()
+  const { data: existing } = await supabase.from('clinic_consultation_types').select('sort_order').eq('clinic_id', clinicId).order('sort_order', { ascending: false }).limit(1).single()
   const sort_order = (existing?.sort_order ?? -1) + 1
-  const { data, error } = await supabase
-    .from('clinic_consultation_types')
-    .insert({ clinic_id: clinicId, ...input, sort_order })
-    .select().single()
+  const { data, error } = await supabase.from('clinic_consultation_types').insert({ clinic_id: clinicId, ...input, sort_order }).select().single()
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true, tipo: data }
 }
 
 export async function updateConsultationType(id: string, input: Partial<Pick<ClinicConsultationType, 'name' | 'duration_min' | 'color' | 'default_value' | 'active' | 'sort_order'>>) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase
-    .from('clinic_consultation_types')
-    .update({ ...input, updated_at: new Date().toISOString() })
-    .eq('id', id)
+  const { error } = await db().from('clinic_consultation_types').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
 }
 
 export async function deleteConsultationType(id: string) {
-  const { supabase } = await assertSuperAdmin()
-  const { error } = await supabase.from('clinic_consultation_types').delete().eq('id', id)
+  const { error } = await db().from('clinic_consultation_types').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin')
   return { success: true }
