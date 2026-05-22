@@ -485,10 +485,11 @@ const SETTINGS_FIELDS = [
   { key: 'moeda',          label: 'Moeda',               placeholder: 'BRL',                          type: 'text'  },
 ]
 
-function SettingsTab({ clinicId, settings, loading }: {
+function SettingsTab({ clinicId, settings, loading, onNameChange }: {
   clinicId: string
   settings: Record<string, string>
   loading: boolean
+  onNameChange?: (name: string) => void
 }) {
   const [local, setLocal]   = useState<Record<string, string>>(settings)
   const [saving, setSaving] = useState<string | null>(null)
@@ -502,6 +503,9 @@ function SettingsTab({ clinicId, settings, loading }: {
     setSaving(null)
     setSaved(key)
     setTimeout(() => setSaved(null), 2000)
+    if (key === 'nome_exibicao' && local[key]?.trim()) {
+      onNameChange?.(local[key].trim())
+    }
   }
 
   if (loading) return <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
@@ -1024,7 +1028,11 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
 
 type DetailTab = 'members' | 'settings' | 'convenios' | 'schedule' | 'tipos'
 
-function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) {
+function ClinicDetail({ clinic, onBack, onNameChange }: {
+  clinic: Clinic
+  onBack: () => void
+  onNameChange?: (newName: string) => void
+}) {
   const [members,   setMembers]   = useState<ClinicMember[]>([])
   const [settings,  setSettings]  = useState<Record<string, string>>({})
   const [convenios, setConvenios] = useState<ClinicConvenio[]>([])
@@ -1033,6 +1041,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
   const [activeTab, setActiveTab] = useState<DetailTab>('members')
   const [loading,   setLoading]   = useState(true)
   const [loadErr,   setLoadErr]   = useState<string | null>(null)
+  const [localName, setLocalName] = useState(clinic.name)
 
   useEffect(() => {
     setLoading(true)
@@ -1082,10 +1091,10 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
         </button>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
           style={{ backgroundColor: clinic.primary_color }}>
-          {clinic.name[0]}
+          {localName[0]}
         </div>
         <div>
-          <h2 className="font-semibold text-gray-900">{clinic.name}</h2>
+          <h2 className="font-semibold text-gray-900">{localName}</h2>
           <p className="text-xs text-gray-400 font-mono">{clinic.slug}</p>
         </div>
         <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium',
@@ -1130,7 +1139,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
       </div>
 
       {activeTab === 'members'  && <MembersTab clinicId={clinic.id} members={members} loading={loading} onRefresh={setMembers} />}
-      {activeTab === 'settings' && <SettingsTab clinicId={clinic.id} settings={settings} loading={loading} />}
+      {activeTab === 'settings' && <SettingsTab clinicId={clinic.id} settings={settings} loading={loading} onNameChange={name => { setLocalName(name); onNameChange?.(name) }} />}
       {activeTab === 'convenios'&& <ConveniosTab clinicId={clinic.id} convenios={convenios} loading={loading} />}
       {activeTab === 'schedule' && <ScheduleTab clinicId={clinic.id} schedule={schedule} loading={loading} />}
       {activeTab === 'tipos'    && <ConsultationTypesTab clinicId={clinic.id} tipos={tipos} loading={loading} />}
@@ -1149,7 +1158,14 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
     return (
       <div className="rounded-2xl overflow-hidden border border-white/60 p-6"
         style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,252,248,0.82)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
-        <ClinicDetail clinic={selectedClinic} onBack={() => setSelected(null)} />
+        <ClinicDetail
+          clinic={selectedClinic}
+          onBack={() => setSelected(null)}
+          onNameChange={name => {
+            setSelected(c => c ? { ...c, name } : c)
+            setClinics(list => list.map(c => c.id === selectedClinic.id ? { ...c, name } : c))
+          }}
+        />
       </div>
     )
   }

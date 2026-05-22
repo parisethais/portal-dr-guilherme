@@ -195,7 +195,14 @@ export async function upsertClinicSetting(clinicId: string, key: string, value: 
     .upsert({ clinic_id: clinicId, key, value, updated_at: new Date().toISOString() },
              { onConflict: 'clinic_id,key' })
   if (error) return { error: error.message }
+
+  // nome_exibicao também atualiza clinics.name para manter consistência
+  if (key === 'nome_exibicao' && value.trim()) {
+    await db().from('clinics').update({ name: value.trim() }).eq('id', clinicId)
+  }
+
   revalidatePath('/admin')
+  revalidatePath('/paciente')
   return { success: true }
 }
 

@@ -135,7 +135,7 @@ export default async function PacientePage() {
           crm={clinicSettings['crm_medico'] ?? null}
           endereco={clinicSettings['endereco'] ?? null}
           telefone={clinicSettings['telefone'] ?? null}
-          email={clinicSettings['email'] ?? null}
+          email={clinicSettings['email_contato'] ?? clinicSettings['email'] ?? null}
         />
 
         {/* Card próxima consulta */}
