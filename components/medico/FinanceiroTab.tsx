@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState, useTransition, useMemo } from 'react'
-import type { FinancialEntry, EntryInput } from '@/app/actions/financial'
+import type { FinancialEntry, EntryInput, NotaFiscalStatus } from '@/app/actions/financial'
 import type { Profile, Consulta } from '@/lib/types'
-import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '@/app/actions/financial'
+import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry, notifyPatientNota } from '@/app/actions/financial'
 import {
   FINANCIAL_CATEGORIES, PAYMENT_METHODS,
   categoryLabel, categoryColor, categoriesByType,
@@ -12,8 +12,9 @@ import { cn } from '@/lib/utils'
 import {
   Plus, TrendingUp, TrendingDown, Wallet, Clock,
   Pencil, Trash2, X, Check, Loader2, ChevronDown,
-  CalendarCheck, UserMinus, Info,
+  CalendarCheck, UserMinus, Info, FileText, Send,
 } from 'lucide-react'
+import PatientCombobox from '@/components/ui/PatientCombobox'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -34,6 +35,17 @@ function periodStart(period: string): string {
   if (period === 'ano')      return `${now.getFullYear()}-01-01`
   return '2000-01-01'
 }
+
+// ── Nota fiscal helpers ───────────────────────────────────────────────────
+
+const NOTA_OPTIONS: { value: NotaFiscalStatus; label: string; color: string; bg: string }[] = [
+  { value: 'nao_se_aplica', label: 'N/A',          color: '#9CA3AF', bg: 'rgba(0,0,0,0.05)'          },
+  { value: 'a_solicitar',   label: 'A solicitar',  color: '#B8943F', bg: 'rgba(184,148,63,0.10)'     },
+  { value: 'solicitada',    label: 'Solicitada',   color: '#2D2B6B', bg: 'rgba(45,43,107,0.08)'      },
+  { value: 'emitida',       label: 'Emitida',      color: '#4E7A52', bg: 'rgba(122,158,126,0.12)'    },
+]
+
+function notaLabel(s: NotaFiscalStatus) { return NOTA_OPTIONS.find(o => o.value === s) ?? NOTA_OPTIONS[0] }
 
 // ── Mini bar chart por mês ────────────────────────────────────────────────
 
@@ -85,29 +97,40 @@ const EMPTY: Partial<EntryInput> = {
   status: 'pago', payment_method: 'pix',
   date: new Date().toISOString().slice(0, 10),
   amount: undefined, description: '', notes: '',
+  nota_fiscal_status: 'nao_se_aplica', patient_id: null,
 }
 
 function EntryForm({
-  initial, doctorId, onSave, onCancel, saving,
+  initial, doctorId, patients, onSave, onCancel, saving,
 }: {
   initial?: Partial<EntryInput>
   doctorId: string
-  onSave: (data: EntryInput) => void
+  patients: Profile[]
+  onSave: (data: EntryInput, notifyPortal: boolean) => void
   onCancel: () => void
   saving: boolean
 }) {
   const [form, setForm] = useState<Partial<EntryInput>>({ ...EMPTY, ...initial })
+  const [notifyPortal, setNotifyPortal] = useState(false)
   const set = <K extends keyof EntryInput>(k: K, v: EntryInput[K]) =>
     setForm(f => ({ ...f, [k]: v }))
 
   const cats = categoriesByType(form.type ?? 'receita')
   const valid = form.amount && form.amount > 0 && form.category && form.date
+  const isReceita = form.type === 'receita'
 
-  // Ajusta categoria quando muda o tipo
+  // Ajusta categoria e reseta NF quando muda o tipo
   function setType(t: 'receita' | 'despesa') {
     const firstCat = categoriesByType(t)[0]?.value ?? ''
-    setForm(f => ({ ...f, type: t, category: firstCat }))
+    setForm(f => ({
+      ...f, type: t, category: firstCat,
+      nota_fiscal_status: 'nao_se_aplica', patient_id: null,
+    }))
+    setNotifyPortal(false)
   }
+
+  const canNotifyPortal = isReceita && !!form.patient_id &&
+    (form.nota_fiscal_status === 'solicitada' || form.nota_fiscal_status === 'emitida')
 
   return (
     <div className="space-y-4">
@@ -150,6 +173,20 @@ function EntryForm({
           </div>
         </div>
       </div>
+
+      {/* Paciente (só para receita) */}
+      {isReceita && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Paciente</label>
+          <PatientCombobox
+            patients={patients}
+            name="patient_id_form"
+            value={form.patient_id ?? undefined}
+            onChange={id => set('patient_id', id || null)}
+            placeholder="Buscar paciente (opcional)…"
+          />
+        </div>
+      )}
 
       {/* Categoria + Valor */}
       <div className="grid grid-cols-2 gap-3">
@@ -213,6 +250,62 @@ function EntryForm({
         </div>
       </div>
 
+      {/* Nota fiscal (só para receita) */}
+      {isReceita && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" />
+            Nota fiscal
+          </label>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            {NOTA_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  set('nota_fiscal_status', opt.value)
+                  if (opt.value !== 'solicitada' && opt.value !== 'emitida') {
+                    setNotifyPortal(false)
+                  }
+                }}
+                className={cn(
+                  'flex-1 py-2 font-medium transition-colors text-xs whitespace-nowrap px-2',
+                  form.nota_fiscal_status === opt.value
+                    ? 'text-white'
+                    : 'text-gray-500 hover:bg-gray-50'
+                )}
+                style={form.nota_fiscal_status === opt.value
+                  ? { backgroundColor: opt.color }
+                  : undefined}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Toggle de notificação pelo portal */}
+          {canNotifyPortal && (
+            <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+              <div
+                onClick={() => setNotifyPortal(v => !v)}
+                className={cn(
+                  'w-9 h-5 rounded-full relative transition-colors cursor-pointer',
+                  notifyPortal ? 'bg-primary' : 'bg-gray-200'
+                )}
+              >
+                <div className={cn(
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                  notifyPortal ? 'translate-x-4' : 'translate-x-0.5'
+                )} />
+              </div>
+              <span className="text-xs text-gray-600 flex items-center gap-1">
+                <Send className="w-3 h-3" />
+                Notificar paciente pelo portal
+              </span>
+            </label>
+          )}
+        </div>
+      )}
+
       {/* Descrição */}
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
@@ -230,7 +323,7 @@ function EntryForm({
           Cancelar
         </button>
         <button
-          onClick={() => valid && onSave({ ...EMPTY, ...form, doctor_id: doctorId } as EntryInput)}
+          onClick={() => valid && onSave({ ...EMPTY, ...form, doctor_id: doctorId } as EntryInput, notifyPortal)}
           disabled={!valid || saving}
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -238,7 +331,7 @@ function EntryForm({
           )}
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          Salvar
+          {notifyPortal ? 'Salvar e notificar' : 'Salvar'}
         </button>
       </div>
     </div>
@@ -353,7 +446,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
-  async function handleCreate(data: EntryInput) {
+  async function handleCreate(data: EntryInput, notifyPortal: boolean) {
     setSaving(true)
     const res = await createFinancialEntry(data)
     setSaving(false)
@@ -361,9 +454,17 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
     const fake: FinancialEntry = { ...data, id: `tmp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
     setEntries(prev => [fake, ...prev])
     setShowForm(false)
+    if (notifyPortal && data.patient_id) {
+      await notifyPatientNota({
+        patientId:   data.patient_id,
+        entryDate:   data.date,
+        description: data.description ?? null,
+        amount:      data.amount,
+      })
+    }
   }
 
-  async function handleUpdate(data: EntryInput) {
+  async function handleUpdate(data: EntryInput, notifyPortal: boolean) {
     if (!editingEntry) return
     setSaving(true)
     const res = await updateFinancialEntry(editingEntry.id, data)
@@ -371,6 +472,14 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
     if (res.error) { alert(res.error); return }
     setEntries(prev => prev.map(e => e.id === editingEntry.id ? { ...e, ...data } : e))
     setEditingEntry(null)
+    if (notifyPortal && data.patient_id) {
+      await notifyPatientNota({
+        patientId:   data.patient_id,
+        entryDate:   data.date,
+        description: data.description ?? null,
+        amount:      data.amount,
+      })
+    }
   }
 
   function handleDelete(entry: FinancialEntry) {
@@ -557,19 +666,22 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
           </div>
           <EntryForm
             initial={editingEntry ? {
-              scope:          editingEntry.scope,
-              type:           editingEntry.type,
-              category:       editingEntry.category,
-              amount:         editingEntry.amount,
-              date:           editingEntry.date,
-              description:    editingEntry.description ?? '',
-              payment_method: editingEntry.payment_method ?? '',
-              status:         editingEntry.status,
-              doctor_id:      editingEntry.doctor_id,
-              clinic_id:      editingEntry.clinic_id,
-              notes:          editingEntry.notes ?? '',
+              scope:               editingEntry.scope,
+              type:                editingEntry.type,
+              category:            editingEntry.category,
+              amount:              editingEntry.amount,
+              date:                editingEntry.date,
+              description:         editingEntry.description ?? '',
+              payment_method:      editingEntry.payment_method ?? '',
+              status:              editingEntry.status,
+              doctor_id:           editingEntry.doctor_id,
+              clinic_id:           editingEntry.clinic_id,
+              notes:               editingEntry.notes ?? '',
+              nota_fiscal_status:  editingEntry.nota_fiscal_status ?? 'nao_se_aplica',
+              patient_id:          editingEntry.patient_id ?? null,
             } : undefined}
             doctorId={doctorId}
+            patients={patients}
             onSave={editingEntry ? handleUpdate : handleCreate}
             onCancel={() => { setShowForm(false); setEditingEntry(null) }}
             saving={saving}
@@ -600,6 +712,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Descrição</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Origem</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden xl:table-cell">NF</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                 <th className="px-4 py-3 w-16" />
               </tr>
@@ -634,6 +747,21 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium capitalize" style={statusBadgeStyle(e.status)}>
                       {e.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    {(() => {
+                      const nf = notaLabel(e.nota_fiscal_status ?? 'nao_se_aplica')
+                      if (nf.value === 'nao_se_aplica') return <span className="text-gray-300 text-xs">—</span>
+                      return (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 w-fit"
+                          style={{ backgroundColor: nf.bg, color: nf.color }}
+                        >
+                          <FileText className="w-3 h-3 shrink-0" />
+                          {nf.label}
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold whitespace-nowrap"
                     style={{ color: e.type === 'receita' ? '#4E7A52' : '#C17070' }}>

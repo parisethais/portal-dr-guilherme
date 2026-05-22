@@ -3,21 +3,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export type NotaFiscalStatus = 'nao_se_aplica' | 'a_solicitar' | 'solicitada' | 'emitida'
+
 export interface FinancialEntry {
-  id:             string
-  clinic_id:      string | null
-  doctor_id:      string
-  scope:          'clinic' | 'personal'
-  type:           'receita' | 'despesa'
-  category:       string
-  amount:         number
-  date:           string   // YYYY-MM-DD
-  description:    string | null
-  payment_method: string | null
-  status:         'pago' | 'pendente' | 'cancelado'
-  notes:          string | null
-  created_at:     string
-  updated_at:     string
+  id:                  string
+  clinic_id:           string | null
+  doctor_id:           string
+  patient_id:          string | null
+  scope:               'clinic' | 'personal'
+  type:                'receita' | 'despesa'
+  category:            string
+  amount:              number
+  date:                string   // YYYY-MM-DD
+  description:         string | null
+  payment_method:      string | null
+  status:              'pago' | 'pendente' | 'cancelado'
+  nota_fiscal_status:  NotaFiscalStatus
+  notes:               string | null
+  created_at:          string
+  updated_at:          string
 }
 
 export type EntryInput = Omit<FinancialEntry, 'id' | 'created_at' | 'updated_at'>
@@ -78,5 +82,46 @@ export async function deleteFinancialEntry(id: string) {
   const { error } = await supabase.from('financial_entries').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/medico')
+  return { success: true }
+}
+
+// ── Notificar paciente sobre nota fiscal ──────────────────────────────────
+
+export async function notifyPatientNota({
+  patientId,
+  entryDate,
+  description,
+  amount,
+}: {
+  patientId:   string
+  entryDate:   string
+  description: string | null
+  amount:      number
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const dateFormatted = new Date(entryDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  })
+  const amountFormatted = amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  const content = [
+    `Olá! Sua nota fiscal referente ao atendimento de ${dateFormatted}`,
+    description ? `(${description})` : null,
+    `no valor de ${amountFormatted} foi solicitada ao contador e será enviada em breve por e-mail.`,
+    `\nQualquer dúvida, estamos à disposição.`,
+  ].filter(Boolean).join(' ')
+
+  const { error } = await supabase.from('messages').insert({
+    sender_id:    user.id,
+    recipient_id: patientId,
+    content,
+  })
+
+  if (error) return { error: error.message }
+  revalidatePath('/medico')
+  revalidatePath('/paciente')
   return { success: true }
 }
