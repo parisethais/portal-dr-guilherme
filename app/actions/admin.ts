@@ -89,37 +89,47 @@ export async function updateClinic(id: string, input: Partial<Pick<Clinic, 'name
 
 // ── Members ───────────────────────────────────────────────────────────────
 
-export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]> {
-  const supabase = db()
-
-  const { data, error } = await supabase
-    .from('clinic_members')
-    .select('id, clinic_id, user_id, role, created_at, permissions, notes')
-    .eq('clinic_id', clinicId)
-    .order('created_at')
-
-  if (error) { console.error('[getClinicMembers]', error.message); return [] }
-  if (!data?.length) return []
-
-  const userIds = data.map((m: any) => m.user_id as string)
-  const { data: profiles, error: profilesErr } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role')
-    .in('id', userIds)
-
-  if (profilesErr) console.error('[getClinicMembers] profiles:', profilesErr.message)
-
-  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
-
-  return data.map((m: any) => {
-    const p = profileMap.get(m.user_id)
-    return {
-      ...m,
-      permissions: (m.permissions as MemberPermissions | null) ?? null,
-      notes:       (m.notes as string | null) ?? null,
-      profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
+// Retorna membros OU { __error: string } — nunca lança exceção
+export async function getClinicMembers(clinicId: string): Promise<ClinicMember[] | { __error: string }> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '(missing)'
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '(missing)'
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return { __error: `SUPABASE_SERVICE_ROLE_KEY ausente. URL=${url} KEY=${key.slice(0,8)}...` }
     }
-  })
+
+    const supabase = db()
+    const { data, error } = await supabase
+      .from('clinic_members')
+      .select('id, clinic_id, user_id, role, created_at, permissions, notes')
+      .eq('clinic_id', clinicId)
+      .order('created_at')
+
+    if (error) return { __error: `members query: ${error.message} (code=${error.code})` }
+    if (!data?.length) return []
+
+    const userIds = data.map((m: any) => m.user_id as string)
+    const { data: profiles, error: profilesErr } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .in('id', userIds)
+
+    if (profilesErr) console.error('[getClinicMembers] profiles:', profilesErr.message)
+
+    const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
+
+    return data.map((m: any) => {
+      const p = profileMap.get(m.user_id)
+      return {
+        ...m,
+        permissions: (m.permissions as MemberPermissions | null) ?? null,
+        notes:       (m.notes as string | null) ?? null,
+        profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
+      }
+    })
+  } catch (err) {
+    return { __error: `exceção: ${(err as Error)?.message ?? String(err)}` }
+  }
 }
 
 export async function updateMemberRole(memberId: string, role: 'medico' | 'secretaria') {

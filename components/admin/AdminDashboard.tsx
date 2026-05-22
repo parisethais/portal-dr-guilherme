@@ -366,7 +366,7 @@ function MembersTab({ clinicId, members, loading, onRefresh }: {
     if (res.error) { setError(res.error); return }
     setEmail('')
     const updated = await getClinicMembers(clinicId)
-    onRefresh(updated)
+    onRefresh(Array.isArray(updated) ? updated : [])
   }
 
   async function handleRemove(id: string) {
@@ -1000,7 +1000,12 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
       })
 
     Promise.all([
-      safe(getClinicMembers(clinic.id),             [] as ClinicMember[],            'members'),
+      safe(
+        getClinicMembers(clinic.id).then(res => {
+          if (res && '__error' in res) { setLoadErr(res.__error); return [] as ClinicMember[] }
+          return res as ClinicMember[]
+        }),
+        [] as ClinicMember[], 'members'),
       safe(getClinicSettings(clinic.id),            {} as Record<string, string>,    'settings'),
       safe(getClinicConvenios(clinic.id),           [],                              'convenios'),
       safe(getClinicSchedule(clinic.id),            [],                              'schedule'),
