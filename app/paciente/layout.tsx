@@ -49,7 +49,7 @@ export default async function PacienteLayout({ children }: { children: React.Rea
         ].join(','),
       }}
     >
-      <Header profile={profile} />
+      <Header profile={profile} variant="paciente" />
       <main className="flex-1">{children}</main>
     </div>
   )

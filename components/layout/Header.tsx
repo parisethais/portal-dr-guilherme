@@ -7,9 +7,10 @@ import type { Profile } from '@/lib/types'
 
 interface HeaderProps {
   profile: Profile
+  variant?: 'medico' | 'paciente'
 }
 
-export default function Header({ profile }: HeaderProps) {
+export default function Header({ profile, variant = 'medico' }: HeaderProps) {
   const [isPending, startTransition] = useTransition()
 
   function handleLogout() {
@@ -18,7 +19,7 @@ export default function Header({ profile }: HeaderProps) {
     })
   }
 
-  const isPaciente = profile.role === 'paciente'
+  const isPacientePortal = variant === 'paciente'
 
   return (
     <header
@@ -26,7 +27,7 @@ export default function Header({ profile }: HeaderProps) {
       style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.06), 0 6px 28px rgba(15,18,25,0.38)' }}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {/* MedEn logotype — inline para não depender de arquivo de imagem */}
+        {/* MedEn logotype */}
         <span className="font-display font-extrabold text-[22px] leading-none tracking-tight shrink-0 select-none">
           <span style={{ color: '#FFFFFF' }}>Med</span>
           <span style={{ color: '#7A9E7E' }}>E</span>
@@ -35,13 +36,26 @@ export default function Header({ profile }: HeaderProps) {
 
         <div className="w-px h-4 bg-white/20 shrink-0" />
 
-        <span className="text-sm text-white/70 truncate hidden sm:block">
-          Consultório Dr. Guilherme Santa Catharina
-          <span className="text-white/40 mx-1.5">—</span>
-          {isPaciente ? 'Área do Paciente' : 'Área Médica'}
-        </span>
+        {isPacientePortal ? (
+          /* Portal do paciente: duas linhas — nome do médico + label */
+          <div className="flex flex-col justify-center min-w-0 hidden sm:flex">
+            <span className="text-xs text-white/50 leading-none mb-0.5">Portal do Paciente</span>
+            <span className="text-sm font-medium text-white/85 truncate leading-none">
+              Dr. Guilherme Santa Catharina
+            </span>
+          </div>
+        ) : (
+          /* Área médica: formato original em linha */
+          <span className="text-sm text-white/70 truncate hidden sm:block">
+            Consultório Dr. Guilherme Santa Catharina
+            <span className="text-white/40 mx-1.5">—</span>
+            Área Médica
+          </span>
+        )}
+
+        {/* Mobile: só o contexto */}
         <span className="text-xs text-white/60 sm:hidden truncate">
-          {isPaciente ? 'Área do Paciente' : 'Área Médica'}
+          {isPacientePortal ? 'Portal do Paciente' : 'Área Médica'}
         </span>
       </div>
 
