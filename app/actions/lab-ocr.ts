@@ -36,43 +36,61 @@ Regras:
 
     const isPdf = mimeType === 'application/pdf'
 
-    const fileContent = isPdf
-      ? {
-          type: 'document' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: 'application/pdf' as const,
-            data: fileBase64,
-          },
-        }
-      : {
-          type: 'image' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-            data: fileBase64,
-          },
-        }
+    let responseText: string
 
-    const response = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            fileContent,
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
-    })
-
-    const text = response.content.find(b => b.type === 'text')?.text ?? ''
+    if (isPdf) {
+      // PDFs requerem a API beta com suporte a documentos
+      const response = await client.beta.messages.create({
+        model: 'claude-opus-4-5',
+        max_tokens: 4096,
+        betas: ['pdfs-2024-09-25'],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: fileBase64,
+                },
+              },
+              { type: 'text', text: prompt },
+            ],
+          },
+        ],
+      })
+      responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+    } else {
+      // Imagens usam a API padrão
+      const response = await client.messages.create({
+        model: 'claude-opus-4-5',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                  data: fileBase64,
+                },
+              },
+              { type: 'text', text: prompt },
+            ],
+          },
+        ],
+      })
+      responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+    }
 
     // Extrai JSON da resposta (pode vir com ```json ou texto ao redor)
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
+      console.error('[lab-ocr] Resposta sem JSON:', responseText.slice(0, 200))
       return { success: false, error: 'Não foi possível identificar resultados neste arquivo. Tente inserir manualmente.' }
     }
 
@@ -85,6 +103,7 @@ Regras:
     return { success: true, data: extracted }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
+    console.error('[lab-ocr] Erro ao chamar Anthropic:', message)
     return { success: false, error: `Erro ao analisar laudo: ${message}` }
   }
 }
