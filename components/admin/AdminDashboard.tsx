@@ -289,7 +289,7 @@ function SettingsTab({ clinicId, settings, loading }: {
           )}
           <button onClick={() => handleSave(field.key)} disabled={saving === field.key}
             className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all shrink-0',
-              saved === field.key ? 'bg-green-100 text-green-700' : 'bg-primary/8 text-primary hover:bg-primary/12')}>
+              saved === field.key ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary hover:bg-primary/15')}>
             {saving === field.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
               : saved === field.key ? <Check className="w-3.5 h-3.5" />
               : 'Salvar'}
@@ -363,7 +363,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <p className="text-sm font-medium text-gray-700">Planos e convênios aceitos</p>
           <button onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Adicionar
           </button>
         </div>
@@ -445,7 +445,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleSaveEdit(c.id)} disabled={saving}
-                        className="p-1.5 text-primary hover:bg-primary/8 rounded-lg transition-colors">
+                        className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors">
                         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -467,7 +467,7 @@ function ConveniosTab({ clinicId, convenios: initial, loading }: {
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
                       <button onClick={() => { setEditing(c.id); setEditData({ name: c.name, code: c.code ?? '', default_value: c.default_value }) }}
-                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors">
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleDelete(c.id)}
@@ -556,7 +556,7 @@ function ScheduleTab({ clinicId, schedule: initial, loading }: {
             {/* Save */}
             <button onClick={() => handleSave(i)}
               className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all shrink-0',
-                saved === i ? 'bg-green-100 text-green-700' : 'bg-primary/8 text-primary hover:bg-primary/12')}>
+                saved === i ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary hover:bg-primary/15')}>
               {saving === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 : saved === i ? <Check className="w-3.5 h-3.5" />
                 : 'Salvar'}
@@ -633,7 +633,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <p className="text-sm font-medium text-gray-700">Tipos de consulta</p>
           <button onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Adicionar
           </button>
         </div>
@@ -730,7 +730,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                         <X className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleSaveEdit(t.id)} disabled={saving}
-                        className="p-1.5 text-primary hover:bg-primary/8 rounded-lg transition-colors">
+                        className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors">
                         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -757,7 +757,7 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
                       <button onClick={() => { setEditing(t.id); setEditData({ name: t.name, duration_min: t.duration_min, color: t.color, default_value: t.default_value }) }}
-                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors">
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => handleDelete(t.id)}
@@ -840,7 +840,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
         {/* Acesso rápido */}
         <div className="flex items-center gap-2 ml-auto">
           <a href="/medico" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/8 text-primary text-xs font-medium hover:bg-primary/12 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
             <LayoutDashboard className="w-3.5 h-3.5" />
             CRM
             <ExternalLink className="w-3 h-3 opacity-60" />
@@ -885,7 +885,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
   if (selectedClinic) {
     return (
       <div className="rounded-2xl overflow-hidden border border-white/60 p-6"
-        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
+        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,252,248,0.82)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
         <ClinicDetail clinic={selectedClinic} onBack={() => setSelected(null)} />
       </div>
     )
@@ -897,11 +897,11 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Clínicas ativas',   value: clinics.filter(c => c.active).length,                  color: 'text-green-600',  bg: 'bg-green-50'  },
-          { label: 'Total de clínicas', value: clinics.length,                                          color: 'text-primary', bg: 'bg-primary/8' },
+          { label: 'Total de clínicas', value: clinics.length,                                          color: 'text-primary', bg: 'bg-primary/10' },
           { label: 'Membros totais',    value: clinics.reduce((a, c) => a + (c.member_count ?? 0), 0), color: 'text-sage',       bg: 'bg-sage/10'   },
         ].map(s => (
           <div key={s.label} className="rounded-xl border border-white/60 p-4"
-            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(45,43,107,0.07)' }}>
+            style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,252,248,0.82)', boxShadow: '0 2px 12px rgba(45,43,107,0.07)' }}>
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
             <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
           </div>
@@ -910,7 +910,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
 
       {/* Clinics list */}
       <div className="rounded-2xl overflow-hidden border border-white/60"
-        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
+        style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,252,248,0.82)', boxShadow: '0 2px 24px rgba(45,43,107,0.08)' }}>
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.05]">
           <div className="flex items-center gap-2">
@@ -974,7 +974,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
                     <div className="flex items-center gap-2 justify-end">
                       <a href="/medico" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="p-1.5 text-primary/60 hover:text-primary hover:bg-primary/8 rounded-lg transition-colors"
+                        className="p-1.5 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Acessar CRM">
                         <LayoutDashboard className="w-4 h-4" />
                       </a>
