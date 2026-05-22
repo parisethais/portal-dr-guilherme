@@ -17,7 +17,6 @@ interface PacienteDashboardProps {
   carePlan: CarePlan | null
   carePlanAttachments: CarePlanAttachment[]
   invoices: Invoice[]
-  hasMrpa?: boolean
 }
 
 type Tab = 'documentos' | 'cuidados' | 'pressao' | 'notas' | 'cadastro'
@@ -29,7 +28,6 @@ export default function PacienteDashboard({
   carePlan,
   carePlanAttachments = [],
   invoices = [],
-  hasMrpa = false,
 }: PacienteDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('documentos')
 
@@ -45,11 +43,11 @@ export default function PacienteDashboard({
       label: 'Cuidados',
       icon: <ClipboardList className="w-4 h-4" />,
     },
-    ...(hasMrpa ? [{
+    {
       id: 'pressao' as Tab,
       label: 'Pressão',
       icon: <Activity className="w-4 h-4" />,
-    }] : []),
+    },
     {
       id: 'notas',
       label: 'Notas Fiscais',
