@@ -128,17 +128,37 @@ export async function updateClinic(id: string, input: Partial<Pick<Clinic, 'name
 
 export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]> {
   const { supabase } = await assertSuperAdmin()
+
+  // Step 1: busca membros sem join implícito (não depende de FK no schema)
   const { data, error } = await supabase
     .from('clinic_members')
-    .select('*, profile:profiles(full_name, email, role)')
+    .select('id, clinic_id, user_id, role, created_at, permissions, notes')
     .eq('clinic_id', clinicId)
     .order('created_at')
-  if (error) { console.error(error); return [] }
-  return (data ?? []).map((m: any) => ({
-    ...m,
-    permissions: m.permissions ?? null,
-    notes: m.notes ?? null,
-  }))
+
+  if (error) { console.error('[getClinicMembers] members:', error.message); return [] }
+  if (!data?.length) return []
+
+  // Step 2: busca profiles dos user_ids encontrados
+  const userIds = data.map((m: any) => m.user_id as string)
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role')
+    .in('id', userIds)
+
+  if (profilesError) console.error('[getClinicMembers] profiles:', profilesError.message)
+
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id as string, p]))
+
+  return data.map((m: any) => {
+    const p = profileMap.get(m.user_id)
+    return {
+      ...m,
+      permissions: (m.permissions as MemberPermissions | null) ?? null,
+      notes: (m.notes as string | null) ?? null,
+      profile: p ? { full_name: p.full_name, email: p.email, role: p.role } : undefined,
+    }
+  })
 }
 
 export async function updateMemberRole(

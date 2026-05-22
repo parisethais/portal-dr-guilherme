@@ -985,15 +985,26 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
   const [tipos,     setTipos]     = useState<ClinicConsultationType[]>([])
   const [activeTab, setActiveTab] = useState<DetailTab>('members')
   const [loading,   setLoading]   = useState(true)
+  const [loadErr,   setLoadErr]   = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
+    setLoadErr(null)
+
+    const safe = <T,>(p: Promise<T>, fallback: T, label: string) =>
+      p.catch(err => {
+        const msg = (err as Error)?.message ?? String(err)
+        console.error(`[${label}]`, msg)
+        setLoadErr(prev => prev ?? `${label}: ${msg}`)
+        return fallback
+      })
+
     Promise.all([
-      getClinicMembers(clinic.id).catch(err => { console.error('[members]', err); return [] as ClinicMember[] }),
-      getClinicSettings(clinic.id).catch(err => { console.error('[settings]', err); return {} as Record<string, string> }),
-      getClinicConvenios(clinic.id).catch(err => { console.error('[convenios]', err); return [] }),
-      getClinicSchedule(clinic.id).catch(err => { console.error('[schedule]', err); return [] }),
-      getClinicConsultationTypes(clinic.id).catch(err => { console.error('[tipos]', err); return [] }),
+      safe(getClinicMembers(clinic.id),             [] as ClinicMember[],            'members'),
+      safe(getClinicSettings(clinic.id),            {} as Record<string, string>,    'settings'),
+      safe(getClinicConvenios(clinic.id),           [],                              'convenios'),
+      safe(getClinicSchedule(clinic.id),            [],                              'schedule'),
+      safe(getClinicConsultationTypes(clinic.id),   [],                              'tipos'),
     ]).then(([m, s, cv, sc, tp]) => {
       setMembers(m as ClinicMember[])
       setSettings(s as Record<string, string>)
@@ -1051,6 +1062,13 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
           </a>
         </div>
       </div>
+
+      {/* Banner de erro de carregamento */}
+      {loadErr && (
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-mono break-all">
+          <span className="font-bold shrink-0">ERRO:</span> {loadErr}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit flex-wrap">
