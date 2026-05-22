@@ -55,6 +55,7 @@ export default async function PacientePage() {
     { data: carePlanAttachments },
     { data: invoices },
     { data: proximaConsultaArr },
+    { data: mrpaSessions },
   ] = await Promise.all([
     db.from('documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
     db.from('messages').select('*').eq('recipient_id', patientId).order('created_at', { ascending: false }),
@@ -69,9 +70,14 @@ export default async function PacientePage() {
       .gt('data_hora', new Date().toISOString())
       .order('data_hora', { ascending: true })
       .limit(1),
+    db.from('patient_mrpa_sessions')
+      .select('id')
+      .eq('patient_id', patientId)
+      .limit(1),
   ])
 
   const proximaConsulta = proximaConsultaArr?.[0] ?? null
+  const hasMrpa = (mrpaSessions?.length ?? 0) > 0
   const firstName = profile.full_name?.replace(/^\[TESTE\]\s*/i, '').split(' ')[0] ?? 'Paciente'
 
   // ── Dados da clínica para o cartão de identidade ──────────────────────
@@ -148,6 +154,7 @@ export default async function PacientePage() {
           carePlan={carePlan ?? null}
           carePlanAttachments={carePlanAttachments ?? []}
           invoices={invoices ?? []}
+          hasMrpa={hasMrpa}
         />
       </div>
     </>

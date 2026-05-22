@@ -6,7 +6,8 @@ import DocumentList from './DocumentList'
 import CuidadosTab from './CuidadosTab'
 import InvoiceList from './InvoiceList'
 import MeuCadastroTab from './MeuCadastroTab'
-import { FileText, ClipboardList, Receipt, User } from 'lucide-react'
+import MrpaTab from './MrpaTab'
+import { FileText, ClipboardList, Receipt, User, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PacienteDashboardProps {
@@ -16,9 +17,10 @@ interface PacienteDashboardProps {
   carePlan: CarePlan | null
   carePlanAttachments: CarePlanAttachment[]
   invoices: Invoice[]
+  hasMrpa?: boolean
 }
 
-type Tab = 'documentos' | 'cuidados' | 'notas' | 'cadastro'
+type Tab = 'documentos' | 'cuidados' | 'pressao' | 'notas' | 'cadastro'
 
 export default function PacienteDashboard({
   profile,
@@ -27,6 +29,7 @@ export default function PacienteDashboard({
   carePlan,
   carePlanAttachments = [],
   invoices = [],
+  hasMrpa = false,
 }: PacienteDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('documentos')
 
@@ -42,6 +45,11 @@ export default function PacienteDashboard({
       label: 'Cuidados',
       icon: <ClipboardList className="w-4 h-4" />,
     },
+    ...(hasMrpa ? [{
+      id: 'pressao' as Tab,
+      label: 'Pressão',
+      icon: <Activity className="w-4 h-4" />,
+    }] : []),
     {
       id: 'notas',
       label: 'Notas Fiscais',
@@ -92,6 +100,7 @@ export default function PacienteDashboard({
       <div className="p-6">
         {activeTab === 'documentos' && <DocumentList documents={documents} exames={exames} />}
         {activeTab === 'cuidados'   && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
+        {activeTab === 'pressao'    && <MrpaTab patientId={profile.id} />}
         {activeTab === 'notas'      && <InvoiceList invoices={invoices} />}
         {activeTab === 'cadastro'   && <MeuCadastroTab profile={profile} />}
       </div>
