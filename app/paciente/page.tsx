@@ -93,7 +93,7 @@ export default async function PacientePage() {
         .limit(1)
         .single(),
     ])
-    clinicSettings = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value ?? '']))
+    clinicSettings = Object.fromEntries((settings ?? []).map((s: { key: string; value: string | null }) => [s.key, s.value ?? '']))
 
     // Busca nome do médico separadamente (evita problema de FK implícita no PostgREST)
     if (medicoMember?.user_id) {
@@ -135,6 +135,7 @@ export default async function PacientePage() {
           crm={clinicSettings['crm_medico'] ?? null}
           endereco={clinicSettings['endereco'] ?? null}
           telefone={clinicSettings['telefone'] ?? null}
+          email={clinicSettings['email'] ?? null}
         />
 
         {/* Card próxima consulta */}

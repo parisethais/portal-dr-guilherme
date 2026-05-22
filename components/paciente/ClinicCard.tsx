@@ -1,4 +1,4 @@
-import { MapPin, Phone, Stethoscope, BadgeCheck } from 'lucide-react'
+import { MapPin, Phone, Stethoscope, BadgeCheck, Mail } from 'lucide-react'
 
 interface ClinicCardProps {
   clinicName:     string
@@ -7,6 +7,7 @@ interface ClinicCardProps {
   crm:            string | null
   endereco:       string | null
   telefone:       string | null
+  email:          string | null
 }
 
 export default function ClinicCard({
@@ -16,6 +17,7 @@ export default function ClinicCard({
   crm,
   endereco,
   telefone,
+  email,
 }: ClinicCardProps) {
   return (
     <div
@@ -52,18 +54,24 @@ export default function ClinicCard({
             </p>
           )}
 
-          {/* Endereço + Telefone */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {/* Endereço · Telefone · E-mail */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
             {endereco && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <MapPin className="w-3 h-3 shrink-0 text-gray-400" />
-                {endereco}
+              <span className="flex items-start gap-1 text-xs text-gray-500">
+                <MapPin className="w-3 h-3 shrink-0 text-gray-400 mt-0.5" />
+                <span>{endereco}</span>
               </span>
             )}
             {telefone && (
               <span className="flex items-center gap-1 text-xs text-gray-500">
                 <Phone className="w-3 h-3 shrink-0 text-gray-400" />
                 {telefone}
+              </span>
+            )}
+            {email && (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <Mail className="w-3 h-3 shrink-0 text-gray-400" />
+                {email}
               </span>
             )}
           </div>
