@@ -82,21 +82,30 @@ export default async function PacientePage() {
   let doctorName: string | null = null
 
   if (clinic?.id) {
+    // Busca settings e user_id do médico em paralelo
     const [{ data: settings }, { data: medicoMember }] = await Promise.all([
       adminDb.from('clinic_settings').select('key, value').eq('clinic_id', clinic.id),
       adminDb
         .from('clinic_members')
-        .select('user_id, profiles!inner(full_name)')
+        .select('user_id')
         .eq('clinic_id', clinic.id)
         .eq('role', 'medico')
         .limit(1)
         .single(),
     ])
     clinicSettings = Object.fromEntries((settings ?? []).map((s: any) => [s.key, s.value ?? '']))
-    const memberProfile = (medicoMember as any)?.profiles
-    const rawName = memberProfile?.full_name as string | null
-    if (rawName) {
-      doctorName = rawName.startsWith('Dr') ? rawName : `Dr. ${rawName.split(' ').slice(0, 2).join(' ')}`
+
+    // Busca nome do médico separadamente (evita problema de FK implícita no PostgREST)
+    if (medicoMember?.user_id) {
+      const { data: medicoProfile } = await adminDb
+        .from('profiles')
+        .select('full_name')
+        .eq('id', medicoMember.user_id)
+        .single()
+      const rawName = medicoProfile?.full_name as string | null
+      if (rawName) {
+        doctorName = rawName.startsWith('Dr') ? rawName : `Dr. ${rawName}`
+      }
     }
   }
 
