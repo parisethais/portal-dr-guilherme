@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 
@@ -53,18 +53,21 @@ export interface ClinicSetting {
 }
 
 // ── Guard: só superadmin ──────────────────────────────────────────────────
-// Usa o client normal (com cookie) APENAS para verificar identidade.
+// Lê os headers x-user-id e x-user-role injetados pelo middleware.
+// O middleware sobrescreve qualquer header enviado pelo browser, então é seguro.
 // Todas as queries de dados usam o adminClient (service role, bypassa RLS).
 
 async function assertSuperAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin') throw new Error('Acesso negado')
+  const h = await headers()
+  const userId   = h.get('x-user-id')
+  const userRole = h.get('x-user-role')
+
+  if (!userId || userRole !== 'superadmin') {
+    throw new Error(`Acesso negado (role=${userRole ?? 'null'})`)
+  }
+
   const adminClient = createAdminClient()
-  return { supabase: adminClient, userId: user.id }
+  return { supabase: adminClient, userId }
 }
 
 // ── Clinics ───────────────────────────────────────────────────────────────

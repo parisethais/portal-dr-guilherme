@@ -78,9 +78,10 @@ export async function middleware(request: NextRequest) {
       return res
     }
 
-    // Superadmin tentando acessar /admin → deixa passar
-    if (pathname.startsWith('/admin') && role !== 'superadmin') {
-      return NextResponse.redirect(new URL('/medico', request.url))
+    // Superadmin tentando acessar /admin → injeta headers e deixa passar
+    if (pathname.startsWith('/admin')) {
+      if (role !== 'superadmin') return NextResponse.redirect(new URL('/medico', request.url))
+      return withUserHeaders()
     }
 
     // Usuário autenticado na raiz → redireciona para o dashboard correto
