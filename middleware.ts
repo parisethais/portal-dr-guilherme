@@ -117,5 +117,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/paciente/:path*', '/medico/:path*', '/admin/:path*', '/auth/callback'],
+  // '/admin' precisa estar explícito — '/admin/:path*' pode não capturar o path bare em server action POSTs
+  matcher: ['/', '/paciente/:path*', '/medico/:path*', '/admin', '/admin/:path*', '/auth/callback'],
 }

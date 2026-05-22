@@ -1,6 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 
@@ -53,21 +54,32 @@ export interface ClinicSetting {
 }
 
 // ── Guard: só superadmin ──────────────────────────────────────────────────
-// Lê os headers x-user-id e x-user-role injetados pelo middleware.
-// O middleware sobrescreve qualquer header enviado pelo browser, então é seguro.
-// Todas as queries de dados usam o adminClient (service role, bypassa RLS).
+// Tenta duas estratégias em sequência para garantir máxima compatibilidade:
+// 1. Headers x-user-id/x-user-role injetados pelo middleware (mais rápido)
+// 2. Fallback: cookie session via createClient (funciona em server components)
 
 async function assertSuperAdmin() {
+  // --- Estratégia 1: headers do middleware ---
   const h = await headers()
-  const userId   = h.get('x-user-id')
-  const userRole = h.get('x-user-role')
+  const hUserId   = h.get('x-user-id')
+  const hUserRole = h.get('x-user-role')
 
-  if (!userId || userRole !== 'superadmin') {
-    throw new Error(`Acesso negado (role=${userRole ?? 'null'})`)
+  if (hUserId && hUserRole === 'superadmin') {
+    return { supabase: createAdminClient(), userId: hUserId }
   }
 
-  const adminClient = createAdminClient()
-  return { supabase: adminClient, userId }
+  // --- Estratégia 2: cookie session ---
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'superadmin') {
+    throw new Error(`Acesso negado (role=${profile?.role ?? 'null'}, headers: uid=${hUserId ?? 'null'} role=${hUserRole ?? 'null'})`)
+  }
+
+  return { supabase: createAdminClient(), userId: user.id }
 }
 
 // ── Clinics ───────────────────────────────────────────────────────────────
