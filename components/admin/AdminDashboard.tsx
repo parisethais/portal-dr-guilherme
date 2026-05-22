@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import type {
-  Clinic, ClinicMember,
+  Clinic, ClinicMember, MemberPermissions,
   ClinicConvenio, ClinicScheduleDay, ClinicConsultationType,
 } from '@/app/actions/admin'
 import {
   createClinic,
   getClinicMembers, addClinicMember, removeClinicMember,
+  updateMemberRole, updateMemberPermissions,
+  DEFAULT_PERMISSIONS,
   getClinicSettings, upsertClinicSetting,
   getClinicConvenios, createConvenio, updateConvenio, deleteConvenio,
   getClinicSchedule, upsertScheduleDay,
@@ -19,6 +21,8 @@ import {
   X, Check, Loader2, Trash2, ArrowLeft,
   ExternalLink, LayoutDashboard, UserCircle,
   CreditCard, Clock, CalendarClock, Pencil,
+  ChevronDown, FileText, Calendar, DollarSign,
+  UserCheck, MessageSquare, StickyNote,
 } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -124,6 +128,223 @@ function NewClinicForm({ onCreated, onCancel }: {
   )
 }
 
+// ── Permissões: config de módulos ─────────────────────────────────────────
+
+const PERMISSION_MODULES: {
+  key: keyof MemberPermissions
+  label: string
+  desc: string
+  Icon: React.FC<{ className?: string }>
+}[] = [
+  { key: 'prontuario', label: 'Prontuário',  desc: 'Ver e editar prontuários clínicos',    Icon: FileText      },
+  { key: 'agenda',     label: 'Agenda',      desc: 'Ver e gerenciar consultas da agenda',   Icon: Calendar      },
+  { key: 'financeiro', label: 'Financeiro',  desc: 'Ver valores, cobranças e relatórios',   Icon: DollarSign    },
+  { key: 'pacientes',  label: 'Pacientes',   desc: 'Acessar e editar cadastro de pacientes', Icon: UserCheck    },
+  { key: 'mensagens',  label: 'Mensagens',   desc: 'Enviar mensagens para pacientes',        Icon: MessageSquare },
+]
+
+function resolvePerms(m: ClinicMember): MemberPermissions {
+  return m.permissions ?? DEFAULT_PERMISSIONS[m.role] ?? DEFAULT_PERMISSIONS.secretaria
+}
+
+// ── Card de membro expandível ─────────────────────────────────────────────
+
+function MemberCard({ member, onRefresh, onRemove }: {
+  member: ClinicMember
+  onRefresh: (m: ClinicMember) => void
+  onRemove: (id: string) => void
+}) {
+  const [open, setOpen]     = useState(false)
+  const [perms, setPerms]   = useState<MemberPermissions>(resolvePerms(member))
+  const [role,  setRoleVal] = useState(member.role)
+  const [notes, setNotes]   = useState(member.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+
+  const roleLabel = (r: string) => ({ owner: 'Dono', medico: 'Médico', secretaria: 'Secretaria' }[r] ?? r)
+  const isOwner   = member.role === 'owner'
+
+  async function handleSave() {
+    setSaving(true)
+    if (role !== member.role && !isOwner) {
+      await updateMemberRole(member.id, role as 'medico' | 'secretaria')
+    }
+    await updateMemberPermissions(member.id, perms, notes)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+    onRefresh({ ...member, role: role as any, permissions: perms, notes })
+  }
+
+  function applyRoleDefaults(r: string) {
+    setRoleVal(r as any)
+    if (DEFAULT_PERMISSIONS[r]) setPerms({ ...DEFAULT_PERMISSIONS[r] })
+  }
+
+  return (
+    <div className={cn(
+      'rounded-xl border transition-all',
+      open ? 'border-primary/20 bg-primary/[0.02]' : 'border-gray-100 bg-white/60'
+    )}>
+      {/* ── Linha principal ── */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+
+        {/* Avatar */}
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+          style={{ backgroundColor: isOwner ? '#2D2B6B' : role === 'medico' ? '#2D2B6B' : '#7A9E7E' }}>
+          {(member.profile?.full_name ?? '?')[0].toUpperCase()}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-800 truncate">
+            {member.profile?.full_name ?? '—'}
+          </p>
+          <p className="text-xs text-gray-400 truncate">{member.profile?.email ?? '—'}</p>
+        </div>
+
+        {/* Role badge */}
+        <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium shrink-0',
+          isOwner         ? 'bg-amber-100 text-amber-700' :
+          role === 'medico' ? 'bg-primary/10 text-primary' :
+                              'bg-sage/15 text-sage-dark')}>
+          {roleLabel(role)}
+        </span>
+
+        {/* Permission chips resumo */}
+        <div className="hidden md:flex items-center gap-1 shrink-0">
+          {PERMISSION_MODULES.map(({ key, label }) => (
+            <span key={key} className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded font-medium',
+              perms[key] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 line-through'
+            )}>
+              {label}
+            </span>
+          ))}
+        </div>
+
+        {/* Expandir + remover */}
+        <div className="flex items-center gap-1 shrink-0">
+          {!isOwner && (
+            <button onClick={() => onRemove(member.id)}
+              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button onClick={() => setOpen(v => !v)}
+            className={cn('p-1.5 rounded-lg transition-all',
+              open ? 'text-primary bg-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100')}>
+            <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Painel expandido ── */}
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-100/80 pt-4">
+
+          {/* Função */}
+          {!isOwner && (
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-20 shrink-0">Função</p>
+              <div className="flex gap-2">
+                {(['medico', 'secretaria'] as const).map(r => (
+                  <button key={r} onClick={() => applyRoleDefaults(r)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all',
+                      role === r
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-primary/30 hover:text-primary'
+                    )}>
+                    {r === 'medico' ? 'Médico' : 'Secretaria'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 ml-1">
+                Mudar função aplica permissões padrão
+              </p>
+            </div>
+          )}
+
+          {/* Permissões */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Permissões de acesso</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {PERMISSION_MODULES.map(({ key, label, desc, Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => !isOwner && setPerms(p => ({ ...p, [key]: !p[key] }))}
+                  disabled={isOwner}
+                  className={cn(
+                    'flex items-start gap-3 p-3 rounded-xl border text-left transition-all',
+                    isOwner ? 'cursor-default opacity-70' : 'cursor-pointer',
+                    perms[key]
+                      ? 'border-green-200 bg-green-50/60 hover:bg-green-50'
+                      : 'border-gray-200 bg-gray-50/60 hover:bg-gray-100/60'
+                  )}>
+                  <div className={cn(
+                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+                    perms[key] ? 'bg-green-100' : 'bg-gray-200'
+                  )}>
+                    <Icon className={cn('w-3.5 h-3.5', perms[key] ? 'text-green-600' : 'text-gray-400')} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn('text-sm font-medium', perms[key] ? 'text-gray-800' : 'text-gray-400')}>
+                        {label}
+                      </span>
+                      <span className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded-full font-semibold',
+                        perms[key] ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                      )}>
+                        {perms[key] ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <StickyNote className="w-3 h-3" />
+              Observações internas
+            </label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Ex: Cobre quando Dr. Guilherme está de férias — sem acesso a financeiro..."
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none text-gray-700 placeholder-gray-300"
+            />
+          </div>
+
+          {/* Rodapé */}
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-xs text-gray-400">Membro desde {fmtDate(member.created_at)}</p>
+            {!isOwner && (
+              <button onClick={handleSave} disabled={saving}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+                  saved ? 'bg-green-100 text-green-700' :
+                  'bg-primary text-white hover:bg-primary-dark disabled:opacity-60'
+                )}>
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : saved  ? <Check className="w-3.5 h-3.5" />
+                  : <Check className="w-3.5 h-3.5" />}
+                {saved ? 'Salvo!' : 'Salvar perfil'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Aba: Membros ──────────────────────────────────────────────────────────
 
 function MembersTab({ clinicId, members, loading, onRefresh }: {
@@ -136,8 +357,6 @@ function MembersTab({ clinicId, members, loading, onRefresh }: {
   const [role, setRole]     = useState<'medico' | 'secretaria'>('medico')
   const [error, setError]   = useState('')
   const [saving, setSaving] = useState(false)
-
-  const roleLabel = (r: string) => ({ owner: 'Dono', medico: 'Médico', secretaria: 'Secretaria' }[r] ?? r)
 
   async function handleAdd() {
     if (!email.trim()) return
@@ -158,8 +377,10 @@ function MembersTab({ clinicId, members, loading, onRefresh }: {
 
   return (
     <div className="space-y-4">
+
+      {/* Adicionar membro */}
       <div className="rounded-xl border border-gray-100 p-4 bg-white/60 space-y-3">
-        <p className="text-sm font-medium text-gray-700">Adicionar membro</p>
+        <p className="text-sm font-semibold text-gray-700">Adicionar membro</p>
         <div className="flex gap-2 flex-wrap">
           <input value={email} onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
@@ -179,48 +400,24 @@ function MembersTab({ clinicId, members, loading, onRefresh }: {
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
-      <div className="rounded-xl border border-gray-100 overflow-hidden bg-white/60">
-        {loading ? (
-          <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
-        ) : members.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">Nenhum membro ainda.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/80">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nome</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Função</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Desde</th>
-                <th className="w-12" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {members.map(m => (
-                <tr key={m.id} className="hover:bg-gray-50/60">
-                  <td className="px-4 py-3 font-medium text-gray-800">{m.profile?.full_name ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
-                      m.role === 'owner'  ? 'bg-amber-100 text-amber-700' :
-                      m.role === 'medico' ? 'bg-blue-100 text-blue-700'   :
-                                            'bg-gray-100 text-gray-600')}>
-                      {roleLabel(m.role)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">{fmtDate(m.created_at)}</td>
-                  <td className="px-4 py-3">
-                    {m.role !== 'owner' && (
-                      <button onClick={() => handleRemove(m.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+
+      {/* Lista de membros */}
+      {loading ? (
+        <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+      ) : members.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-400">Nenhum membro ainda.</p>
+      ) : (
+        <div className="space-y-2">
+          {members.map(m => (
+            <MemberCard
+              key={m.id}
+              member={m}
+              onRefresh={updated => onRefresh(members.map(x => x.id === updated.id ? updated : x))}
+              onRemove={handleRemove}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

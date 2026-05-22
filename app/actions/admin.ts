@@ -16,14 +16,31 @@ export interface Clinic {
   member_count?: number
 }
 
+export interface MemberPermissions {
+  prontuario: boolean
+  agenda:     boolean
+  financeiro: boolean
+  pacientes:  boolean
+  mensagens:  boolean
+}
+
+export const DEFAULT_PERMISSIONS: Record<string, MemberPermissions> = {
+  owner:      { prontuario: true,  agenda: true, financeiro: true,  pacientes: true, mensagens: true },
+  medico:     { prontuario: true,  agenda: true, financeiro: true,  pacientes: true, mensagens: true },
+  secretaria: { prontuario: false, agenda: true, financeiro: false, pacientes: true, mensagens: true },
+}
+
 export interface ClinicMember {
-  id:         string
-  clinic_id:  string
-  user_id:    string
-  role:       'owner' | 'medico' | 'secretaria'
-  created_at: string
+  id:          string
+  clinic_id:   string
+  user_id:     string
+  role:        'owner' | 'medico' | 'secretaria'
+  created_at:  string
+  permissions: MemberPermissions | null
+  notes:       string | null
   profile?: {
     full_name: string | null
+    email:     string | null
     role:      string | null
   }
 }
@@ -110,11 +127,46 @@ export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]
   const { supabase } = await assertSuperAdmin()
   const { data, error } = await supabase
     .from('clinic_members')
-    .select('*, profile:profiles(full_name, role)')
+    .select('*, profile:profiles(full_name, email, role)')
     .eq('clinic_id', clinicId)
     .order('created_at')
   if (error) { console.error(error); return [] }
-  return data ?? []
+  return (data ?? []).map((m: any) => ({
+    ...m,
+    permissions: m.permissions ?? null,
+    notes: m.notes ?? null,
+  }))
+}
+
+export async function updateMemberRole(
+  memberId: string,
+  role: 'medico' | 'secretaria',
+) {
+  const { supabase } = await assertSuperAdmin()
+  const { error } = await supabase
+    .from('clinic_members')
+    .update({ role })
+    .eq('id', memberId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function updateMemberPermissions(
+  memberId: string,
+  permissions: MemberPermissions,
+  notes?: string,
+) {
+  const { supabase } = await assertSuperAdmin()
+  const patch: any = { permissions }
+  if (notes !== undefined) patch.notes = notes
+  const { error } = await supabase
+    .from('clinic_members')
+    .update(patch)
+    .eq('id', memberId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
 }
 
 export async function addClinicMember(clinicId: string, email: string, role: 'medico' | 'secretaria') {
