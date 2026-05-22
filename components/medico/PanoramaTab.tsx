@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo } from 'react'
 import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock, Users, UserMinus, UserPlus } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
 import { updateRetornoPrevisto } from '@/app/actions/profile'
 import { TIPO_LABEL } from './ConsultaModal'
@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 
 // ── Cores ────────────────────────────────────────────────────
-const PRIMARY    = '#1A1F2E'
+const PRIMARY    = '#2D2B6B'
 // Cores bem distintas para o donut
 // Cores do gráfico "Como conheceram" — 5 categorias fixas
 const COLORS_PIE: Record<string, string> = {
@@ -596,26 +596,81 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   return (
     <div className="space-y-6">
 
-      {/* ── 1. Cards resumo ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* ── 1. Stats band — desktop ── */}
+      <div className="hidden sm:flex gap-3">
+
+        {/* Painel: Base de pacientes */}
+        <div
+          className="flex-1 rounded-xl border border-white/60 backdrop-blur-sm overflow-hidden"
+          style={{ backgroundColor: 'rgba(255,255,255,0.75)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}
+        >
+          <div className="px-5 pt-3 pb-2.5 border-b border-black/[0.05]">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.14em]">Base de pacientes</span>
+          </div>
+          <div className="grid grid-cols-4 divide-x divide-black/[0.05]">
+            {([
+              { label: 'Ativos',      value: totais.ativo,      color: '#2D2B6B', iconColor: 'rgba(45,43,107,0.45)',   Icon: Users      },
+              { label: 'Inativos',    value: totais.inativo,    color: '#C4C9D4', iconColor: 'rgba(196,201,212,0.8)',  Icon: UserMinus  },
+              { label: 'Óbitos',      value: totais.obito,      color: '#C17070', iconColor: 'rgba(193,112,112,0.55)', Icon: null       },
+              { label: 'Sem retorno', value: totais.semRetorno, color: '#B8943F', iconColor: 'rgba(184,148,63,0.55)',  Icon: Clock      },
+            ] as const).map(({ label, value, color, iconColor, Icon }) => (
+              <div key={label} className="px-5 py-4">
+                <div className="flex items-center gap-1.5 mb-3">
+                  {Icon && <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: iconColor }} />}
+                  <span className="text-[11px] font-medium text-gray-400 leading-none">{label}</span>
+                </div>
+                <p className="text-[2rem] font-bold tracking-tight leading-none" style={{ color }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Painel: Atividade do mês */}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ borderColor: 'rgba(122,158,126,0.22)', backgroundColor: 'rgba(122,158,126,0.07)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}
+        >
+          <div className="px-5 pt-3 pb-2.5 border-b" style={{ borderColor: 'rgba(122,158,126,0.15)' }}>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#7A9E7E' }}>Este mês</span>
+          </div>
+          <div className="grid grid-cols-2">
+            {([
+              { label: 'Consultas', value: totais.consultasMes, Icon: CalendarDays },
+              { label: 'Novos',     value: totais.novosMes,     Icon: UserPlus     },
+            ] as const).map(({ label, value, Icon }, i) => (
+              <div
+                key={label}
+                className="px-5 py-4"
+                style={i > 0 ? { borderLeft: '1px solid rgba(122,158,126,0.15)' } : {}}
+              >
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(122,158,126,0.75)' }} />
+                  <span className="text-[11px] font-medium leading-none" style={{ color: '#7A9E7E' }}>{label}</span>
+                </div>
+                <p className="text-[2rem] font-bold tracking-tight leading-none" style={{ color: '#2D2B6B' }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 1. Stats band — mobile fallback ── */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
         {[
-          { label: 'Ativos',          value: totais.ativo,        valueColor: 'text-primary',       bg: 'rgba(255,255,255,0.75)', accent: '#1A1F2E' },
-          { label: 'Inativos',        value: totais.inativo,      valueColor: 'text-gray-400',      bg: 'rgba(255,255,255,0.60)', accent: '#D1D5DB' },
-          { label: 'Óbitos',          value: totais.obito,        valueColor: 'text-red-500',       bg: 'rgba(254,242,242,0.65)', accent: '#EF4444' },
-          { label: 'Sem retorno',     value: totais.semRetorno,   valueColor: 'text-amber-500',     bg: 'rgba(255,251,235,0.65)', accent: '#F59E0B' },
-          { label: 'Consultas / mês', value: totais.consultasMes, valueColor: 'text-primary',       bg: 'rgba(122,158,126,0.12)', accent: '#7A9E7E' },
-          { label: 'Novos / mês',     value: totais.novosMes,     valueColor: 'text-primary',       bg: 'rgba(122,158,126,0.12)', accent: '#7A9E7E' },
+          { label: 'Ativos',        value: totais.ativo,        color: '#2D2B6B', bg: 'rgba(255,255,255,0.75)' },
+          { label: 'Inativos',      value: totais.inativo,      color: '#C4C9D4', bg: 'rgba(255,255,255,0.60)' },
+          { label: 'Óbitos',        value: totais.obito,        color: '#C17070', bg: 'rgba(255,255,255,0.65)' },
+          { label: 'Sem retorno',   value: totais.semRetorno,   color: '#B8943F', bg: 'rgba(255,255,255,0.65)' },
+          { label: 'Consultas/mês', value: totais.consultasMes, color: '#2D2B6B', bg: 'rgba(122,158,126,0.09)' },
+          { label: 'Novos/mês',     value: totais.novosMes,     color: '#2D2B6B', bg: 'rgba(122,158,126,0.09)' },
         ].map(card => (
           <div
             key={card.label}
-            className="rounded-xl border border-white/60 backdrop-blur-sm overflow-hidden"
+            className="rounded-xl border border-white/60 backdrop-blur-sm p-4"
             style={{ backgroundColor: card.bg }}
           >
-            <div className="h-0.5 w-full" style={{ backgroundColor: card.accent, opacity: 0.4 }} />
-            <div className="p-4">
-              <p className={`text-4xl font-bold tracking-tight ${card.valueColor}`}>{card.value}</p>
-              <p className="text-sm font-semibold text-gray-700 mt-2 leading-none">{card.label}</p>
-            </div>
+            <p className="text-3xl font-bold tracking-tight leading-none" style={{ color: card.color }}>{card.value}</p>
+            <p className="text-sm font-medium text-gray-500 mt-2">{card.label}</p>
           </div>
         ))}
       </div>
