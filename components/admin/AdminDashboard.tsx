@@ -846,7 +846,7 @@ function ClinicDetail({ clinic, onBack }: { clinic: Clinic; onBack: () => void }
             <ExternalLink className="w-3 h-3 opacity-60" />
           </a>
           <a href="/paciente" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-600 text-xs font-medium hover:bg-sky-100 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sage/10 text-sage-dark text-xs font-medium hover:bg-sage/20 transition-colors">
             <UserCircle className="w-3.5 h-3.5" />
             Portal
             <ExternalLink className="w-3 h-3 opacity-60" />
@@ -980,7 +980,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
                       </a>
                       <a href="/paciente" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="p-1.5 text-sky-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                        className="p-1.5 text-sage hover:text-sage-dark hover:bg-sage/10 rounded-lg transition-colors"
                         title="Ver portal do paciente">
                         <UserCircle className="w-4 h-4" />
                       </a>
