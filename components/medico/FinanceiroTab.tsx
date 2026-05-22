@@ -14,8 +14,18 @@ import {
   Pencil, Trash2, X, Check, Loader2, ChevronDown,
   CalendarCheck, UserMinus, Info, FileText, Send,
 } from 'lucide-react'
-import { upsertClinicSetting } from '@/app/actions/financial'
+import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
 import PatientCombobox from '@/components/ui/PatientCombobox'
+
+// ── Preços fixos por tipo de consulta ────────────────────────────────────
+// Valores do consultório do Dr. Guilherme (retorno gratuito)
+const TIPO_PRECO: Record<string, number> = {
+  primeira_consulta:          1000,
+  nova_consulta:              1000,
+  retorno:                    0,
+  primeira_consulta_desconto: 500,
+  nova_consulta_desconto:     500,
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -346,10 +356,9 @@ interface Props {
   doctorId: string
   consultas?: Consulta[]
   patients?: Profile[]
-  ticketMedioDefault?: number
 }
 
-export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [], ticketMedioDefault = 0 }: Props) {
+export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [] }: Props) {
   const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
   const [period, setPeriod]   = useState<'mes' | 'trimestre' | 'ano' | 'tudo'>('mes')
   const [scope,  setScope]    = useState<'all' | 'clinic' | 'personal'>('all')
@@ -359,21 +368,6 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
   const [pending, startTransition] = useTransition()
   const [saving, setSaving] = useState(false)
 
-  // Ticket médio configurável manualmente (fallback quando não há histórico)
-  const [ticketCustom, setTicketCustom]         = useState(ticketMedioDefault)
-  const [editingTicket, setEditingTicket]       = useState(false)
-  const [ticketInput, setTicketInput]           = useState(String(ticketMedioDefault || ''))
-  const [savingTicket, setSavingTicket]         = useState(false)
-
-  async function handleSaveTicket() {
-    const val = parseFloat(ticketInput.replace(',', '.'))
-    if (isNaN(val) || val < 0) return
-    setSavingTicket(true)
-    await upsertClinicSetting('ticket_medio_consulta', String(val))
-    setTicketCustom(val)
-    setEditingTicket(false)
-    setSavingTicket(false)
-  }
 
   // ── Filtro ──────────────────────────────────────────────────────────────
 
@@ -406,18 +400,9 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
   const saldo = receita - despesa
 
   // ── Projeções financeiras ────────────────────────────────────────────────
-  const { projecaoMes, receitaPotencial, ticketMedio, ticketEfetivo, agendadasMes } = useMemo(() => {
-    const hoje  = new Date()
+  const { projecaoMes, receitaPotencial, ticketMedio, agendadasMes, agendadasBreakdown } = useMemo(() => {
+    const hoje     = new Date()
     const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
-
-    // Ticket médio: média das receitas históricas registradas
-    const receitasHistoricas = entries.filter(e => e.type === 'receita' && e.status === 'pago' && e.amount > 0)
-    const ticketMedio = receitasHistoricas.length > 0
-      ? receitasHistoricas.reduce((s, e) => s + e.amount, 0) / receitasHistoricas.length
-      : 0
-
-    // Ticket efetivo: usa histórico quando disponível, senão o valor configurado manualmente
-    const ticketEfetivo = ticketMedio > 0 ? ticketMedio : ticketCustom
 
     // Consultas agendadas/confirmadas ainda não ocorridas neste mês
     const agora = hoje.toISOString()
@@ -427,17 +412,35 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
       c.data_hora > agora
     )
 
+    // Projeção por tipo: cada agendamento vale o preço do seu tipo
+    let projecaoAgendamentos = 0
+    const countByTipo: Record<string, { count: number; valor: number }> = {}
+    for (const c of agendadasMes) {
+      const valor = TIPO_PRECO[c.tipo] ?? 0
+      projecaoAgendamentos += valor
+      if (!countByTipo[c.tipo]) countByTipo[c.tipo] = { count: 0, valor }
+      countByTipo[c.tipo].count++
+    }
+    const agendadasBreakdown = Object.entries(countByTipo)
+      .map(([tipo, d]) => ({ tipo, ...d }))
+      .sort((a, b) => (b.valor * b.count) - (a.valor * a.count))
+
     // Receita já realizada no mês (registrada nos lançamentos)
     const receitaMesAtual = entries
       .filter(e => e.type === 'receita' && e.status === 'pago' && monthKey(e.date) === mesAtual)
       .reduce((s, e) => s + e.amount, 0)
 
-    const projecaoMes = receitaMesAtual + (agendadasMes.length * ticketEfetivo)
+    const projecaoMes = receitaMesAtual + projecaoAgendamentos
 
-    // Pacientes inativos: sem consulta realizada nos últimos 2 anos
+    // Ticket médio histórico (de lançamentos — referência para inativos)
+    const receitasHistoricas = entries.filter(e => e.type === 'receita' && e.status === 'pago' && e.amount > 0)
+    const ticketMedio = receitasHistoricas.length > 0
+      ? receitasHistoricas.reduce((s, e) => s + e.amount, 0) / receitasHistoricas.length
+      : 750 // fallback: média simples dos tipos cobrados (1000+1000+500+500)/4
+
+    // Pacientes inativos (+2 anos sem consulta realizada)
     const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 2)
     const cutoffISO = cutoff.toISOString()
-
     const ultimaConsultaMap = new Map<string, string>()
     consultas.forEach(c => {
       if (c.status === 'realizada') {
@@ -445,25 +448,22 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
         if (!ult || c.data_hora > ult) ultimaConsultaMap.set(c.patient_id, c.data_hora)
       }
     })
-
     const inativos = patients.filter(p => {
       if (p.status_paciente === 'obito') return false
       const ultima = ultimaConsultaMap.get(p.id)
       return !ultima || ultima < cutoffISO
     })
 
-    // Frequência média: total de consultas realizadas ÷ pacientes com histórico ÷ meses de histórico
     const ativosComHistorico = patients.filter(p => ultimaConsultaMap.has(p.id))
     const totalRealizadas    = consultas.filter(c => c.status === 'realizada').length
-    const mesesHistorico     = 24 // janela de referência
     const freqMensal         = ativosComHistorico.length > 0
-      ? totalRealizadas / ativosComHistorico.length / mesesHistorico
+      ? totalRealizadas / ativosComHistorico.length / 24
       : 0
 
-    const receitaPotencial = inativos.length * freqMensal * ticketEfetivo * 12 // anual
+    const receitaPotencial = inativos.length * freqMensal * ticketMedio * 12
 
-    return { projecaoMes, receitaPotencial, ticketMedio, ticketEfetivo, agendadasMes }
-  }, [entries, consultas, patients, ticketCustom])
+    return { projecaoMes, receitaPotencial, ticketMedio, agendadasMes, agendadasBreakdown }
+  }, [entries, consultas, patients])
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
@@ -568,54 +568,28 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                   <span className="font-medium text-gray-700">{fmtBRL(receita)}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center">
-                <span>Agendadas ({agendadasMes.length} consulta{agendadasMes.length !== 1 ? 's' : ''})</span>
-                <span className="font-medium" style={{ color: '#7A9E7E' }}>
-                  {ticketEfetivo > 0 ? `+${fmtBRL(agendadasMes.length * ticketEfetivo)}` : '—'}
-                </span>
-              </div>
-
-              {/* Linha do ticket médio — editável */}
-              <div className="pt-1.5 mt-1 border-t border-gray-100">
-                {editingTicket ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-400" style={{ fontSize: 10 }}>R$</span>
-                    <input
-                      autoFocus
-                      type="number"
-                      value={ticketInput}
-                      onChange={e => setTicketInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') handleSaveTicket(); if (e.key === 'Escape') setEditingTicket(false) }}
-                      className="w-24 text-xs border border-primary/30 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                      placeholder="0,00"
-                      min={0}
-                    />
-                    <button onClick={handleSaveTicket} disabled={savingTicket}
-                      className="flex items-center gap-0.5 px-2 py-0.5 bg-primary text-white rounded text-[10px] font-medium disabled:opacity-50">
-                      {savingTicket ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Check className="w-2.5 h-2.5" />}
-                      OK
-                    </button>
-                    <button onClick={() => setEditingTicket(false)}
-                      className="text-gray-300 hover:text-gray-500">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { setTicketInput(String(ticketEfetivo || '')); setEditingTicket(true) }}
-                    className="flex items-center gap-1 text-gray-400 hover:text-gray-600 group transition-colors"
-                    style={{ fontSize: 10 }}
-                  >
-                    <Info className="w-3 h-3 shrink-0" />
-                    {ticketMedio > 0
-                      ? <>Ticket médio histórico: <span className="font-medium text-gray-600 ml-0.5">{fmtBRL(ticketMedio)}/consulta</span></>
-                      : ticketCustom > 0
-                        ? <>Valor por consulta: <span className="font-medium text-gray-600 ml-0.5">{fmtBRL(ticketCustom)}</span> — <span className="underline group-hover:no-underline">editar</span></>
-                        : <><span className="underline group-hover:no-underline">Defina o valor por consulta</span> para calcular a projeção</>
-                    }
-                    <Pencil className="w-2.5 h-2.5 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                )}
+              {/* Breakdown por tipo de consulta */}
+              {agendadasBreakdown.map(({ tipo, count, valor }) => (
+                <div key={tipo} className="flex justify-between">
+                  <span>
+                    {TIPO_LABEL[tipo as keyof typeof TIPO_LABEL] ?? tipo}
+                    {' '}
+                    <span className="text-gray-400">×{count}</span>
+                  </span>
+                  <span className="font-medium" style={{ color: valor > 0 ? '#7A9E7E' : '#9CA3AF' }}>
+                    {valor > 0 ? `+${fmtBRL(valor * count)}` : 'Gratuito'}
+                  </span>
+                </div>
+              ))}
+              {agendadasMes.length === 0 && (
+                <div className="text-gray-400 flex items-center gap-1">
+                  <Info className="w-3 h-3 shrink-0" />
+                  Nenhuma consulta agendada para o restante do mês.
+                </div>
+              )}
+              <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
+                <Info className="w-3 h-3 shrink-0" />
+                Baseado nos valores das consultas agendadas (1ª/Nova: R$1.000 · Desconto: R$500 · Retorno: gratuito)
               </div>
             </div>
           </div>
@@ -646,17 +620,12 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
                     <span className="font-medium text-gray-700">{nInativos}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Ticket por consulta</span>
-                    <span className="font-medium text-gray-700">
-                      {ticketEfetivo > 0 ? fmtBRL(ticketEfetivo) : '—'}
-                    </span>
+                    <span>Ticket médio de referência</span>
+                    <span className="font-medium text-gray-700">{fmtBRL(ticketMedio)}</span>
                   </div>
                   <div className="pt-1.5 mt-1 border-t border-gray-100 flex items-center gap-1 text-gray-400" style={{ fontSize: 10 }}>
                     <Info className="w-3 h-3 shrink-0" />
-                    {ticketEfetivo > 0
-                      ? 'Estimativa anual baseada na frequência histórica da base ativa'
-                      : <button onClick={() => { setTicketInput(''); setEditingTicket(true) }} className="underline hover:no-underline">Defina o valor por consulta acima para calcular</button>
-                    }
+                    Estimativa anual baseada na frequência histórica da base ativa
                   </div>
                 </div>
               )
