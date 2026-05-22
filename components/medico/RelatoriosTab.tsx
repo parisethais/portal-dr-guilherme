@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type { Profile, Consulta, ConsultaTipo, ConsultaStatus, LabResult } from '@/lib/types'
 import { TIPO_LABEL } from './ConsultaModal'
 import { computeLabAlerts, countLabAlerts } from '@/lib/lab-alerts'
@@ -8,7 +8,7 @@ import { parseDiagnosticos } from './prontuario/DiagnosticosPanel'
 import {
   Users, Stethoscope, BarChart2, AlertTriangle, Clock, Activity,
   FlaskConical, Search, X, ChevronUp, ChevronDown, ChevronsUpDown,
-  Heart, CalendarX, UserMinus, Microscope,
+  Heart, CalendarX, UserMinus, Microscope, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -36,6 +36,45 @@ const AGE_GROUPS = [
   { label: '60–74 anos', min: 60, max: 74  },
   { label: '≥ 75 anos',  min: 75, max: 999 },
 ]
+
+// ── Paginação ─────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 12
+
+function Pagination({ total, page, onPage }: { total: number; page: number; onPage: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  if (total <= PAGE_SIZE) return null
+  const from = (page - 1) * PAGE_SIZE + 1
+  const to   = Math.min(page * PAGE_SIZE, total)
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+    .reduce<(number | '...')[]>((acc, n, i, arr) => {
+      if (i > 0 && typeof arr[i-1] === 'number' && (n as number) - (arr[i-1] as number) > 1) acc.push('...')
+      acc.push(n)
+      return acc
+    }, [])
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100">
+      <p className="text-xs text-gray-400">{from}–{to} de {total}</p>
+      <div className="flex items-center gap-0.5">
+        <button type="button" onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
+          className="p-1.5 rounded text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 disabled:cursor-not-allowed">
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+        {pages.map((n, i) => n === '...'
+          ? <span key={`e${i}`} className="px-1 text-xs text-gray-300">…</span>
+          : <button key={n} type="button" onClick={() => onPage(n as number)}
+              className={`w-6 h-6 rounded text-xs font-medium transition-colors ${page === n ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+              {n}
+            </button>
+        )}
+        <button type="button" onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
+          className="p-1.5 rounded text-gray-400 hover:text-primary hover:bg-primary/5 disabled:opacity-30 disabled:cursor-not-allowed">
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function periodCutoff(months: number): string | null {
@@ -197,6 +236,12 @@ function MiniBarChart({ items, maxVal, color = '#1a3a5c' }: {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function RelatoriosTab({ patients, consultas, labResults }: RelatoriosTabProps) {
   const [activeTab, setActiveTab] = useState<RelTab>('gestao')
+
+  // Paginação das tabelas
+  const [retornoPage,  setRetornoPage]  = useState(1)
+  const [baixaPage,    setBaixaPage]    = useState(1)
+  const [labPage,      setLabPage]      = useState(1)
+  const resetPages = useCallback(() => { setRetornoPage(1); setBaixaPage(1); setLabPage(1) }, [])
 
   // Gestão state
   const [gPeriod,      setGPeriod]      = useState(12)
@@ -572,7 +617,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 <tbody>
                   {sortedBaixaAdesao.length === 0
                     ? <EmptyRow cols={5} msg="Nenhum paciente com essa taxa de falta no período." />
-                    : sortedBaixaAdesao.map(pd => (
+                    : sortedBaixaAdesao.slice((baixaPage-1)*PAGE_SIZE, baixaPage*PAGE_SIZE).map(pd => (
                       <tr key={pd.patient.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                         <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{pd.patient.full_name || '—'}</td>
                         <td className="px-4 py-2.5 text-gray-600 text-center">{pd.pastC.length}</td>
@@ -597,6 +642,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 </tbody>
               </table>
             </div>
+            <Pagination total={sortedBaixaAdesao.length} page={baixaPage} onPage={setBaixaPage} />
           </SectionCard>
 
           {/* ── Retorno Vencido ── */}
@@ -619,7 +665,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 <tbody>
                   {sortedRetorno.length === 0
                     ? <EmptyRow cols={5} msg="Nenhum paciente com retorno vencido." />
-                    : sortedRetorno.map(pd => (
+                    : sortedRetorno.slice((retornoPage-1)*PAGE_SIZE, retornoPage*PAGE_SIZE).map(pd => (
                       <tr key={pd.patient.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                         <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{pd.patient.full_name || '—'}</td>
                         <td className="px-4 py-2.5 text-gray-500 max-w-[200px]">
@@ -648,6 +694,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 </tbody>
               </table>
             </div>
+            <Pagination total={sortedRetorno.length} page={retornoPage} onPage={setRetornoPage} />
           </SectionCard>
 
           {/* ── Alertas Críticos Lab + PA (2-col) ── */}
@@ -963,6 +1010,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
               {pFiltered.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-8">Nenhum paciente encontrado com esses critérios.</p>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -977,7 +1025,7 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                       </tr>
                     </thead>
                     <tbody>
-                      {pFiltered.map(pd => (
+                      {pFiltered.slice((labPage-1)*PAGE_SIZE, labPage*PAGE_SIZE).map(pd => (
                         <tr key={pd.patient.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                           <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{pd.patient.full_name || '—'}</td>
                           <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
@@ -1003,6 +1051,8 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                     </tbody>
                   </table>
                 </div>
+                <Pagination total={pFiltered.length} page={labPage} onPage={setLabPage} />
+                </>
               )}
             </div>
           )}
