@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import React, { useState, useTransition, useMemo } from 'react'
 import type { FinancialEntry, EntryInput } from '@/app/actions/financial'
 import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry } from '@/app/actions/financial'
 import {
@@ -58,13 +58,13 @@ function MonthlyChart({ entries }: { entries: FinancialEntry[] }) {
           <div key={month} className="flex-1 flex flex-col items-center gap-0.5">
             <div className="w-full flex items-end gap-0.5 h-14">
               <div
-                className="flex-1 rounded-t-sm bg-green-400/70 transition-all"
-                style={{ height: `${(v.receita / max) * 100}%`, minHeight: v.receita > 0 ? 2 : 0 }}
+                className="flex-1 rounded-t-sm transition-all"
+                style={{ height: `${(v.receita / max) * 100}%`, minHeight: v.receita > 0 ? 2 : 0, backgroundColor: 'rgba(122,158,126,0.7)' }}
                 title={`Receita: ${fmtBRL(v.receita)}`}
               />
               <div
-                className="flex-1 rounded-t-sm bg-red-400/70 transition-all"
-                style={{ height: `${(v.despesa / max) * 100}%`, minHeight: v.despesa > 0 ? 2 : 0 }}
+                className="flex-1 rounded-t-sm transition-all"
+                style={{ height: `${(v.despesa / max) * 100}%`, minHeight: v.despesa > 0 ? 2 : 0, backgroundColor: 'rgba(193,112,112,0.65)' }}
                 title={`Despesa: ${fmtBRL(v.despesa)}`}
               />
             </div>
@@ -121,7 +121,7 @@ function EntryForm({
                 className={cn(
                   'flex-1 py-2 text-sm font-medium transition-colors',
                   form.type === t
-                    ? t === 'receita' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    ? t === 'receita' ? 'bg-sage-dark text-white' : 'bg-rose-500 text-white'
                     : 'text-gray-500 hover:bg-gray-50'
                 )}
               >
@@ -139,7 +139,7 @@ function EntryForm({
                 onClick={() => set('scope', s)}
                 className={cn(
                   'flex-1 py-2 text-sm font-medium transition-colors',
-                  form.scope === s ? 'bg-blue-500 text-white' : 'text-gray-500 hover:bg-gray-50'
+                  form.scope === s ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
                 )}
               >
                 {l}
@@ -156,7 +156,7 @@ function EntryForm({
           <select
             value={form.category}
             onChange={e => set('category', e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
           >
             {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
@@ -170,7 +170,7 @@ function EntryForm({
             value={form.amount ?? ''}
             onChange={e => set('amount', parseFloat(e.target.value) || 0)}
             placeholder="0,00"
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
       </div>
@@ -183,7 +183,7 @@ function EntryForm({
             type="date"
             value={form.date ?? ''}
             onChange={e => set('date', e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <div>
@@ -191,7 +191,7 @@ function EntryForm({
           <select
             value={form.status}
             onChange={e => set('status', e.target.value as EntryInput['status'])}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
           >
             <option value="pago">Pago</option>
             <option value="pendente">Pendente</option>
@@ -203,7 +203,7 @@ function EntryForm({
           <select
             value={form.payment_method ?? ''}
             onChange={e => set('payment_method', e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
           >
             <option value="">—</option>
             {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -218,7 +218,7 @@ function EntryForm({
           value={form.description ?? ''}
           onChange={e => set('description', e.target.value)}
           placeholder="Ex: Plantão HRSJ – jan/2026"
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
@@ -232,7 +232,7 @@ function EntryForm({
           disabled={!valid || saving}
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-            valid && !saving ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            valid && !saving ? 'bg-primary text-white hover:bg-primary-dark' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           )}
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
@@ -324,31 +324,31 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
     })
   }
 
-  const statusBadge = (s: string) => ({
-    pago:      'bg-green-100 text-green-700',
-    pendente:  'bg-yellow-100 text-yellow-700',
-    cancelado: 'bg-gray-100 text-gray-400',
-  }[s] ?? 'bg-gray-100 text-gray-400')
+  const statusBadgeStyle = (s: string): React.CSSProperties => ({
+    pago:      { backgroundColor: 'rgba(122,158,126,0.12)', color: '#4E7A52' },
+    pendente:  { backgroundColor: 'rgba(184,148,63,0.10)',  color: '#B8943F' },
+    cancelado: { backgroundColor: 'rgba(0,0,0,0.05)',       color: '#9CA3AF' },
+  }[s] ?? { backgroundColor: 'rgba(0,0,0,0.05)', color: '#9CA3AF' })
 
   return (
     <div className="space-y-5">
       {/* ── KPI Cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Receita',  value: receita,  icon: TrendingUp,   color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Despesa',  value: despesa,  icon: TrendingDown, color: 'text-red-500',   bg: 'bg-red-50'   },
-          { label: 'Saldo',    value: saldo,    icon: Wallet,       color: saldo >= 0 ? 'text-blue-600' : 'text-red-600', bg: saldo >= 0 ? 'bg-blue-50' : 'bg-red-50' },
-          { label: 'Pendente', value: pendente, icon: Clock,        color: 'text-yellow-600', bg: 'bg-yellow-50' },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
+          { label: 'Receita',  value: receita,  icon: TrendingUp,   iconColor: '#7A9E7E', iconBg: 'rgba(122,158,126,0.12)', valueColor: '#4E7A52' },
+          { label: 'Despesa',  value: despesa,  icon: TrendingDown, iconColor: '#C17070', iconBg: 'rgba(193,112,112,0.10)', valueColor: '#C17070' },
+          { label: 'Saldo',    value: saldo,    icon: Wallet,       iconColor: saldo >= 0 ? '#2D2B6B' : '#C17070', iconBg: saldo >= 0 ? 'rgba(45,43,107,0.08)' : 'rgba(193,112,112,0.10)', valueColor: saldo >= 0 ? '#2D2B6B' : '#C17070' },
+          { label: 'Pendente', value: pendente, icon: Clock,        iconColor: '#B8943F', iconBg: 'rgba(184,148,63,0.10)', valueColor: '#B8943F' },
+        ].map(({ label, value, icon: Icon, iconColor, iconBg, valueColor }) => (
           <div key={label} className="rounded-xl border border-white/60 p-4"
             style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(255,255,255,0.72)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-gray-500 font-medium">{label}</span>
-              <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center', bg)}>
-                <Icon className={cn('w-4 h-4', color)} />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: iconBg }}>
+                <Icon className="w-4 h-4" style={{ color: iconColor }} />
               </div>
             </div>
-            <p className={cn('text-lg font-bold', color)}>{fmtBRL(value)}</p>
+            <p className="text-lg font-bold" style={{ color: valueColor }}>{fmtBRL(value)}</p>
           </div>
         ))}
       </div>
@@ -362,7 +362,7 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
               {([['mes', 'Este mês'], ['trimestre', 'Trimestre'], ['ano', 'Este ano'], ['tudo', 'Tudo']] as const).map(([v, l]) => (
                 <button key={v} onClick={() => setPeriod(v)}
-                  className={cn('px-3 py-1.5 font-medium transition-colors', period === v ? 'bg-blue-500 text-white' : 'text-gray-500 hover:bg-gray-50')}>
+                  className={cn('px-3 py-1.5 font-medium transition-colors', period === v ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50')}>
                   {l}
                 </button>
               ))}
@@ -371,7 +371,7 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
               {([['all', 'Tudo'], ['clinic', 'Clínica'], ['personal', 'Pessoal']] as const).map(([v, l]) => (
                 <button key={v} onClick={() => setScope(v)}
-                  className={cn('px-3 py-1.5 font-medium transition-colors', scope === v ? 'bg-indigo-500 text-white' : 'text-gray-500 hover:bg-gray-50')}>
+                  className={cn('px-3 py-1.5 font-medium transition-colors', scope === v ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50')}>
                   {l}
                 </button>
               ))}
@@ -380,7 +380,7 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
               {([['all', 'Todos'], ['receita', 'Receitas'], ['despesa', 'Despesas']] as const).map(([v, l]) => (
                 <button key={v} onClick={() => setType(v)}
-                  className={cn('px-3 py-1.5 font-medium transition-colors', type === v ? 'bg-gray-700 text-white' : 'text-gray-500 hover:bg-gray-50')}>
+                  className={cn('px-3 py-1.5 font-medium transition-colors', type === v ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50')}>
                   {l}
                 </button>
               ))}
@@ -389,7 +389,7 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
 
           <button
             onClick={() => { setShowForm(true); setEditingEntry(null) }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             <Plus className="w-4 h-4" />
             Novo lançamento
@@ -399,14 +399,14 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
         <MonthlyChart entries={filtered} />
 
         <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-green-400/70 inline-block" /> Receita</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-red-400/70 inline-block" /> Despesa</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm inline-block" style={{ backgroundColor: 'rgba(122,158,126,0.7)' }} /> Receita</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm inline-block" style={{ backgroundColor: 'rgba(193,112,112,0.65)' }} /> Despesa</span>
         </div>
       </div>
 
       {/* ── Formulário ──────────────────────────────────────────────────── */}
       {(showForm || editingEntry) && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-5">
+        <div className="rounded-xl border p-5" style={{ borderColor: 'rgba(45,43,107,0.15)', backgroundColor: 'rgba(245,240,232,0.5)' }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-800">
               {editingEntry ? 'Editar lançamento' : 'Novo lançamento'}
@@ -446,7 +446,7 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
             <p className="text-sm text-gray-400">Nenhum lançamento no período.</p>
             <button
               onClick={() => setShowForm(true)}
-              className="mt-3 text-sm text-blue-600 hover:underline"
+              className="mt-3 text-sm text-primary hover:underline"
             >
               Adicionar primeiro lançamento
             </button>
@@ -481,27 +481,29 @@ export default function FinanceiroTab({ initialEntries, doctorId }: Props) {
                     {e.description || '—'}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className={cn(
-                      'text-xs px-2 py-0.5 rounded-full font-medium',
-                      e.scope === 'clinic' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
-                    )}>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={e.scope === 'clinic'
+                        ? { backgroundColor: 'rgba(45,43,107,0.08)', color: '#2D2B6B' }
+                        : { backgroundColor: 'rgba(122,158,126,0.12)', color: '#4E7A52' }}
+                    >
                       {e.scope === 'clinic' ? 'Clínica' : 'Pessoal'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', statusBadge(e.status))}>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium capitalize" style={statusBadgeStyle(e.status)}>
                       {e.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold whitespace-nowrap"
-                    style={{ color: e.type === 'receita' ? '#16a34a' : '#ef4444' }}>
+                    style={{ color: e.type === 'receita' ? '#4E7A52' : '#C17070' }}>
                     {e.type === 'receita' ? '+' : '−'} {fmtBRL(e.amount)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       <button
                         onClick={() => { setEditingEntry(e); setShowForm(false) }}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
