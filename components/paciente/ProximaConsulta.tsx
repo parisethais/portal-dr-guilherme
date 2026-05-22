@@ -43,11 +43,8 @@ export default function ProximaConsulta({ consulta }: Props) {
   if (!consulta) {
     return (
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-500 mb-6 border border-white/60"
-        style={{
-          backdropFilter: 'blur(10px)',
-          backgroundColor: 'rgba(255,255,255,0.55)',
-        }}
+        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 mb-6 border border-black/[0.06]"
+        style={{ backgroundColor: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(10px)' }}
       >
         <CalendarDays className="w-4 h-4 text-gray-400 flex-shrink-0" />
         <span>Nenhuma consulta agendada no momento.</span>
@@ -75,21 +72,22 @@ export default function ProximaConsulta({ consulta }: Props) {
       {/* Header strip */}
       <div
         className="flex items-center justify-between px-5 py-3"
-        style={{ borderBottom: '1px solid rgba(126,184,212,0.15)', backgroundColor: 'rgba(126,184,212,0.06)' }}
+        style={{ borderBottom: '1px solid rgba(45,43,107,0.07)', backgroundColor: 'rgba(122,158,126,0.06)' }}
       >
-        <div className="flex items-center gap-2" style={{ color: '#7EB8D4' }}>
-          <CalendarDays className="w-4 h-4" />
-          <span className="text-sm font-semibold" style={{ color: '#1A1F2E' }}>Próxima Consulta</span>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4" style={{ color: '#7A9E7E' }} />
+          <span className="text-sm font-semibold" style={{ color: '#2D2B6B' }}>Próxima Consulta</span>
         </div>
         {diasLabel && (
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            dias === 0
-              ? 'bg-amber-100 text-amber-700'
-              : dias <= 3
-              ? 'text-primary font-semibold'
-              : 'bg-gray-100 text-gray-600'
-          }`}
-          style={dias > 0 && dias <= 3 ? { backgroundColor: 'rgba(126,184,212,0.15)', color: '#1A1F2E' } : {}}
+          <span
+            className="text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={
+              dias === 0
+                ? { backgroundColor: 'rgba(184,148,63,0.12)', color: '#B8943F' }
+                : dias <= 3
+                ? { backgroundColor: 'rgba(45,43,107,0.08)', color: '#2D2B6B' }
+                : { backgroundColor: 'rgba(0,0,0,0.05)', color: '#6B7280' }
+            }
           >
             {diasLabel}
           </span>
@@ -113,7 +111,7 @@ export default function ProximaConsulta({ consulta }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           <span
             className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: 'rgba(126,184,212,0.15)', color: '#1A1F2E' }}
+            style={{ backgroundColor: 'rgba(45,43,107,0.08)', color: '#2D2B6B' }}
           >
             {TIPO_LABEL[consulta.tipo] ?? consulta.tipo}
           </span>

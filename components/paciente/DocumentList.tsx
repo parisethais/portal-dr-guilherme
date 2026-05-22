@@ -41,8 +41,8 @@ export default function DocumentList({ documents, exames }: DocumentListProps) {
       {/* ── Recebidos pelo consultório ── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Building2 className="w-4 h-4 text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+          <Building2 className="w-3.5 h-3.5" style={{ color: '#7A9E7E' }} />
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#7A9E7E' }}>
             Recebidos pelo consultório
           </h3>
           {documents.length > 0 && (
@@ -66,7 +66,7 @@ export default function DocumentList({ documents, exames }: DocumentListProps) {
         )}
 
         {filtered.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="text-center py-8 rounded-xl border border-dashed border-black/[0.08]" style={{ backgroundColor: 'rgba(245,240,232,0.5)' }}>
             <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
             <p className="text-gray-400 text-sm">
               {search ? 'Nenhum documento encontrado.' : 'Nenhum documento disponível ainda.'}
@@ -96,7 +96,7 @@ export default function DocumentList({ documents, exames }: DocumentListProps) {
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{doc.description}</p>
                         )}
                       </div>
-                      <span className="text-xs bg-blue-50 text-primary px-2 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0" style={{ backgroundColor: 'rgba(45,43,107,0.07)', color: '#2D2B6B' }}>
                         {categoryLabel(doc.title)}
                       </span>
                     </div>
@@ -126,8 +126,8 @@ export default function DocumentList({ documents, exames }: DocumentListProps) {
       {/* ── Meus Exames ── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <FlaskConical className="w-4 h-4 text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+          <FlaskConical className="w-3.5 h-3.5" style={{ color: '#7A9E7E' }} />
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: '#7A9E7E' }}>
             Meus Exames
           </h3>
           {exames.length > 0 && (

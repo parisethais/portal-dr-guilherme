@@ -4,6 +4,13 @@ import LgpdModal from '@/components/paciente/LgpdModal'
 import PacienteDashboard from '@/components/paciente/PacienteDashboard'
 import ProximaConsulta from '@/components/paciente/ProximaConsulta'
 
+function getGreeting(): string {
+  const brHour = (new Date().getUTCHours() - 3 + 24) % 24
+  if (brHour >= 5 && brHour < 12) return 'Bom dia'
+  if (brHour >= 12 && brHour < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
 export default async function PacientePage() {
   const supabase = await createClient()
 
@@ -80,14 +87,14 @@ export default async function PacientePage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="mb-8 pb-7 border-b border-black/[0.06]">
-          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-2.5" style={{ color: '#7EB8D4' }}>
-            Clinical Intelligence OS
+          <p className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-3.5" style={{ color: '#7A9E7E' }}>
+            MedEn · Portal do Paciente
           </p>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Olá, {profile.full_name?.split(' ')[0] ?? 'Paciente'}
+          <h1 className="font-display text-3xl font-extrabold tracking-tight leading-snug" style={{ color: '#2D2B6B' }}>
+            {getGreeting()}, {profile.full_name?.split(' ')[0] ?? 'Paciente'}.
           </h1>
           <p className="text-gray-400 mt-1.5 text-sm font-normal">
-            Acesse documentos, exames, mensagens e solicitações em um só lugar.
+            Seus documentos, consultas e orientações em um só lugar.
           </p>
         </div>
 
