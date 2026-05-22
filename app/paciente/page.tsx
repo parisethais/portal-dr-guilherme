@@ -1,4 +1,6 @@
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { redirect } from 'next/navigation'
 import LgpdModal from '@/components/paciente/LgpdModal'
 import PacienteDashboard from '@/components/paciente/PacienteDashboard'
@@ -11,19 +13,35 @@ function getGreeting(): string {
   return 'Boa noite'
 }
 
+// UUID fixo do paciente de teste (seed-paciente-teste.sql)
+const TEST_PATIENT_ID = 'aaaaaaaa-0000-0000-0000-000000000001'
+
 export default async function PacientePage() {
-  const supabase = await createClient()
+  const headersList = await headers()
+  const middlewareRole = headersList.get('x-user-role')
+  const middlewareId   = headersList.get('x-user-id')
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Superadmin visualiza o portal como a paciente de teste (preview)
+  const isSuperadmin = middlewareRole === 'superadmin'
+  const db = isSuperadmin ? createAdminClient() : await createClient()
 
-  if (!user) redirect('/')
+  // ID efetivo para buscar dados: superadmin → paciente teste; outros → próprio ID
+  let patientId: string
 
-  const { data: profile } = await supabase
+  if (isSuperadmin) {
+    patientId = TEST_PATIENT_ID
+  } else {
+    // Paciente normal: usa getUser() para garantir sessão válida
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/')
+    patientId = middlewareId ?? user.id
+  }
+
+  const { data: profile } = await db
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', patientId)
     .single()
 
   if (!profile) redirect('/')
@@ -37,52 +55,27 @@ export default async function PacientePage() {
     { data: invoices },
     { data: proximaConsultaArr },
   ] = await Promise.all([
-    supabase
-      .from('documents')
+    db.from('documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
+    db.from('messages').select('*').eq('recipient_id', patientId).order('created_at', { ascending: false }),
+    db.from('patient_exams').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
+    db.from('care_plans').select('*').eq('patient_id', patientId).single(),
+    db.from('care_plan_attachments').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
+    db.from('invoices').select('*').eq('patient_id', patientId).order('issue_date', { ascending: false }),
+    db.from('consultas')
       .select('*')
-      .eq('patient_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('messages')
-      .select('*')
-      .eq('recipient_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('patient_exams')
-      .select('*')
-      .eq('patient_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('care_plans')
-      .select('*')
-      .eq('patient_id', user.id)
-      .single(),
-    supabase
-      .from('care_plan_attachments')
-      .select('*')
-      .eq('patient_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('invoices')
-      .select('*')
-      .eq('patient_id', user.id)
-      .order('issue_date', { ascending: false }),
-    supabase
-      .from('consultas')
-      .select('*')
-      .eq('patient_id', user.id)
+      .eq('patient_id', patientId)
       .in('status', ['agendada', 'confirmada'])
       .gt('data_hora', new Date().toISOString())
       .order('data_hora', { ascending: true })
       .limit(1),
   ])
 
-  const unreadCount    = (messages ?? []).filter((m) => !m.read).length
   const proximaConsulta = proximaConsultaArr?.[0] ?? null
+  const firstName = profile.full_name?.replace(/^\[TESTE\]\s*/i, '').split(' ')[0] ?? 'Paciente'
 
   return (
     <>
-      {!profile.lgpd_accepted && <LgpdModal />}
+      {!isSuperadmin && !profile.lgpd_accepted && <LgpdModal />}
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Hero */}
@@ -91,7 +84,7 @@ export default async function PacientePage() {
             MedEn · Portal do Paciente
           </p>
           <h1 className="font-display text-3xl font-extrabold tracking-tight leading-snug" style={{ color: '#2D2B6B' }}>
-            {getGreeting()}, {profile.full_name?.split(' ')[0] ?? 'Paciente'}.
+            {getGreeting()}, {firstName}.
           </h1>
           <p className="text-gray-400 mt-1.5 text-sm font-normal">
             Seus documentos, consultas e orientações em um só lugar.
