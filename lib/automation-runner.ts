@@ -21,21 +21,23 @@ type Db = ReturnType<typeof createAdminClient>
 
 // ── Copilot outbound ──────────────────────────────────────────────────────────
 
-const COPILOT_OUTBOUND_URL = process.env.COPILOT_OUTBOUND_URL  // ex: https://copilot.example.com/enviar-mensagem
-const COPILOT_SECRET       = process.env.COPILOT_SECRET
+// COPILOT_URL já configurada no Vercel (base URL do copilot, ex: https://copilot.exemplo.com)
+const COPILOT_URL    = process.env.COPILOT_URL
+const COPILOT_SECRET = process.env.COPILOT_SECRET
 
 /**
- * Envia mensagem via copilot (fire-and-forget).
- * Só executa se COPILOT_OUTBOUND_URL estiver configurada.
+ * Envia mensagem WhatsApp via copilot (fire-and-forget).
+ * Requer COPILOT_URL configurada no Vercel.
+ * Endpoint esperado no copilot: POST /enviar-mensagem
  */
 async function sendViaCopilot(telefone: string | null | undefined, mensagem: string): Promise<void> {
-  if (!COPILOT_OUTBOUND_URL || !telefone) return
+  if (!COPILOT_URL || !telefone) return
 
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (COPILOT_SECRET) headers['x-copilot-secret'] = COPILOT_SECRET
 
-    const res = await fetch(COPILOT_OUTBOUND_URL, {
+    const res = await fetch(`${COPILOT_URL}/enviar-mensagem`, {
       method:  'POST',
       headers,
       body:    JSON.stringify({ telefone, mensagem }),
@@ -47,6 +49,32 @@ async function sendViaCopilot(telefone: string | null | undefined, mensagem: str
     }
   } catch (err) {
     console.warn('[copilot/outbound] falha ao enviar:', (err as Error).message)
+  }
+}
+
+/**
+ * Notifica o copilot sobre eventos do portal (fire-and-forget).
+ * Endpoint esperado no copilot: POST /portal/evento
+ */
+export async function notifyCopiloEvent(evento: string, payload: Record<string, unknown>): Promise<void> {
+  if (!COPILOT_URL) return
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (COPILOT_SECRET) headers['x-copilot-secret'] = COPILOT_SECRET
+
+    const res = await fetch(`${COPILOT_URL}/portal/evento`, {
+      method:  'POST',
+      headers,
+      body:    JSON.stringify({ evento, ...payload }),
+    })
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.warn(`[copilot/evento] ${res.status} — ${body}`)
+    }
+  } catch (err) {
+    console.warn('[copilot/evento] falha ao notificar:', (err as Error).message)
   }
 }
 
