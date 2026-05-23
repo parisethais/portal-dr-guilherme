@@ -150,6 +150,9 @@ export default function PatientDetail({
           imagingResults={imagingResults}
           patientId={patient.id}
           patientName={patient.full_name ?? 'Paciente'}
+          patientPhone={patient.phone}
+          patientBirthday={patient.data_nascimento}
+          patientGender={patient.sexo}
         />
       )}
 

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getGlobalExamCatalog } from '@/app/actions/exam-catalog'
 import ExamCatalogSettings from '@/components/medico/configuracoes/ExamCatalogSettings'
+import DoctorProfileSettings from '@/components/medico/configuracoes/DoctorProfileSettings'
 import { Settings } from 'lucide-react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -13,7 +14,7 @@ export default async function ConfiguracoesPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, crm, especialidade, cpf')
     .eq('id', user.id)
     .single()
 
@@ -43,7 +44,14 @@ export default async function ConfiguracoesPage() {
         </div>
       </div>
 
-      <ExamCatalogSettings initialExams={exams} />
+      <div className="space-y-8">
+        <DoctorProfileSettings
+          initialCrm={profile?.crm ?? null}
+          initialEspecialidade={profile?.especialidade ?? null}
+          initialCpf={profile?.cpf ?? null}
+        />
+        <ExamCatalogSettings initialExams={exams} />
+      </div>
     </div>
   )
 }

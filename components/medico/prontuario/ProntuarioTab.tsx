@@ -8,10 +8,11 @@ import EvolucaoPanel from './EvolucaoPanel'
 import LabResultsPanel from './LabResultsPanel'
 import ImagingPanel from './ImagingPanel'
 import SumarioPanel from './SumarioPanel'
+import MemedPrescricao from './MemedPrescricao'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
 import {
-  ClipboardList, Stethoscope, FlaskConical, ScanLine, Pill,
+  ClipboardList, Stethoscope, FlaskConical, ScanLine,
   Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
   Activity, Bot,
 } from 'lucide-react'
@@ -199,16 +200,23 @@ function formatConsultaLabel(c: Consulta) {
 }
 
 interface Props {
-  consultas:      Consulta[]
-  labResults:     LabResult[]
-  imagingResults: ImagingResult[]
-  patientId:      string
-  patientName:    string
+  consultas:       Consulta[]
+  labResults:      LabResult[]
+  imagingResults:  ImagingResult[]
+  patientId:       string
+  patientName:     string
+  patientPhone?:   string | null
+  patientBirthday?: string | null
+  patientGender?:  'M' | 'F' | null
 }
 
 const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico', 'sumario']
 
-export default function ProntuarioTab({ consultas, labResults, imagingResults, patientId, patientName }: Props) {
+export default function ProntuarioTab({
+  consultas, labResults, imagingResults,
+  patientId, patientName,
+  patientPhone, patientBirthday, patientGender,
+}: Props) {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const realizadas = consultas.filter(c => c.status !== 'cancelada')
@@ -374,16 +382,12 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
           ))}
         </div>
 
-        <button
-          type="button"
-          disabled
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-gray-200 text-gray-400 rounded-lg text-xs font-medium cursor-not-allowed opacity-60"
-          title="Em breve"
-        >
-          <Pill className="w-3.5 h-3.5" />
-          Prescrição Memed
-          <span className="ml-1 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full">em breve</span>
-        </button>
+        <MemedPrescricao
+          patientName={patientName}
+          patientPhone={patientPhone}
+          patientBirthday={patientBirthday}
+          patientGender={patientGender}
+        />
       </div>
 
       {/* Banner de prontuário finalizado */}

@@ -31,6 +31,9 @@ export interface Profile {
   obs_secretaria: string | null
   form_token: string | null
   retorno_previsto: string | null   // date YYYY-MM-DD
+  // Campos do médico
+  crm:              string | null
+  especialidade:    string | null
 }
 
 export interface Document {
