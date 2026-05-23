@@ -4,16 +4,28 @@ import { useState, useEffect, useCallback } from 'react'
 import { getMrpaSessions, upsertMrpaReading } from '@/app/actions/mrpa'
 import type { MrpaSession, MrpaPeriod } from '@/app/actions/mrpa'
 import { cn } from '@/lib/utils'
-import { Activity, Check, X, Loader2, Heart, Info } from 'lucide-react'
+import { Activity, Check, X, Loader2, Heart, Info, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceLine, Legend,
+} from 'recharts'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const PERIODS: { id: MrpaPeriod; label: string; sub: string }[] = [
-  { id: 'manha1', label: 'Manhã 1', sub: 'ao acordar' },
-  { id: 'manha2', label: 'Manhã 2', sub: '1 min depois' },
-  { id: 'noite1', label: 'Noite 1', sub: 'antes de dormir' },
-  { id: 'noite2', label: 'Noite 2', sub: '1 min depois' },
+const PERIODS: { id: MrpaPeriod; label: string; sub: string; short: string }[] = [
+  { id: 'manha1', label: 'Manhã 1', sub: 'ao acordar',       short: 'M1' },
+  { id: 'manha2', label: 'Manhã 2', sub: '1 min depois',     short: 'M2' },
+  { id: 'noite1', label: 'Noite 1', sub: 'antes de dormir',  short: 'N1' },
+  { id: 'noite2', label: 'Noite 2', sub: '1 min depois',     short: 'N2' },
 ]
+
+const PERIOD_ORDER: Record<MrpaPeriod, number> = {
+  manha1: 0, manha2: 1, noite1: 2, noite2: 3,
+}
+
+// MRPA thresholds (VI DBHA / ESH 2023)
+const THRESH_SIS = 135
+const THRESH_DIA = 85
 
 function calcGlobalAverage(readings: MrpaSession['readings']) {
   const valid = readings.filter(r => r.day_number > 1 && r.sistolica && r.diastolica)
@@ -21,7 +33,182 @@ function calcGlobalAverage(readings: MrpaSession['readings']) {
   return {
     sistolica:  Math.round(valid.reduce((s, r) => s + (r.sistolica  ?? 0), 0) / valid.length),
     diastolica: Math.round(valid.reduce((s, r) => s + (r.diastolica ?? 0), 0) / valid.length),
+    n: valid.length,
   }
+}
+
+function buildChartData(readings: MrpaSession['readings']) {
+  const sorted = [...readings]
+    .filter(r => r.sistolica || r.diastolica)
+    .sort((a, b) =>
+      a.day_number !== b.day_number
+        ? a.day_number - b.day_number
+        : PERIOD_ORDER[a.period] - PERIOD_ORDER[b.period]
+    )
+
+  return sorted.map(r => {
+    const p = PERIODS.find(p => p.id === r.period)!
+    return {
+      name:       `D${r.day_number} ${p.short}`,
+      sistolica:  r.sistolica  ?? null,
+      diastolica: r.diastolica ?? null,
+      day:        r.day_number,
+      isRef:      r.day_number === 1,
+    }
+  })
+}
+
+// ── Tooltip customizado ───────────────────────────────────────────────────
+
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: { name: string; value: number; color: string }[]
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-gray-100 shadow-md rounded-xl px-3 py-2 text-xs">
+      <p className="font-semibold text-gray-600 mb-1">{label}</p>
+      {payload.map(p => (
+        <p key={p.name} style={{ color: p.color }} className="font-mono font-medium">
+          {p.name === 'sistolica' ? 'PAS' : 'PAD'}: {p.value} mmHg
+        </p>
+      ))}
+    </div>
+  )
+}
+
+// ── Gráfico da sessão ─────────────────────────────────────────────────────
+
+function SessionChart({ session }: { session: MrpaSession }) {
+  const data = buildChartData(session.readings)
+  if (data.length < 2) return null
+
+  const allSis = data.map(d => d.sistolica).filter(Boolean) as number[]
+  const allDia = data.map(d => d.diastolica).filter(Boolean) as number[]
+  const yMin   = Math.max(40, Math.min(...allDia) - 10)
+  const yMax   = Math.min(220, Math.max(...allSis) + 15)
+
+  return (
+    <div className="px-5 pt-4 pb-2">
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <TrendingUp className="w-3 h-3" />
+        Evolução das medições
+      </p>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={data} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tickLine={false}
+            axisLine={false}
+            interval={Math.max(0, Math.floor(data.length / 8) - 1)}
+          />
+          <YAxis
+            domain={[yMin, yMax]}
+            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tickLine={false}
+            axisLine={false}
+            tickCount={5}
+          />
+          <Tooltip content={<ChartTooltip />} />
+
+          {/* Linhas de referência MRPA */}
+          <ReferenceLine
+            y={THRESH_SIS}
+            stroke="#EF4444"
+            strokeDasharray="4 3"
+            strokeWidth={1}
+            label={{ value: '135', position: 'right', fontSize: 9, fill: '#EF4444' }}
+          />
+          <ReferenceLine
+            y={THRESH_DIA}
+            stroke="#F59E0B"
+            strokeDasharray="4 3"
+            strokeWidth={1}
+            label={{ value: '85', position: 'right', fontSize: 9, fill: '#F59E0B' }}
+          />
+
+          <Line
+            type="monotone"
+            dataKey="sistolica"
+            name="sistolica"
+            stroke="#2D2B6B"
+            strokeWidth={2}
+            dot={{ r: 3, fill: '#2D2B6B', strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            connectNulls
+          />
+          <Line
+            type="monotone"
+            dataKey="diastolica"
+            name="diastolica"
+            stroke="#7A9E7E"
+            strokeWidth={2}
+            dot={{ r: 3, fill: '#7A9E7E', strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            connectNulls
+          />
+
+          <Legend
+            iconType="circle"
+            iconSize={6}
+            wrapperStyle={{ fontSize: 10, paddingTop: 8, color: '#6B7280' }}
+            formatter={(value: string) => value === 'sistolica' ? 'Sistólica (PAS)' : 'Diastólica (PAD)'}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="flex items-center gap-4 mt-1 justify-end">
+        <span className="text-[10px] text-gray-300 flex items-center gap-1">
+          <span className="inline-block w-4 border-t border-dashed border-red-400" />
+          Limite PAS (135)
+        </span>
+        <span className="text-[10px] text-gray-300 flex items-center gap-1">
+          <span className="inline-block w-4 border-t border-dashed border-amber-400" />
+          Limite PAD (85)
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Alerta de PA elevada ──────────────────────────────────────────────────
+
+function PaAlert({ avg }: { avg: { sistolica: number; diastolica: number; n: number } }) {
+  const sisAlta = avg.sistolica >= THRESH_SIS
+  const diaAlta = avg.diastolica >= THRESH_DIA
+  const elevada = sisAlta || diaAlta
+
+  if (!elevada) {
+    return (
+      <div className="mx-5 mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm bg-emerald-50 border border-emerald-100">
+        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-emerald-700">Pressão dentro do alvo</p>
+          <p className="text-xs text-emerald-600 mt-0.5">
+            Média de {avg.n} medições: {avg.sistolica}/{avg.diastolica} mmHg
+            {' '}(alvo: &lt;{THRESH_SIS}/&lt;{THRESH_DIA})
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const parts: string[] = []
+  if (sisAlta) parts.push(`PAS média ${avg.sistolica} mmHg (≥ ${THRESH_SIS})`)
+  if (diaAlta) parts.push(`PAD média ${avg.diastolica} mmHg (≥ ${THRESH_DIA})`)
+
+  return (
+    <div className="mx-5 mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+      <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold text-red-700">Pressão acima do alvo MRPA</p>
+        <p className="text-xs text-red-600 mt-0.5">{parts.join(' · ')} — informe seu médico.</p>
+      </div>
+    </div>
+  )
 }
 
 // ── Célula editável ───────────────────────────────────────────────────────
@@ -52,9 +239,17 @@ function ReadingCell({
 
   const hasValue = value?.sistolica && value?.diastolica
 
+  // Detecta se o valor está elevado
+  const sisHigh = hasValue && (value?.sistolica ?? 0) >= THRESH_SIS
+  const diaHigh = hasValue && (value?.diastolica ?? 0) >= THRESH_DIA
+  const isHigh  = sisHigh || diaHigh
+
   if (disabled) {
     return (
-      <div className="text-center text-sm font-mono font-medium text-gray-400 py-2">
+      <div className={cn(
+        'text-center text-sm font-mono font-medium py-2',
+        isHigh ? 'text-red-500' : 'text-gray-400',
+      )}>
         {hasValue ? `${value!.sistolica}/${value!.diastolica}` : '—'}
       </div>
     )
@@ -103,7 +298,9 @@ function ReadingCell({
       onClick={() => setEditing(true)}
       className={cn(
         'w-full text-center py-2.5 rounded-lg transition-all text-sm font-mono font-medium',
-        hasValue
+        hasValue && isHigh
+          ? 'text-red-600 bg-red-50 hover:bg-red-100'
+          : hasValue
           ? 'text-primary bg-primary/5 hover:bg-primary/10'
           : 'text-gray-300 hover:text-gray-500 hover:bg-gray-50 border border-dashed border-gray-200'
       )}
@@ -121,9 +318,12 @@ function SessionTable({
   session:  MrpaSession
   onUpdate: (s: MrpaSession) => void
 }) {
+  const [showChart, setShowChart] = useState(true)
+
   const days      = Array.from({ length: session.days }, (_, i) => i + 1)
   const isClosed  = session.status === 'concluida'
   const globalAvg = calcGlobalAverage(session.readings)
+  const chartData = buildChartData(session.readings)
 
   // Dia atual em relação ao início da sessão
   const startMs    = new Date(session.start_date + 'T00:00:00').getTime()
@@ -186,15 +386,34 @@ function SessionTable({
               }
             </p>
           </div>
-          {globalAvg && (
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Média geral</p>
-              <p className="text-lg font-bold" style={{ color: '#2D2B6B' }}>
-                {globalAvg.sistolica}/{globalAvg.diastolica}
-                <span className="text-xs font-normal text-gray-400 ml-1">mmHg</span>
-              </p>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {chartData.length >= 2 && (
+              <button
+                onClick={() => setShowChart(v => !v)}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+              >
+                {showChart ? 'Ocultar gráfico' : 'Ver gráfico'}
+              </button>
+            )}
+            {globalAvg && (
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Média geral</p>
+                <p className={cn(
+                  'text-lg font-bold',
+                  (globalAvg.sistolica >= THRESH_SIS || globalAvg.diastolica >= THRESH_DIA)
+                    ? 'text-red-600'
+                    : ''
+                )} style={
+                  (globalAvg.sistolica >= THRESH_SIS || globalAvg.diastolica >= THRESH_DIA)
+                    ? {}
+                    : { color: '#2D2B6B' }
+                }>
+                  {globalAvg.sistolica}/{globalAvg.diastolica}
+                  <span className="text-xs font-normal text-gray-400 ml-1">mmHg</span>
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         {session.notes && (
           <p className="text-xs text-gray-500 italic mt-2 flex items-start gap-1">
@@ -203,6 +422,20 @@ function SessionTable({
           </p>
         )}
       </div>
+
+      {/* Alerta de PA elevada */}
+      {globalAvg && (
+        <div className="pt-4">
+          <PaAlert avg={globalAvg} />
+        </div>
+      )}
+
+      {/* Gráfico */}
+      {showChart && chartData.length >= 2 && (
+        <div style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          <SessionChart session={session} />
+        </div>
+      )}
 
       {/* Tabela */}
       <div className="overflow-x-auto">
@@ -221,7 +454,6 @@ function SessionTable({
           <tbody>
             {days.map(day => {
               const isToday   = day === currentDay
-              const isPast    = day < currentDay
               const isFuture  = day > currentDay
 
               return (
