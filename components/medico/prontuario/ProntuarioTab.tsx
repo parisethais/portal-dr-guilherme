@@ -7,18 +7,19 @@ import DiagnosticosPanel from './DiagnosticosPanel'
 import EvolucaoPanel from './EvolucaoPanel'
 import LabResultsPanel from './LabResultsPanel'
 import ImagingPanel from './ImagingPanel'
+import SumarioPanel from './SumarioPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
 import {
   ClipboardList, Stethoscope, FlaskConical, ScanLine, Pill,
   Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
-  Activity,
+  Activity, Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 
-type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem' | 'historico'
+type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem' | 'historico' | 'sumario'
 
 // ── Helpers para conteúdo rico (HTML do Quill / iClinic) ─────
 function isHtml(text: string) {
@@ -205,7 +206,7 @@ interface Props {
   patientName:    string
 }
 
-const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico']
+const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico', 'sumario']
 
 export default function ProntuarioTab({ consultas, labResults, imagingResults, patientId, patientName }: Props) {
   const router       = useRouter()
@@ -253,6 +254,7 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
     { id: 'laboratorial', label: 'Laboratorial',  icon: <FlaskConical  className="w-3.5 h-3.5" /> },
     { id: 'imagem',       label: 'Imagem',        icon: <ScanLine      className="w-3.5 h-3.5" /> },
     { id: 'historico',    label: 'Histórico',     icon: <History       className="w-3.5 h-3.5" /> },
+    { id: 'sumario',      label: 'Sumário IA',    icon: <Bot           className="w-3.5 h-3.5" /> },
   ]
 
   if (realizadas.length === 0) {
@@ -492,6 +494,18 @@ export default function ProntuarioTab({ consultas, labResults, imagingResults, p
 
         {activeTab === 'historico' && (
           <HistoricoTab consultas={realizadas} />
+        )}
+
+        {activeTab === 'sumario' && (
+          <SumarioPanel
+            patientId={patientId}
+            patientName={patientName}
+            proximaConsulta={
+              consultas.filter(c => c.status === 'agendada' && new Date(c.data_hora) > new Date())
+                .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0]
+              ?? null
+            }
+          />
         )}
       </div>
 

@@ -106,8 +106,12 @@ export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]
   const missingEmailIds = userIds.filter(uid => !profileMap.get(uid)?.email)
   const authEmailMap = new Map<string, string>()
   for (const uid of missingEmailIds) {
-    const { data: authUser } = await supabase.auth.admin.getUserById(uid)
-    if (authUser?.user?.email) authEmailMap.set(uid, authUser.user.email)
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(uid)
+      if (authUser?.user?.email) authEmailMap.set(uid, authUser.user.email)
+    } catch {
+      // ignora falha de auth.admin em produção
+    }
   }
 
   return data.map((m: any) => {

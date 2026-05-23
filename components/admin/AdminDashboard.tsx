@@ -14,6 +14,9 @@ import {
   getClinicSchedule, upsertScheduleDay,
   getClinicConsultationTypes, createConsultationType, updateConsultationType, deleteConsultationType,
 } from '@/app/actions/admin'
+import { getClinicAutomations } from '@/app/actions/automations'
+import { type ClinicAutomation } from '@/lib/automation-catalog'
+import AutomacoesTab from './AutomacoesTab'
 import { DEFAULT_PERMISSIONS } from '@/lib/admin-constants'
 import { cn } from '@/lib/utils'
 import {
@@ -22,7 +25,7 @@ import {
   ExternalLink, LayoutDashboard, UserCircle,
   CreditCard, Clock, CalendarClock, Pencil,
   ChevronDown, FileText, Calendar, DollarSign,
-  UserCheck, MessageSquare, StickyNote, KeyRound, Copy,
+  UserCheck, MessageSquare, StickyNote, KeyRound, Copy, Zap,
 } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -1026,22 +1029,23 @@ function ConsultationTypesTab({ clinicId, tipos: initial, loading }: {
 
 // ── Detalhe da clínica ────────────────────────────────────────────────────
 
-type DetailTab = 'members' | 'settings' | 'convenios' | 'schedule' | 'tipos'
+type DetailTab = 'members' | 'settings' | 'convenios' | 'schedule' | 'tipos' | 'automacoes'
 
 function ClinicDetail({ clinic, onBack, onNameChange }: {
   clinic: Clinic
   onBack: () => void
   onNameChange?: (newName: string) => void
 }) {
-  const [members,   setMembers]   = useState<ClinicMember[]>([])
-  const [settings,  setSettings]  = useState<Record<string, string>>({})
-  const [convenios, setConvenios] = useState<ClinicConvenio[]>([])
-  const [schedule,  setSchedule]  = useState<ClinicScheduleDay[]>([])
-  const [tipos,     setTipos]     = useState<ClinicConsultationType[]>([])
-  const [activeTab, setActiveTab] = useState<DetailTab>('members')
-  const [loading,   setLoading]   = useState(true)
-  const [loadErr,   setLoadErr]   = useState<string | null>(null)
-  const [localName, setLocalName] = useState(clinic.name)
+  const [members,     setMembers]     = useState<ClinicMember[]>([])
+  const [settings,    setSettings]    = useState<Record<string, string>>({})
+  const [convenios,   setConvenios]   = useState<ClinicConvenio[]>([])
+  const [schedule,    setSchedule]    = useState<ClinicScheduleDay[]>([])
+  const [tipos,       setTipos]       = useState<ClinicConsultationType[]>([])
+  const [automations, setAutomations] = useState<ClinicAutomation[]>([])
+  const [activeTab,   setActiveTab]   = useState<DetailTab>('members')
+  const [loading,     setLoading]     = useState(true)
+  const [loadErr,     setLoadErr]     = useState<string | null>(null)
+  const [localName,   setLocalName]   = useState(clinic.name)
 
   useEffect(() => {
     setLoading(true)
@@ -1056,28 +1060,31 @@ function ClinicDetail({ clinic, onBack, onNameChange }: {
       })
 
     Promise.all([
-      safe(getClinicMembers(clinic.id), [] as ClinicMember[], 'members'),
+      safe(getClinicMembers(clinic.id),             [] as ClinicMember[],            'members'),
       safe(getClinicSettings(clinic.id),            {} as Record<string, string>,    'settings'),
       safe(getClinicConvenios(clinic.id),           [],                              'convenios'),
       safe(getClinicSchedule(clinic.id),            [],                              'schedule'),
       safe(getClinicConsultationTypes(clinic.id),   [],                              'tipos'),
-    ]).then(([m, s, cv, sc, tp]) => {
+      safe(getClinicAutomations(clinic.id),         [] as ClinicAutomation[],        'automacoes'),
+    ]).then(([m, s, cv, sc, tp, au]) => {
       setMembers(m as ClinicMember[])
       setSettings(s as Record<string, string>)
       setConvenios(cv)
       setSchedule(sc)
       setTipos(tp)
+      setAutomations(au as ClinicAutomation[])
     }).finally(() => {
       setLoading(false)
     })
   }, [clinic.id])
 
   const TABS: { id: DetailTab; label: string; Icon: any }[] = [
-    { id: 'members',  label: 'Membros',       Icon: Users        },
-    { id: 'settings', label: 'Configurações', Icon: Settings2    },
-    { id: 'convenios',label: 'Convênios',     Icon: CreditCard   },
-    { id: 'schedule', label: 'Horários',      Icon: Clock        },
-    { id: 'tipos',    label: 'Consultas',     Icon: CalendarClock },
+    { id: 'members',    label: 'Membros',       Icon: Users        },
+    { id: 'settings',   label: 'Configurações', Icon: Settings2    },
+    { id: 'convenios',  label: 'Convênios',     Icon: CreditCard   },
+    { id: 'schedule',   label: 'Horários',      Icon: Clock        },
+    { id: 'tipos',      label: 'Consultas',     Icon: CalendarClock },
+    { id: 'automacoes', label: 'Automações',    Icon: Zap          },
   ]
 
   return (
@@ -1138,11 +1145,12 @@ function ClinicDetail({ clinic, onBack, onNameChange }: {
         ))}
       </div>
 
-      {activeTab === 'members'  && <MembersTab clinicId={clinic.id} members={members} loading={loading} onRefresh={setMembers} />}
-      {activeTab === 'settings' && <SettingsTab clinicId={clinic.id} settings={settings} loading={loading} onNameChange={name => { setLocalName(name); onNameChange?.(name) }} />}
-      {activeTab === 'convenios'&& <ConveniosTab clinicId={clinic.id} convenios={convenios} loading={loading} />}
-      {activeTab === 'schedule' && <ScheduleTab clinicId={clinic.id} schedule={schedule} loading={loading} />}
-      {activeTab === 'tipos'    && <ConsultationTypesTab clinicId={clinic.id} tipos={tipos} loading={loading} />}
+      {activeTab === 'members'    && <MembersTab clinicId={clinic.id} members={members} loading={loading} onRefresh={setMembers} />}
+      {activeTab === 'settings'   && <SettingsTab clinicId={clinic.id} settings={settings} loading={loading} onNameChange={name => { setLocalName(name); onNameChange?.(name) }} />}
+      {activeTab === 'convenios'  && <ConveniosTab clinicId={clinic.id} convenios={convenios} loading={loading} />}
+      {activeTab === 'schedule'   && <ScheduleTab clinicId={clinic.id} schedule={schedule} loading={loading} />}
+      {activeTab === 'tipos'      && <ConsultationTypesTab clinicId={clinic.id} tipos={tipos} loading={loading} />}
+      {activeTab === 'automacoes' && <AutomacoesTab clinicId={clinic.id} automations={automations} loading={loading} />}
     </div>
   )
 }

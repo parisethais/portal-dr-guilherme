@@ -7,8 +7,16 @@ import { extractLabResultsFromFile } from '@/app/actions/lab-ocr'
 import { EXAM_CATALOG, EXAM_GROUPS, classifyValue, type ExamDef } from '@/lib/lab-catalog'
 import {
   Plus, Save, Loader2, Trash2, FlaskConical, X, CalendarPlus,
-  Upload, PenLine, Sparkles, AlertCircle,
+  Upload, PenLine, Sparkles, AlertCircle, Bot, RefreshCw, ChevronDown,
 } from 'lucide-react'
+
+interface Interpretacao {
+  gerado_em:    string
+  data_coleta:  string
+  data_fmt:     string
+  resumo_geral: string
+  sections:     { emoji: string; titulo: string; conteudo: string }[]
+}
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -77,6 +85,40 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
   const [ocrError, setOcrError]       = useState('')
   const [formError, setFormError]     = useState('')
   const [isPending, startTransition]  = useTransition()
+  // ── Interpretação IA ─────────────────────────────────────────
+  const [interp,        setInterp]        = useState<Interpretacao | null>(null)
+  const [interpLoading, setInterpLoading] = useState(false)
+  const [interpError,   setInterpError]   = useState('')
+  const [interpOpen,    setInterpOpen]    = useState(true)
+
+  async function handleInterpretar(date?: string) {
+    setInterpLoading(true); setInterpError(''); setInterpOpen(true)
+    const targetDate = date ?? allDates[0]
+    // Check cache
+    const cacheKey = `interp-${patientId}-${targetDate}`
+    try {
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) { setInterp(JSON.parse(cached)); setInterpLoading(false); return }
+    } catch { /* noop */ }
+    try {
+      const res = await fetch(`/api/labs/interpretar/${patientId}?date=${targetDate}`)
+      const json = await res.json()
+      if (!res.ok) { setInterpError(json.error ?? 'Erro ao interpretar.'); return }
+      setInterp(json)
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(json)) } catch { /* noop */ }
+    } catch (e) {
+      setInterpError((e as Error).message)
+    } finally {
+      setInterpLoading(false)
+    }
+  }
+
+  function handleReinterpretar() {
+    if (!interp) return
+    const cacheKey = `interp-${patientId}-${interp.data_coleta}`
+    try { sessionStorage.removeItem(cacheKey) } catch { /* noop */ }
+    handleInterpretar(interp.data_coleta)
+  }
   const [deletingDate, setDeletingDate] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFileName, setSelectedFileName] = useState('')
@@ -251,6 +293,19 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
               Alterado
             </span>
           </div>
+          {mode === 'idle' && !editingDate && allDates.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleInterpretar()}
+              disabled={interpLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 disabled:opacity-60"
+            >
+              {interpLoading
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Bot     className="w-3.5 h-3.5" />}
+              Interpretar com IA
+            </button>
+          )}
           {mode === 'idle' && !editingDate && (
             <button
               type="button"
@@ -384,6 +439,94 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
           <span>
             <strong>Leitura automática concluída</strong> — revise os valores extraídos antes de salvar. Você pode editar qualquer célula.
           </span>
+        </div>
+      )}
+
+      {/* ── Interpretação IA ── */}
+      {interpError && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {interpError}
+          <button onClick={() => handleInterpretar()} className="ml-auto underline">Tentar novamente</button>
+        </div>
+      )}
+
+      {interpLoading && (
+        <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Bot className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-semibold text-purple-800">Gerando interpretação clínica…</span>
+          </div>
+          <div className="space-y-2">
+            {[80, 60, 70, 50].map((w, i) => (
+              <div key={i} className={`h-3 bg-purple-200/60 rounded animate-pulse`} style={{ width: `${w}%` }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {interp && !interpLoading && (
+        <div className="rounded-xl border border-purple-100 bg-purple-50/30 overflow-hidden">
+          {/* Header */}
+          <button
+            type="button"
+            onClick={() => setInterpOpen(v => !v)}
+            className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-purple-50/60 transition-colors"
+          >
+            <Bot className="w-4 h-4 text-purple-600 shrink-0" />
+            <span className="text-sm font-semibold text-purple-800 flex-1 text-left">
+              Interpretação IA — coleta de {interp.data_fmt}
+            </span>
+            {interp.resumo_geral && (
+              <span className="text-xs text-purple-600 hidden sm:block max-w-xs truncate">
+                {interp.resumo_geral}
+              </span>
+            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); handleReinterpretar() }}
+                className="p-1 rounded text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-colors"
+                title="Regenerar"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+              <ChevronDown className={`w-4 h-4 text-purple-400 transition-transform ${interpOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+
+          {/* Sections */}
+          {interpOpen && (
+            <div className="px-4 pb-4 pt-1 grid sm:grid-cols-2 gap-3">
+              {interp.sections.map((s, i) => (
+                <div key={i} className="bg-white rounded-xl border border-purple-100 p-3.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-lg leading-none">{s.emoji}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{s.titulo}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{s.conteudo}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="px-4 pb-2.5 flex items-center justify-between">
+            <p className="text-[10px] text-purple-400">
+              Gerado em {new Date(interp.gerado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </p>
+            {allDates.length > 1 && (
+              <select
+                className="text-[10px] text-purple-600 bg-transparent border-none outline-none cursor-pointer"
+                value={interp.data_coleta}
+                onChange={e => handleInterpretar(e.target.value)}
+              >
+                {allDates.map(d => (
+                  <option key={d} value={d}>{fmtDate(d)}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       )}
 
