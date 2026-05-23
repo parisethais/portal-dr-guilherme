@@ -7,19 +7,53 @@ import CuidadosTab from './CuidadosTab'
 import InvoiceList from './InvoiceList'
 import MeuCadastroTab from './MeuCadastroTab'
 import MrpaTab from './MrpaTab'
-import { FileText, ClipboardList, Receipt, User, Activity } from 'lucide-react'
+import LabsPatientTab from './LabsPatientTab'
+import ConsultasPatientTab from './ConsultasPatientTab'
+import ImagensPatientTab from './ImagensPatientTab'
+import { FileText, ClipboardList, Receipt, User, Activity, FlaskConical, Stethoscope, ScanLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface PacienteDashboardProps {
-  profile: Profile
-  documents: Document[]
-  exames: PatientExam[]
-  carePlan: CarePlan | null
-  carePlanAttachments: CarePlanAttachment[]
-  invoices: Invoice[]
+interface LabResult {
+  id:           string
+  exam_name:    string
+  value:        string
+  unit:         string | null
+  collected_at: string
 }
 
-type Tab = 'documentos' | 'cuidados' | 'pressao' | 'notas' | 'cadastro'
+interface Consulta {
+  id:           string
+  data_hora:    string
+  tipo:         string
+  local:        string
+  status:       string
+  conduta:      string | null
+  retorno_previsto?: string | null
+  diagnosticos: string | null
+}
+
+interface ImagingResult {
+  id:             string
+  tipo:           string
+  data_realizado: string
+  laudo_resumido: string | null
+  file_url:       string | null
+  file_name:      string | null
+}
+
+interface PacienteDashboardProps {
+  profile:             Profile
+  documents:           Document[]
+  exames:              PatientExam[]
+  carePlan:            CarePlan | null
+  carePlanAttachments: CarePlanAttachment[]
+  invoices:            Invoice[]
+  labResults:          LabResult[]
+  consultas:           Consulta[]
+  imagingResults:      ImagingResult[]
+}
+
+type Tab = 'documentos' | 'labs' | 'consultas' | 'imagens' | 'cuidados' | 'pressao' | 'notas' | 'cadastro'
 
 export default function PacienteDashboard({
   profile,
@@ -28,6 +62,9 @@ export default function PacienteDashboard({
   carePlan,
   carePlanAttachments = [],
   invoices = [],
+  labResults = [],
+  consultas = [],
+  imagingResults = [],
 }: PacienteDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('documentos')
 
@@ -39,12 +76,29 @@ export default function PacienteDashboard({
       badge: documents.length + exames.length || undefined,
     },
     {
+      id: 'labs',
+      label: 'Exames',
+      icon: <FlaskConical className="w-4 h-4" />,
+      badge: labResults.length > 0 ? undefined : undefined,
+    },
+    {
+      id: 'imagens',
+      label: 'Imagens',
+      icon: <ScanLine className="w-4 h-4" />,
+      badge: imagingResults.length || undefined,
+    },
+    {
+      id: 'consultas',
+      label: 'Histórico',
+      icon: <Stethoscope className="w-4 h-4" />,
+    },
+    {
       id: 'cuidados',
       label: 'Cuidados',
       icon: <ClipboardList className="w-4 h-4" />,
     },
     {
-      id: 'pressao' as Tab,
+      id: 'pressao',
       label: 'Pressão',
       icon: <Activity className="w-4 h-4" />,
     },
@@ -97,6 +151,9 @@ export default function PacienteDashboard({
       {/* Content */}
       <div className="p-6">
         {activeTab === 'documentos' && <DocumentList documents={documents} exames={exames} />}
+        {activeTab === 'labs'       && <LabsPatientTab labResults={labResults} />}
+        {activeTab === 'imagens'    && <ImagensPatientTab imagingResults={imagingResults} />}
+        {activeTab === 'consultas'  && <ConsultasPatientTab consultas={consultas} />}
         {activeTab === 'cuidados'   && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
         {activeTab === 'pressao'    && <MrpaTab patientId={profile.id} />}
         {activeTab === 'notas'      && <InvoiceList invoices={invoices} />}

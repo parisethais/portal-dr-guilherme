@@ -54,7 +54,10 @@ export default async function PacientePage() {
     { data: carePlan },
     { data: carePlanAttachments },
     { data: invoices },
-    { data: proximaConsultaArr },
+    { data: proximasConsultas },
+    { data: labResults },
+    { data: todasConsultas },
+    { data: imagingResults },
   ] = await Promise.all([
     db.from('documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
     db.from('messages').select('*').eq('recipient_id', patientId).order('created_at', { ascending: false }),
@@ -62,16 +65,31 @@ export default async function PacientePage() {
     db.from('care_plans').select('*').eq('patient_id', patientId).single(),
     db.from('care_plan_attachments').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }),
     db.from('invoices').select('*').eq('patient_id', patientId).order('issue_date', { ascending: false }),
+    // Todas as consultas futuras agendadas/confirmadas
     db.from('consultas')
       .select('*')
       .eq('patient_id', patientId)
       .in('status', ['agendada', 'confirmada'])
       .gt('data_hora', new Date().toISOString())
-      .order('data_hora', { ascending: true })
-      .limit(1),
+      .order('data_hora', { ascending: true }),
+    // Resultados laboratoriais
+    db.from('lab_results')
+      .select('id, exam_name, value, unit, collected_at')
+      .eq('patient_id', patientId)
+      .order('collected_at', { ascending: false }),
+    // Histórico de consultas realizadas
+    db.from('consultas')
+      .select('id, data_hora, tipo, local, status, conduta, diagnosticos')
+      .eq('patient_id', patientId)
+      .eq('status', 'realizada')
+      .order('data_hora', { ascending: false })
+      .limit(50),
+    // Exames de imagem
+    db.from('imaging_results')
+      .select('id, tipo, data_realizado, laudo_resumido, file_url, file_name')
+      .eq('patient_id', patientId)
+      .order('data_realizado', { ascending: false }),
   ])
-
-  const proximaConsulta = proximaConsultaArr?.[0] ?? null
   const firstName = profile.full_name?.replace(/^\[TESTE\]\s*/i, '').split(' ')[0] ?? 'Paciente'
 
   // ── Dados da clínica para o cartão de identidade ──────────────────────
@@ -138,8 +156,8 @@ export default async function PacientePage() {
           email={clinicSettings['email_contato'] ?? clinicSettings['email'] ?? null}
         />
 
-        {/* Card próxima consulta */}
-        <ProximaConsulta consulta={proximaConsulta} />
+        {/* Próximas consultas */}
+        <ProximaConsulta consultas={proximasConsultas ?? []} />
 
         <PacienteDashboard
           profile={profile}
@@ -148,6 +166,9 @@ export default async function PacientePage() {
           carePlan={carePlan ?? null}
           carePlanAttachments={carePlanAttachments ?? []}
           invoices={invoices ?? []}
+          labResults={labResults ?? []}
+          consultas={todasConsultas ?? []}
+          imagingResults={imagingResults ?? []}
         />
       </div>
     </>
