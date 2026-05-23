@@ -8,8 +8,9 @@ import {
   type AutomationDef,
 } from '@/lib/automation-catalog'
 import { upsertClinicAutomation } from '@/app/actions/automations'
+import AutomacaoLogsPanel from './AutomacaoLogsPanel'
 import { cn } from '@/lib/utils'
-import { Check, ChevronDown, Crown, Loader2, Zap, Play, Clock, CheckCircle2, XCircle, MinusCircle } from 'lucide-react'
+import { Check, ChevronDown, Crown, Loader2, Zap, Play, Clock, CheckCircle2, XCircle, MinusCircle, History } from 'lucide-react'
 
 const INTERNAL_SECRET = 'meden-internal-2026'
 
@@ -263,6 +264,7 @@ export default function AutomacoesTab({
   const [runResults,  setRunResults]  = useState<RunResult[] | null>(null)
   const [runError,    setRunError]    = useState('')
   const [runTs,       setRunTs]       = useState<string | null>(null)
+  const [showLogs,    setShowLogs]    = useState(false)
 
   useEffect(() => { setAutomations(initial) }, [initial])
 
@@ -393,6 +395,24 @@ export default function AutomacoesTab({
             onUpdate={handleUpdate}
           />
         ))}
+      </div>
+
+      {/* Histórico de logs */}
+      <div>
+        <button
+          onClick={() => setShowLogs(v => !v)}
+          className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors py-1"
+        >
+          <History className="w-4 h-4" />
+          Histórico de envios
+          <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', showLogs && 'rotate-180')} />
+        </button>
+
+        {showLogs && (
+          <div className="mt-3">
+            <AutomacaoLogsPanel clinicId={clinicId} automations={automations} />
+          </div>
+        )}
       </div>
 
     </div>
