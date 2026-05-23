@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { notifyCopilotEvent } from '@/lib/automation-runner'
+import { computeLabAlerts } from '@/lib/lab-alerts'
 
 // ── Salvar campos de prontuário na consulta ───────────────────
 export async function salvarConsultaFields(
@@ -100,6 +102,31 @@ export async function finalizarProntuario(consultaId: string): Promise<ActionRes
 
   if (error) return { success: false, error: error.message }
 
+  // Notifica copilot (fire-and-forget)
+  const db = createAdminClient()
+  const { data: consulta } = await db
+    .from('consultas')
+    .select('id, tipo, data_hora, patient_id, profiles!patient_id(full_name, phone, retorno_previsto)')
+    .eq('id', consultaId)
+    .single()
+
+  if (consulta) {
+    const p = consulta.profiles as { full_name?: string; phone?: string; retorno_previsto?: string } | null
+    notifyCopilotEvent('prontuario_finalizado', {
+      paciente: {
+        id:      consulta.patient_id,
+        nome:    p?.full_name ?? null,
+        telefone: p?.phone    ?? null,
+      },
+      consulta: {
+        id:               consulta.id,
+        data:             new Date(consulta.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        tipo:             consulta.tipo,
+        retorno_previsto: p?.retorno_previsto ?? null,
+      },
+    })
+  }
+
   revalidatePath('/medico')
   return { success: true }
 }
@@ -125,6 +152,49 @@ export async function upsertLabResults(
     .upsert(rows, { onConflict: 'patient_id,exam_name,collected_at' })
 
   if (error) return { success: false, error: error.message }
+
+  // Verifica alertas críticos nos resultados recém-salvos (fire-and-forget)
+  if (rows.length > 0) {
+    const patientId = rows[0].patient_id
+    const db = createAdminClient()
+
+    const [{ data: allResults }, { data: patient }] = await Promise.all([
+      db.from('lab_results')
+        .select('id, patient_id, exam_name, value, unit, collected_at, consulta_id, created_at')
+        .eq('patient_id', patientId)
+        .order('collected_at', { ascending: false })
+        .limit(200),
+      db.from('profiles')
+        .select('full_name, phone')
+        .eq('id', patientId)
+        .single(),
+    ])
+
+    const alertas = computeLabAlerts(allResults ?? [])
+    const criticos = alertas.filter(a => a.severity === 'critical')
+
+    for (const alerta of criticos) {
+      // Só notifica se o valor crítico está nos rows recém-salvos
+      const isFresh = rows.some(r => r.exam_name === alerta.exam_name)
+      if (!isFresh) continue
+
+      notifyCopilotEvent('lab_critico', {
+        paciente: {
+          id:       patientId,
+          nome:     patient?.full_name ?? null,
+          telefone: patient?.phone     ?? null,
+        },
+        alerta: {
+          exame:      alerta.exam_name,
+          valor:      `${alerta.latestValue}${alerta.latestUnit ? ' ' + alerta.latestUnit : ''}`,
+          referencia: alerta.message,
+          severidade: alerta.severity,
+          mensagem:   alerta.message,
+          data_coleta: alerta.latestDate,
+        },
+      })
+    }
+  }
 
   revalidatePath('/medico')
   return { success: true }
@@ -168,6 +238,26 @@ export async function upsertImagingResult(data: {
     .single()
 
   if (error) return { success: false, error: error.message }
+
+  // Notifica copilot sobre novo resultado de imagem (fire-and-forget)
+  const { data: patient } = await db
+    .from('profiles')
+    .select('full_name, phone')
+    .eq('id', data.patient_id)
+    .single()
+
+  notifyCopilotEvent('exame_resultado_disponivel', {
+    paciente: {
+      id:       data.patient_id,
+      nome:     patient?.full_name ?? null,
+      telefone: patient?.phone     ?? null,
+    },
+    exame: {
+      tipo:        data.tipo,
+      descricao:   data.laudo_resumido ?? null,
+      data_coleta: data.data_realizado,
+    },
+  })
 
   revalidatePath('/medico')
   return { success: true, data: { id: result.id } }

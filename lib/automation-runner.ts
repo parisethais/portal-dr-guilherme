@@ -56,7 +56,7 @@ async function sendViaCopilot(telefone: string | null | undefined, mensagem: str
  * Notifica o copilot sobre eventos do portal (fire-and-forget).
  * Endpoint esperado no copilot: POST /portal/evento
  */
-export async function notifyCopiloEvent(evento: string, payload: Record<string, unknown>): Promise<void> {
+export async function notifyCopilotEvent(evento: string, payload: Record<string, unknown>): Promise<void> {
   if (!COPILOT_URL) return
 
   try {
