@@ -3,6 +3,13 @@
  * Cada função recebe a automação configurada e o cliente DB,
  * encontra os pacientes elegíveis, gera as mensagens e registra em automation_logs.
  *
+ * Envio via Copilot:
+ *   Quando COPILOT_OUTBOUND_URL estiver configurada, cada mensagem gerada é
+ *   disparada para o endpoint POST /enviar-mensagem do copilot com:
+ *     { telefone: string, mensagem: string }
+ *   Header: x-copilot-secret (se COPILOT_SECRET estiver configurado).
+ *   O envio é fire-and-forget — falhas são logadas mas não bloqueiam a automação.
+ *
  * TODO multi-tenant: quando houver patient_clinic_id, filtrar pacientes por clínica.
  * Por enquanto todos os pacientes (role='paciente') pertencem à clínica única.
  */
@@ -11,6 +18,37 @@ import { createAdminClient } from '@/lib/supabase/admin-client'
 import type { ClinicAutomation, AutomationParams } from '@/lib/automation-catalog'
 
 type Db = ReturnType<typeof createAdminClient>
+
+// ── Copilot outbound ──────────────────────────────────────────────────────────
+
+const COPILOT_OUTBOUND_URL = process.env.COPILOT_OUTBOUND_URL  // ex: https://copilot.example.com/enviar-mensagem
+const COPILOT_SECRET       = process.env.COPILOT_SECRET
+
+/**
+ * Envia mensagem via copilot (fire-and-forget).
+ * Só executa se COPILOT_OUTBOUND_URL estiver configurada.
+ */
+async function sendViaCopilot(telefone: string | null | undefined, mensagem: string): Promise<void> {
+  if (!COPILOT_OUTBOUND_URL || !telefone) return
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (COPILOT_SECRET) headers['x-copilot-secret'] = COPILOT_SECRET
+
+    const res = await fetch(COPILOT_OUTBOUND_URL, {
+      method:  'POST',
+      headers,
+      body:    JSON.stringify({ telefone, mensagem }),
+    })
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.warn(`[copilot/outbound] ${res.status} — ${body}`)
+    }
+  } catch (err) {
+    console.warn('[copilot/outbound] falha ao enviar:', (err as Error).message)
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -134,6 +172,7 @@ export async function runPreConsultaLembrete(automation: ClinicAutomation): Prom
       consulta_id: c.id,
       consulta_data: c.data_hora,
     })
+    await sendViaCopilot(profile?.phone, mensagem)
     count++
   }
   return count
@@ -178,6 +217,7 @@ export async function runPosConsulta(automation: ClinicAutomation): Promise<numb
     await logExec(db, automation.id, automation.clinic_id, c.patient_id, 'enviado', canal, {
       mensagem, nome, telefone: profile?.phone ?? null, consulta_id: c.id,
     })
+    await sendViaCopilot(profile?.phone, mensagem)
     count++
   }
   return count
@@ -235,6 +275,7 @@ export async function runInativoSemConsulta(automation: ClinicAutomation): Promi
     await logExec(db, automation.id, automation.clinic_id, patient.id, 'enviado', canal, {
       mensagem, nome, telefone: patient.phone ?? null, ultima_consulta: ultimaData,
     })
+    await sendViaCopilot(patient.phone, mensagem)
     count++
   }
   return count
@@ -279,6 +320,7 @@ export async function runRetornoPrevisto(automation: ClinicAutomation): Promise<
     await logExec(db, automation.id, automation.clinic_id, patient.id, 'enviado', canal, {
       mensagem, nome, telefone: patient.phone ?? null, retorno_previsto: patient.retorno_previsto,
     })
+    await sendViaCopilot(patient.phone, mensagem)
     count++
   }
   return count
@@ -325,6 +367,7 @@ export async function runAniversario(automation: ClinicAutomation): Promise<numb
     await logExec(db, automation.id, automation.clinic_id, patient.id, 'enviado', canal, {
       mensagem, nome, telefone: patient.phone ?? null,
     })
+    await sendViaCopilot(patient.phone, mensagem)
     count++
   }
   return count
