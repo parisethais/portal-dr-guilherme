@@ -11,12 +11,12 @@ interface Consulta {
   local:        string
   status:       string
   conduta:      string | null
-  retorno_previsto?: string | null
   diagnosticos: string | null
 }
 
 interface Props {
-  consultas: Consulta[]
+  consultas:        Consulta[]
+  retornoPrevisto?: string | null   // vem do profile do paciente
 }
 
 const TIPO_LABEL: Record<string, string> = {
@@ -79,13 +79,7 @@ function ConsultaCard({ c }: { c: Consulta }) {
           </div>
           <p className="text-xs text-gray-400 mt-0.5">{fmtDate(c.data_hora)}</p>
 
-          {c.retorno_previsto && (
-            <p className="text-xs text-primary/70 mt-1.5 flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" />
-              Retorno previsto: {fmtDateShort(c.retorno_previsto)}
-            </p>
-          )}
-        </div>
+          </div>
 
         {hasDetails && (
           <ChevronDown className={cn('w-4 h-4 text-gray-300 shrink-0 transition-transform mt-1', open && 'rotate-180')} />
@@ -119,7 +113,7 @@ function ConsultaCard({ c }: { c: Consulta }) {
   )
 }
 
-export default function ConsultasPatientTab({ consultas }: Props) {
+export default function ConsultasPatientTab({ consultas, retornoPrevisto }: Props) {
   const realizadas = consultas
     .filter(c => c.status === 'realizada')
     .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
@@ -135,6 +129,20 @@ export default function ConsultasPatientTab({ consultas }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Banner de retorno previsto */}
+      {retornoPrevisto && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm border"
+          style={{ backgroundColor: 'rgba(45,43,107,0.04)', borderColor: 'rgba(45,43,107,0.10)' }}>
+          <RotateCcw className="w-4 h-4 shrink-0" style={{ color: '#2D2B6B' }} />
+          <p className="text-sm text-gray-700">
+            Retorno previsto pelo médico:{' '}
+            <span className="font-semibold" style={{ color: '#2D2B6B' }}>
+              {fmtDateShort(retornoPrevisto)}
+            </span>
+          </p>
+        </div>
+      )}
+
       {realizadas.map(c => <ConsultaCard key={c.id} c={c} />)}
     </div>
   )

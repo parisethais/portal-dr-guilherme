@@ -28,7 +28,6 @@ interface Consulta {
   local:        string
   status:       string
   conduta:      string | null
-  retorno_previsto?: string | null
   diagnosticos: string | null
 }
 
@@ -153,7 +152,7 @@ export default function PacienteDashboard({
         {activeTab === 'documentos' && <DocumentList documents={documents} exames={exames} />}
         {activeTab === 'labs'       && <LabsPatientTab labResults={labResults} />}
         {activeTab === 'imagens'    && <ImagensPatientTab imagingResults={imagingResults} />}
-        {activeTab === 'consultas'  && <ConsultasPatientTab consultas={consultas} />}
+        {activeTab === 'consultas'  && <ConsultasPatientTab consultas={consultas} retornoPrevisto={profile.retorno_previsto} />}
         {activeTab === 'cuidados'   && <CuidadosTab carePlan={carePlan} attachments={carePlanAttachments} />}
         {activeTab === 'pressao'    && <MrpaTab patientId={profile.id} />}
         {activeTab === 'notas'      && <InvoiceList invoices={invoices} />}
