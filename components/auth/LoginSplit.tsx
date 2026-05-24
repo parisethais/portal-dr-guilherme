@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { login, signup } from '@/app/actions/auth'
 import { Eye, EyeOff, UserRound, Stethoscope, ArrowRight } from 'lucide-react'
@@ -85,7 +85,26 @@ const btnSubmit: React.CSSProperties = {
 
 // ── Painel esquerdo — branding ────────────────────────────────
 
+// Domínios internos da MedEn (sem branding de clínica)
+const MEDEN_ADMIN_HOSTS = ['app.meden.health', 'localhost', '127.0.0.1']
+
 function BrandPanel() {
+  const [clinicName, setClinicName] = useState<string | null>(null)
+  const [isAdminDomain, setIsAdminDomain] = useState(false)
+
+  useEffect(() => {
+    const host = window.location.hostname
+    const isAdmin = MEDEN_ADMIN_HOSTS.some(h => host === h || host.startsWith('localhost'))
+    setIsAdminDomain(isAdmin)
+    if (!isAdmin) {
+      // Busca o nome da clínica pelo domínio atual
+      fetch(`/api/clinic-by-domain?host=${encodeURIComponent(host)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.name) setClinicName(d.name) })
+        .catch(() => {})
+    }
+  }, [])
+
   return (
     <div style={{
       width: 360,
@@ -124,7 +143,7 @@ function BrandPanel() {
           color: 'rgba(45,43,107,0.38)',
           textTransform: 'uppercase',
         }}>
-          Portal de Saúde
+          {isAdminDomain ? 'Administração' : 'Portal de Saúde'}
         </span>
       </div>
 
@@ -133,62 +152,49 @@ function BrandPanel() {
 
         {/* Logotipo MedEn */}
         <div style={{ display: 'flex', alignItems: 'baseline' }}>
-          <span style={{
-            fontFamily: 'var(--font-archivo)',
-            fontSize: 40,
-            fontWeight: 800,
-            color: '#2D2B6B',
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-          }}>Med</span>
-          <span style={{
-            fontFamily: 'var(--font-archivo)',
-            fontSize: 40,
-            fontWeight: 800,
-            color: '#7A9E7E',
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-          }}>E</span>
-          <span style={{
-            fontFamily: 'var(--font-archivo)',
-            fontSize: 40,
-            fontWeight: 800,
-            color: '#2D2B6B',
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-          }}>n</span>
+          <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 40, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>Med</span>
+          <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 40, fontWeight: 800, color: '#7A9E7E',  letterSpacing: '-0.03em', lineHeight: 1 }}>E</span>
+          <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 40, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>n</span>
         </div>
 
-        {/* Consultório */}
-        <div>
-          <div style={{
-            width: 28, height: 2,
-            backgroundColor: '#7A9E7E',
-            borderRadius: 2,
-            marginBottom: 12,
-            opacity: 0.7,
-          }} />
-          <p style={{
-            fontFamily: 'var(--font-jakarta)',
-            fontSize: 10, fontWeight: 600,
-            letterSpacing: '0.13em',
-            color: 'rgba(45,43,107,0.38)',
-            textTransform: 'uppercase',
-            margin: '0 0 5px',
-          }}>
-            Consultório
-          </p>
-          <p style={{
-            fontFamily: 'var(--font-jakarta)',
-            fontSize: 16, fontWeight: 600,
-            color: '#2D2B6B',
-            margin: 0,
-            lineHeight: 1.35,
-            letterSpacing: '-0.01em',
-          }}>
-            Dr. Guilherme<br />Santa Catharina
-          </p>
-        </div>
+        {/* Consultório — só aparece se NÃO for domínio admin */}
+        {!isAdminDomain && (
+          <div>
+            <div style={{
+              width: 28, height: 2,
+              backgroundColor: '#7A9E7E',
+              borderRadius: 2,
+              marginBottom: 12,
+              opacity: 0.7,
+            }} />
+            {clinicName ? (
+              <>
+                <p style={{
+                  fontFamily: 'var(--font-jakarta)',
+                  fontSize: 10, fontWeight: 600,
+                  letterSpacing: '0.13em',
+                  color: 'rgba(45,43,107,0.38)',
+                  textTransform: 'uppercase',
+                  margin: '0 0 5px',
+                }}>
+                  Consultório
+                </p>
+                <p style={{
+                  fontFamily: 'var(--font-jakarta)',
+                  fontSize: 16, fontWeight: 600,
+                  color: '#2D2B6B',
+                  margin: 0,
+                  lineHeight: 1.35,
+                  letterSpacing: '-0.01em',
+                }}>
+                  {clinicName}
+                </p>
+              </>
+            ) : (
+              <div style={{ height: 44 }} /> /* placeholder enquanto carrega */
+            )}
+          </div>
+        )}
 
       </div>
     </div>
