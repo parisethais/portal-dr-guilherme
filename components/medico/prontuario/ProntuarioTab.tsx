@@ -383,6 +383,8 @@ export default function ProntuarioTab({
         </div>
 
         <MemedPrescricao
+          patientId={patientId}
+          consultaId={selectedId || null}
           patientName={patientName}
           patientPhone={patientPhone}
           patientBirthday={patientBirthday}

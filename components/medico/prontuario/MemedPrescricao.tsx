@@ -4,29 +4,33 @@
  * MemedPrescricao
  *
  * Integra o widget Memed Sinapse Prescrição no prontuário.
- * Carrega o SDK dinamicamente via <script>, inicializa com o token do médico
- * e dados do paciente, e abre o modal de prescrição.
  *
- * Uso:
- *   <MemedPrescricao
- *     patientName="Nome Completo"
- *     patientPhone="11999999999"
- *     patientBirthday="1980-05-10"
- *     patientGender="F"
- *   />
+ * Implementa todos os requisitos obrigatórios da Memed:
+ *   1. Cadastro do prescritor validado (CPF obrigatório no token endpoint)
+ *   2. Credenciais server-side (MEMED_PARTNER_KEY nunca exposta ao browser)
+ *   3. setFeatureToggle configurado
+ *   4. Eventos prescricaoImpressa e prescricaoExcluida implementados
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Pill, Loader2, AlertCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { saveMedPrescricao, deleteMedPrescricao } from '@/app/actions/memed'
 
 // ── Tipos do SDK Memed ────────────────────────────────────────────────────────
 
 declare global {
   interface Window {
     MdSinapsePrescricao?: {
-      setToken: (token: string) => void
-      setPatient: (patient: MemedPatient) => void
+      event: {
+        add:    (event: string, cb: (arg?: unknown) => void) => void
+        remove: (event: string, cb: (arg?: unknown) => void) => void
+      }
+    }
+    MdHub?: {
+      command: {
+        send: (module: string, command: string, data?: unknown) => Promise<void>
+      }
       event: {
         add:    (event: string, cb: (arg?: unknown) => void) => void
         remove: (event: string, cb: (arg?: unknown) => void) => void
@@ -35,19 +39,15 @@ declare global {
   }
 }
 
-interface MemedPatient {
-  name:     string
-  phone?:   string | null
-  birthday?: string | null   // YYYY-MM-DD
-  gender?:  'M' | 'F' | null
-  weight?:  number | null
-  height?:  number | null
-}
-
 export interface MemedPrescricaoProps {
+  // Identificação
+  patientId:       string           // idExterno (obrigatório pela Memed)
+  consultaId?:     string | null    // para vincular prescrição à consulta
+
+  // Dados do paciente (campos Memed)
   patientName:     string
   patientPhone?:   string | null
-  patientBirthday?: string | null
+  patientBirthday?: string | null   // YYYY-MM-DD
   patientGender?:  'M' | 'F' | null
 }
 
@@ -55,21 +55,36 @@ export interface MemedPrescricaoProps {
 
 const MEMED_SCRIPT_ID = 'memed-sinapse-sdk'
 
-function getScriptUrl() {
+function getScriptUrl(): string | null {
+  // NEXT_PUBLIC_MEMED_API_KEY é a chave pública de carregamento do script (não é secret)
   const apiKey = process.env.NEXT_PUBLIC_MEMED_API_KEY
   if (!apiKey) return null
   return `https://memed.com.br/modulos/plataforma.sinapse-care/build/sinapse-care.min.js?apiKey=${apiKey}`
 }
 
+function waitForSdk(maxMs = 10_000): Promise<boolean> {
+  return new Promise(resolve => {
+    const start = Date.now()
+    const check = () => {
+      if (window.MdHub && window.MdSinapsePrescricao) { resolve(true); return }
+      if (Date.now() - start > maxMs) { resolve(false); return }
+      setTimeout(check, 200)
+    }
+    check()
+  })
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export default function MemedPrescricao({
+  patientId,
+  consultaId,
   patientName,
   patientPhone,
   patientBirthday,
   patientGender,
 }: MemedPrescricaoProps) {
-  const [state,   setState]   = useState<'idle' | 'loading' | 'ready' | 'open' | 'error'>('idle')
+  const [state,    setState]  = useState<'idle' | 'loading' | 'ready' | 'open' | 'error'>('idle')
   const [errorMsg, setError]  = useState('')
   const initDone = useRef(false)
 
@@ -77,18 +92,19 @@ export default function MemedPrescricao({
 
   const initMemed = useCallback(async () => {
     if (initDone.current) {
-      // SDK já carregado — só abre o widget
-      openWidget()
+      // SDK já carregado — só reabre o widget
+      await window.MdHub?.command.send('plataforma.prescricao', 'show')
+      setState('open')
       return
     }
 
     setState('loading')
     setError('')
 
-    // 1. Busca token do médico
+    // 1. Busca token do médico (server-side — PARTNER_KEY nunca vai ao browser)
     let token: string
     try {
-      const res = await fetch('/api/memed/token')
+      const res  = await fetch('/api/memed/token')
       const json = await res.json()
       if (!res.ok || !json.token) {
         setError(json.error ?? 'Erro ao autenticar com a Memed.')
@@ -102,7 +118,7 @@ export default function MemedPrescricao({
       return
     }
 
-    // 2. Carrega o script do SDK (se ainda não carregado)
+    // 2. Carrega o script do SDK com o token como atributo (conforme docs Memed)
     const scriptUrl = getScriptUrl()
     if (!scriptUrl) {
       setError('NEXT_PUBLIC_MEMED_API_KEY não configurada.')
@@ -110,88 +126,125 @@ export default function MemedPrescricao({
       return
     }
 
-    await new Promise<void>((resolve, reject) => {
-      if (document.getElementById(MEMED_SCRIPT_ID)) { resolve(); return }
-      const script    = document.createElement('script')
-      script.id       = MEMED_SCRIPT_ID
-      script.src      = scriptUrl
-      script.async    = true
-      script.onload   = () => resolve()
-      script.onerror  = () => reject(new Error('Falha ao carregar SDK Memed'))
-      document.head.appendChild(script)
-    }).catch(err => {
-      setError(err.message)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        if (document.getElementById(MEMED_SCRIPT_ID)) { resolve(); return }
+        const script      = document.createElement('script')
+        script.id         = MEMED_SCRIPT_ID
+        script.src        = scriptUrl
+        script.setAttribute('token', token)  // token no atributo conforme docs Memed
+        script.async      = true
+        script.onload     = () => resolve()
+        script.onerror    = () => reject(new Error('Falha ao carregar SDK Memed'))
+        document.head.appendChild(script)
+      })
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar SDK')
       setState('error')
       return
-    })
+    }
 
-    if (state === 'error') return
-
-    // 3. Aguarda SDK ficar disponível (máx 10s)
-    const sdk = await waitForSdk()
-    if (!sdk) {
+    // 3. Aguarda MdHub e MdSinapsePrescricao ficarem disponíveis (máx 10s)
+    const ready = await waitForSdk()
+    if (!ready) {
       setError('SDK Memed não inicializou. Tente recarregar a página.')
       setState('error')
       return
     }
 
-    // 4. Define token e paciente
-    sdk.setToken(token)
-    sdk.setPatient({
-      name:     patientName,
-      phone:    patientPhone  ?? undefined,
-      birthday: patientBirthday ?? undefined,
-      gender:   patientGender ?? undefined,
+    // 4. Registra eventos DENTRO do core:moduleInit (obrigatório pela Memed)
+    window.MdSinapsePrescricao!.event.add('core:moduleInit', async (module: unknown) => {
+      const mod = module as { name: string } | undefined
+      if (mod?.name !== 'plataforma.prescricao') return
+
+      // 4a. setFeatureToggle — configura funcionalidades habilitadas
+      await window.MdHub?.command.send('plataforma.prescricao', 'setFeatureToggle', {
+        deletePatient:                false,  // não permitir excluir paciente da base Memed
+        removePatient:                false,  // não remover paciente da prescrição
+        editPatient:                  false,  // dados do paciente gerenciados pelo nosso sistema
+        historyPrescription:          true,   // histórico de prescrições visível
+        removePrescription:           true,   // médico pode excluir prescrição
+        forceSign:                    false,  // assinatura digital opcional
+        allowShareModal:              true,   // compartilhamento WhatsApp/SMS
+        setPatientAllergy:            true,   // registrar alergias
+        autocompleteManipulated:      true,   // fórmulas manipuladas
+        autocompleteCompositions:     true,   // nomes genéricos
+        autocompletePheripherals:     true,   // produtos periféricos
+        copyMedicalRecords:           true,
+        buttonClose:                  true,
+        newFormula:                   true,
+        guidesOnboarding:             true,
+        conclusionModalEdit:          true,
+        showProtocol:                 true,
+        showHelpMenu:                 true,
+        editIdentification:           true,
+        addPrescriptionDrug:          true,
+        removePrescriptionDrug:       true,
+        editPrescriptionDrugTitle:    true,
+        editPosology:                 true,
+        editQuantity:                 true,
+        enableAlerts:                 true,
+        setAllowedSignatureProviders: ['vidaas', 'certisign', 'soluti'],
+      })
+
+      // 4b. setPaciente — campos obrigatórios: idExterno, nome, sexo
+      await window.MdHub?.command.send('plataforma.prescricao', 'setPaciente', {
+        idExterno: patientId,
+        nome:      patientName,
+        sexo:      patientGender === 'F' ? 'Feminino'
+                 : patientGender === 'M' ? 'Masculino'
+                 : undefined,
+        telefone:         patientPhone    ?? undefined,
+        data_nascimento:  patientBirthday ?? undefined,  // YYYY-MM-DD aceito
+      })
+
+      // 4c. prescricaoImpressa — OBRIGATÓRIO: captura e persiste cada prescrição emitida
+      window.MdHub?.event.add('prescricaoImpressa', async (data: unknown) => {
+        const prescricao = data as {
+          prescricao: {
+            id:               string
+            prescriptionUuid: string
+            data:             string
+            horario:          string
+            medicamentos:     unknown[]
+            documents:        unknown[]
+            medicos_id:       string
+            nome_medico:      string
+          }
+          reimpressao: boolean
+          alterada:    boolean
+        }
+
+        // Persiste a prescrição no banco (fire-and-forget — não bloqueia o médico)
+        saveMedPrescricao({
+          consultaId:        consultaId ?? null,
+          patientId,
+          memedPrescricaoId: prescricao.prescricao.id,
+          prescricaoUuid:    prescricao.prescricao.prescriptionUuid,
+          dataPrescricao:    prescricao.prescricao.data,
+          reimpressao:       prescricao.reimpressao,
+          alterada:          prescricao.alterada,
+          medicamentosJson:  JSON.stringify(prescricao.prescricao.medicamentos ?? []),
+          documentsJson:     JSON.stringify(prescricao.prescricao.documents    ?? []),
+        }).catch(err => console.error('[memed] Erro ao salvar prescricaoImpressa:', err))
+      })
+
+      // 4d. prescricaoExcluida — OBRIGATÓRIO: registra exclusão da prescrição
+      window.MdHub?.event.add('prescricaoExcluida', async (prescriptionId: unknown) => {
+        deleteMedPrescricao({
+          memedPrescricaoId: String(prescriptionId),
+          patientId,
+        }).catch(err => console.error('[memed] Erro ao registrar prescricaoExcluida:', err))
+      })
+
+      // 4e. Fecha o widget quando médico clica em fechar
+      window.MdHub?.event.add('core:moduleHide', () => setState('ready'))
+
+      initDone.current = true
+      setState('open')
     })
 
-    // 5. Aguarda módulo de prescrição ficar pronto e abre
-    sdk.event.add('core:moduleInit', (module: unknown) => {
-      const mod = module as { name: string; show: () => void } | undefined
-      if (mod?.name === 'plataforma.prescricao') {
-        initDone.current = true
-        setState('open')
-        mod.show()
-      }
-    })
-
-  }, [patientName, patientPhone, patientBirthday, patientGender, state])
-
-  // ── Abre widget (SDK já inicializado) ──────────────────────────────────────
-
-  function openWidget() {
-    setState('open')
-    // O SDK mantém o estado — re-show dispara o modal novamente
-    window.MdSinapsePrescricao?.event.add('core:moduleInit', (module: unknown) => {
-      const mod = module as { name: string; show: () => void } | undefined
-      if (mod?.name === 'plataforma.prescricao') mod?.show()
-    })
-  }
-
-  // ── Utilitário: espera SDK ────────────────────────────────────────────────
-
-  function waitForSdk(maxMs = 10_000): Promise<typeof window.MdSinapsePrescricao | null> {
-    return new Promise(resolve => {
-      const start = Date.now()
-      const check = () => {
-        if (window.MdSinapsePrescricao) { resolve(window.MdSinapsePrescricao); return }
-        if (Date.now() - start > maxMs)  { resolve(null); return }
-        setTimeout(check, 200)
-      }
-      check()
-    })
-  }
-
-  // ── Limpa estado quando widget fecha ──────────────────────────────────────
-
-  useEffect(() => {
-    if (state !== 'open') return
-    const sdk = window.MdSinapsePrescricao
-    if (!sdk) return
-
-    const onClose = () => setState('ready')
-    sdk.event.add('core:moduleHide', onClose)
-    return () => { sdk.event.remove('core:moduleHide', onClose) }
-  }, [state])
+  }, [patientId, consultaId, patientName, patientPhone, patientBirthday, patientGender])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -221,7 +274,7 @@ export default function MemedPrescricao({
     >
       {state === 'loading'
         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        : <Pill className="w-3.5 h-3.5" />}
+        : <Pill    className="w-3.5 h-3.5" />}
       {state === 'loading' ? 'Abrindo Memed…' : 'Prescrição Memed'}
     </button>
   )
