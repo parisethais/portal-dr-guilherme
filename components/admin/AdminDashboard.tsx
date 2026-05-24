@@ -1259,7 +1259,7 @@ export default function AdminDashboard({ initialClinics }: { initialClinics: Cli
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 justify-end">
-                      <a href="/medico" target="_blank" rel="noopener noreferrer"
+                      <a href={`/medico?tenant=${clinic.tenant_id}`} target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
                         className="p-1.5 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Acessar CRM">
