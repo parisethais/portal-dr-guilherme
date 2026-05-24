@@ -35,13 +35,49 @@ export default async function MedicoLayout({ children }: { children: React.React
   const isStaff = ['medico', 'secretaria', 'superadmin'].includes(currentRole)
   if (!isStaff) redirect('/')
 
-  // Buscar profile completo para o Header (adminClient para superadmin, normal para os demais)
-  const db = currentRole === 'superadmin' ? createAdminClient() : await createClient()
-  const { data: profile } = await db
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  const adminDb = createAdminClient()
+  const db = currentRole === 'superadmin' ? adminDb : await createClient()
+
+  // Busca profile + nome da clínica em paralelo
+  const [{ data: profile }, clinicName] = await Promise.all([
+    db.from('profiles').select('*').eq('id', userId).single(),
+    (async () => {
+      // Para superadmin: tenta resolver o tenant pelo URL original (header referer ou next-url)
+      // Para médico/secretaria: busca diretamente via clinic_members
+      if (currentRole === 'superadmin') {
+        // Lê o tenant do header x-invoke-query injetado pelo Next.js ou da URL atual
+        const rawUrl = headersList.get('x-invoke-url') ?? headersList.get('referer') ?? ''
+        const tenantMatch = rawUrl.match(/[?&]tenant=([^&]+)/)
+        const tenantId = tenantMatch?.[1]
+        if (tenantId) {
+          const { data: clinic } = await adminDb
+            .from('clinics').select('name').eq('tenant_id', tenantId).single()
+          return clinic?.name ?? null
+        }
+        return null
+      }
+
+      const { data: membership } = await adminDb
+        .from('clinic_members')
+        .select('clinic_id, clinics!clinic_id(id, name)')
+        .eq('user_id', userId)
+        .limit(1)
+        .single()
+
+      const clinicId = (membership?.clinics as any)?.id
+      if (!clinicId) return (membership?.clinics as any)?.name ?? null
+
+      // Prefere nome_exibicao do clinic_settings
+      const { data: setting } = await adminDb
+        .from('clinic_settings')
+        .select('value')
+        .eq('clinic_id', clinicId)
+        .eq('key', 'nome_exibicao')
+        .maybeSingle()
+
+      return setting?.value || (membership?.clinics as any)?.name || null
+    })(),
+  ])
 
   return (
     <div
@@ -55,7 +91,7 @@ export default async function MedicoLayout({ children }: { children: React.React
         ].join(','),
       }}
     >
-      <Header profile={profile} />
+      <Header profile={profile} clinicName={clinicName} />
       <main className="flex-1">{children}</main>
     </div>
   )

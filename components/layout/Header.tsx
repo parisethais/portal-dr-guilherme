@@ -8,9 +8,10 @@ import type { Profile } from '@/lib/types'
 interface HeaderProps {
   profile: Profile
   variant?: 'medico' | 'paciente'
+  clinicName?: string | null
 }
 
-export default function Header({ profile, variant = 'medico' }: HeaderProps) {
+export default function Header({ profile, variant = 'medico', clinicName }: HeaderProps) {
   const [isPending, startTransition] = useTransition()
 
   function handleLogout() {
@@ -40,15 +41,21 @@ export default function Header({ profile, variant = 'medico' }: HeaderProps) {
           /* Portal do paciente: duas linhas — nome do médico + label */
           <div className="flex flex-col justify-center min-w-0 hidden sm:flex">
             <span className="text-xs text-white/50 leading-none mb-0.5">Portal do Paciente</span>
-            <span className="text-sm font-medium text-white/85 truncate leading-none">
-              Dr. Guilherme Santa Catharina
-            </span>
+            {clinicName && (
+              <span className="text-sm font-medium text-white/85 truncate leading-none">
+                {clinicName}
+              </span>
+            )}
           </div>
         ) : (
-          /* Área médica: formato original em linha */
+          /* Área médica: nome da clínica dinâmico */
           <span className="text-sm text-white/70 truncate hidden sm:block">
-            Consultório Dr. Guilherme Santa Catharina
-            <span className="text-white/40 mx-1.5">—</span>
+            {clinicName ? (
+              <>
+                {clinicName}
+                <span className="text-white/40 mx-1.5">—</span>
+              </>
+            ) : null}
             Área Médica
           </span>
         )}
