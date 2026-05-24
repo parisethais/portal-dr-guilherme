@@ -402,10 +402,92 @@ function MedicalForm() {
   )
 }
 
+// ── Formulário admin (domínio app.meden.health) ───────────────
+
+function AdminForm() {
+  const router = useRouter()
+  const [showPass, setShowPass] = useState(false)
+  const [error, setError] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError('')
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const r = await login(fd)
+      if (r?.error) setError(r.error)
+      else if (r?.redirectTo) router.push(r.redirectTo)
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ marginBottom: 6 }}>
+        <h2 style={{
+          fontFamily: 'var(--font-archivo)',
+          fontSize: 20, fontWeight: 700, color: '#2D2B6B',
+          margin: '0 0 6px', letterSpacing: '-0.02em',
+        }}>
+          Acesso MedEn
+        </h2>
+        <p style={{
+          fontFamily: 'var(--font-jakarta)',
+          fontSize: 13, color: 'rgba(45,43,107,0.48)', margin: 0,
+        }}>
+          Painel de administração da plataforma.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <input name="email" type="email" placeholder="seu@email.com"
+          required autoComplete="email" style={inputBase}
+          onFocus={focusIn} onBlur={focusOut} />
+
+        <div style={{ position: 'relative' }}>
+          <input name="password" type={showPass ? 'text' : 'password'}
+            placeholder="••••••••" required minLength={6}
+            autoComplete="current-password"
+            style={{ ...inputBase, paddingRight: 44 }}
+            onFocus={focusIn} onBlur={focusOut} />
+          <button type="button" tabIndex={-1} onClick={() => setShowPass(s => !s)}
+            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(45,43,107,0.32)', padding: 2 }}>
+            {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+
+        {error && <MsgError text={error} />}
+
+        <button type="submit" disabled={isPending}
+          style={{ ...btnSubmit, cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.65 : 1 }}>
+          {isPending ? <Spinner /> : null}
+          Entrar
+          {!isPending && <ArrowRight size={14} />}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ── Painel direito — abas + formulário ────────────────────────
 
-function FormPanel() {
+function FormPanel({ isAdmin }: { isAdmin: boolean }) {
   const [tab, setTab] = useState<Tab>('paciente')
+
+  // Domínio admin: login único sem abas
+  if (isAdmin) {
+    return (
+      <div style={{
+        flex: 1, minWidth: 0,
+        backgroundColor: '#FFFFFF',
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '36px 40px',
+      }}>
+        <AdminForm />
+      </div>
+    )
+  }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'paciente', label: 'Área do Paciente', icon: <UserRound   size={13} /> },
@@ -422,10 +504,7 @@ function FormPanel() {
     }}>
 
       {/* Tab bar */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid rgba(45,43,107,0.07)',
-      }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(45,43,107,0.07)' }}>
         {tabs.map(t => {
           const active = tab === t.id
           return (
@@ -460,8 +539,6 @@ function FormPanel() {
 
       {/* Conteúdo do formulário */}
       <div style={{ padding: '28px 36px 32px', flex: 1 }}>
-
-        {/* Heading da aba */}
         <h2 style={{
           fontFamily: 'var(--font-archivo)',
           fontSize: 20, fontWeight: 700, color: '#2D2B6B',
@@ -469,7 +546,6 @@ function FormPanel() {
         }}>
           {tab === 'paciente' ? 'Área do Paciente' : 'Área Médica'}
         </h2>
-
         {tab === 'paciente' ? <PatientForm /> : <MedicalForm />}
       </div>
     </div>
@@ -479,6 +555,13 @@ function FormPanel() {
 // ── Export principal ──────────────────────────────────────────
 
 export default function LoginSplit() {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const host = window.location.hostname
+    setIsAdmin(MEDEN_ADMIN_HOSTS.some(h => host === h || host.startsWith('localhost')))
+  }, [])
+
   return (
     <div style={{
       width: '100%',
@@ -497,7 +580,7 @@ export default function LoginSplit() {
         background: 'linear-gradient(to bottom, transparent 5%, rgba(45,43,107,0.08) 20%, rgba(45,43,107,0.08) 80%, transparent 95%)',
       }} />
 
-      <FormPanel />
+      <FormPanel isAdmin={isAdmin} />
     </div>
   )
 }
