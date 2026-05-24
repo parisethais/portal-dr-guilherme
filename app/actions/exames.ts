@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export async function uploadExame(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
@@ -29,6 +30,7 @@ export async function uploadExame(formData: FormData): Promise<ActionResult> {
 
   const { data: { publicUrl } } = supabase.storage.from('exames').getPublicUrl(fileName)
 
+  const tenantId = await getCallerTenantId(user.id)
   const { error: dbError } = await supabase.from('patient_exams').insert({
     patient_id: user.id,
     title,
@@ -36,6 +38,7 @@ export async function uploadExame(formData: FormData): Promise<ActionResult> {
     file_name:  file.name,
     file_type:  file.type,
     file_size:  file.size,
+    tenant_id:  tenantId,
   })
 
   if (dbError) {

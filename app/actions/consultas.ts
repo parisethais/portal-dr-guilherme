@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
@@ -34,6 +35,7 @@ export async function createConsulta(data: {
 
   // Usa adminClient para bypass de RLS — autenticação já foi validada acima
   const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
 
   const { data: result, error } = await db
     .from('consultas')
@@ -46,6 +48,7 @@ export async function createConsulta(data: {
       observacoes: data.observacoes?.trim() || null,
       status:      data.status ?? 'agendada',
       created_by:  user.id,
+      tenant_id:   tenantId,
     })
     .select('id')
     .single()

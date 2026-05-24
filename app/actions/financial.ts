@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export type NotaFiscalStatus = 'nao_se_aplica' | 'a_solicitar' | 'solicitada' | 'emitida'
 
@@ -56,7 +57,11 @@ export async function getFinancialEntries(filters?: {
 
 export async function createFinancialEntry(input: EntryInput) {
   const supabase = await createClient()
-  const { error } = await supabase.from('financial_entries').insert(input)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const tenantId = await getCallerTenantId(user.id)
+  const { error } = await supabase.from('financial_entries').insert({ ...input, tenant_id: tenantId })
   if (error) return { error: error.message }
   revalidatePath('/medico')
   return { success: true }
@@ -114,10 +119,12 @@ export async function notifyPatientNota({
     `\nQualquer dúvida, estamos à disposição.`,
   ].filter(Boolean).join(' ')
 
+  const tenantId = await getCallerTenantId(user.id)
   const { error } = await supabase.from('messages').insert({
     sender_id:    user.id,
     recipient_id: patientId,
     content,
+    tenant_id:    tenantId,
   })
 
   if (error) return { error: error.message }

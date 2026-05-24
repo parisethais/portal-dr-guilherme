@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
@@ -35,13 +36,16 @@ export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
 
   if (storageError) return { success: false, error: `Erro ao enviar arquivo: ${storageError.message}` }
 
+  const tenantId = await getCallerTenantId(user.id)
+
   const { error: dbError } = await supabase.from('invoices').insert({
-    patient_id: patientId,
-    file_path: filePath,
+    patient_id:    patientId,
+    file_path:     filePath,
     amount,
-    issue_date: issueDate,
+    issue_date:    issueDate,
     consulta_date: consultaDate,
-    numero_nota: numeroNota,
+    numero_nota:   numeroNota,
+    tenant_id:     tenantId,
   })
 
   if (dbError) {

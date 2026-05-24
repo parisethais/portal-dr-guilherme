@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export async function uploadDocument(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
@@ -40,14 +41,17 @@ export async function uploadDocument(formData: FormData): Promise<ActionResult> 
     data: { publicUrl },
   } = supabase.storage.from('documents').getPublicUrl(fileName)
 
+  const tenantId = await getCallerTenantId(user.id)
+
   const { error: dbError } = await supabase.from('documents').insert({
-    patient_id: patientId,
+    patient_id:  patientId,
     uploaded_by: user.id,
     title,
     description: description || null,
-    file_url: publicUrl,
-    file_name: file.name,
-    file_type: file.type,
+    file_url:    publicUrl,
+    file_name:   file.name,
+    file_type:   file.type,
+    tenant_id:   tenantId,
   })
 
   if (dbError) {

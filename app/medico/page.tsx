@@ -37,7 +37,13 @@ function getDisplayName(fullName: string | null, sexo: string | null, role: stri
   return first
 }
 
-export default async function MedicoPage() {
+export default async function MedicoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tenant?: string }>
+}) {
+  const params = await searchParams
+
   // Lê headers injetados pelo middleware (evita chamar getUser() de novo,
   // o que causaria falha quando o refresh token já foi consumido pelo middleware)
   const headersList = await headers()
@@ -75,8 +81,11 @@ export default async function MedicoPage() {
   const adminDb  = createAdminClient()
   const db       = currentRole === 'superadmin' ? adminDb : supabase
 
-  // Resolve tenant_id: superadmin vê tudo (null = sem filtro),
-  // médico/secretaria vê só os dados da própria clínica
+  // Resolve tenant_id
+  //   - Médico/secretaria   → clínica do próprio clinic_members
+  //   - Superadmin ?tenant= → tenant explícito (botão CRM no admin panel)
+  //   - Superadmin por host → resolve pelo domínio da clínica (clinic_settings key=dominio)
+  //   - Superadmin sem pista → null = vê tudo (acesso irrestrito no painel /admin)
   let tenantId: string | null = null
   if (currentRole !== 'superadmin') {
     const { data: membership } = await adminDb
@@ -86,6 +95,35 @@ export default async function MedicoPage() {
       .limit(1)
       .single()
     tenantId = (membership?.clinics as any)?.tenant_id ?? 'dr_guilherme'
+  } else if (params.tenant) {
+    // Superadmin abrindo CRM de uma clínica específica via ?tenant=xxx
+    tenantId = params.tenant
+  } else {
+    // Superadmin acessando diretamente: tenta resolver pelo Host header
+    const host = headersList.get('host') ?? ''
+    const isCustomDomain = host
+      && !host.includes('localhost')
+      && !host.includes('127.0.0.1')
+      && !host.includes('.vercel.app')
+
+    if (isCustomDomain) {
+      // Busca clínica cujo setting "dominio" bate com o host atual
+      const { data: domainSetting } = await adminDb
+        .from('clinic_settings')
+        .select('clinic_id')
+        .eq('key', 'dominio')
+        .eq('value', host)
+        .maybeSingle()
+
+      if (domainSetting?.clinic_id) {
+        const { data: clinic } = await adminDb
+          .from('clinics')
+          .select('tenant_id')
+          .eq('id', domainSetting.clinic_id)
+          .single()
+        tenantId = clinic?.tenant_id ?? null
+      }
+    }
   }
 
   // Carrega só o essencial para a lista e agenda.

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export async function sendMessage(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
@@ -18,10 +19,12 @@ export async function sendMessage(formData: FormData): Promise<ActionResult> {
     return { success: false, error: 'Preencha todos os campos.' }
   }
 
+  const tenantId = await getCallerTenantId(user.id)
   const { error } = await supabase.from('messages').insert({
     sender_id:    user.id,
     recipient_id: recipientId,
     content:      content.trim(),
+    tenant_id:    tenantId,
   })
 
   if (error) return { success: false, error: error.message }

@@ -92,8 +92,16 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
-    // Superadmin pode visitar /medico e /paciente livremente (preview)
-    if (role === 'superadmin' && (pathname.startsWith('/medico') || pathname.startsWith('/paciente'))) {
+    // Superadmin em /medico: só permite se vier com ?tenant= explícito (botão CRM do /admin)
+    // Sem tenant → redireciona para o painel de administração
+    if (role === 'superadmin' && pathname.startsWith('/medico')) {
+      const tenant = request.nextUrl.searchParams.get('tenant')
+      if (!tenant) return NextResponse.redirect(new URL('/admin', request.url))
+      return withUserHeaders()
+    }
+
+    // Superadmin pode visitar /paciente livremente (para suporte)
+    if (role === 'superadmin' && pathname.startsWith('/paciente')) {
       return withUserHeaders()
     }
 

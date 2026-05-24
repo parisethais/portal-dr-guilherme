@@ -18,6 +18,7 @@ export interface Clinic {
   active:        boolean
   owner_id:      string | null
   created_at:    string
+  tenant_id:     string
   member_count?: number
 }
 

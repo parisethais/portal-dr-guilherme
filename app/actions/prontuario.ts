@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { notifyCopilotEvent } from '@/lib/automation-runner'
 import { computeLabAlerts } from '@/lib/lab-alerts'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 // ── Salvar campos de prontuário na consulta ───────────────────
 export async function salvarConsultaFields(
@@ -147,9 +148,12 @@ export async function upsertLabResults(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  const tenantId = await getCallerTenantId(user.id)
+  const rowsWithTenant = rows.map(r => ({ ...r, tenant_id: tenantId }))
+
   const { error } = await supabase
     .from('lab_results')
-    .upsert(rows, { onConflict: 'patient_id,exam_name,collected_at' })
+    .upsert(rowsWithTenant, { onConflict: 'patient_id,exam_name,collected_at' })
 
   if (error) return { success: false, error: error.message }
 
@@ -231,9 +235,10 @@ export async function upsertImagingResult(data: {
   // Usa adminClient para bypassar RLS (policy só cobre role='medico', mas secretaria/superadmin
   // também precisam inserir — autenticação já foi verificada acima)
   const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
   const { data: result, error } = await db
     .from('imaging_results')
-    .upsert(data)
+    .upsert({ ...data, tenant_id: tenantId })
     .select('id')
     .single()
 

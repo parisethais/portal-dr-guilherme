@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -69,8 +70,10 @@ export async function createMrpaSession(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
-  const { data: member } = await supabase
-    .from('clinic_members').select('clinic_id').eq('user_id', user.id).maybeSingle()
+  const [{ data: member }, tenantId] = await Promise.all([
+    supabase.from('clinic_members').select('clinic_id').eq('user_id', user.id).maybeSingle(),
+    getCallerTenantId(user.id),
+  ])
 
   const { data, error } = await supabase
     .from('patient_mrpa_sessions')
@@ -81,6 +84,7 @@ export async function createMrpaSession(input: {
       notes:      input.notes ?? null,
       doctor_id:  user.id,
       clinic_id:  member?.clinic_id ?? null,
+      tenant_id:  tenantId,
     })
     .select()
     .single()
@@ -102,12 +106,17 @@ export async function upsertMrpaReading(input: {
   fc?:        number | null
 }) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const tenantId = await getCallerTenantId(user.id)
 
   const { error } = await supabase
     .from('patient_mrpa_readings')
     .upsert({
       ...input,
-      fc: input.fc ?? null,
+      fc:        input.fc ?? null,
+      tenant_id: tenantId,
     }, { onConflict: 'session_id,day_number,period' })
 
   if (error) return { error: error.message }

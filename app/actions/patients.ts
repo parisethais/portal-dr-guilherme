@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
 export async function createPatient(
   fullName: string,
@@ -40,12 +41,14 @@ export async function createPatient(
     return { success: false, error: error.message }
   }
 
-  // Garante o perfil com role correto
+  // Garante o perfil com role correto e tenant_id correto
   if (data.user) {
+    const tenantId = await getCallerTenantId(user.id)
     await admin.from('profiles').upsert({
       id:        data.user.id,
       full_name: fullName.trim(),
       role:      'paciente',
+      tenant_id: tenantId,
     }, { onConflict: 'id' })
   }
 

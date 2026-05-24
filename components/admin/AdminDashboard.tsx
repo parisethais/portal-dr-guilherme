@@ -1111,7 +1111,7 @@ function ClinicDetail({ clinic, onBack, onNameChange }: {
 
         {/* Acesso rápido */}
         <div className="flex items-center gap-2 ml-auto">
-          <a href="/medico" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+          <a href={`/medico?tenant=${clinic.tenant_id}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors">
             <LayoutDashboard className="w-3.5 h-3.5" />
             CRM
