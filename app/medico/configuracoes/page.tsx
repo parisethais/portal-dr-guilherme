@@ -14,7 +14,7 @@ export default async function ConfiguracoesPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, crm, especialidade, cpf')
+    .select('role, crm, especialidade, cpf, data_nascimento')
     .eq('id', user.id)
     .single()
 
@@ -49,6 +49,7 @@ export default async function ConfiguracoesPage() {
           initialCrm={profile?.crm ?? null}
           initialEspecialidade={profile?.especialidade ?? null}
           initialCpf={profile?.cpf ?? null}
+          initialDataNascimento={profile?.data_nascimento ?? null}
         />
         <ExamCatalogSettings initialExams={exams} />
       </div>

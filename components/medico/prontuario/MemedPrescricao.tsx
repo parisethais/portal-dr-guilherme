@@ -55,11 +55,14 @@ export interface MemedPrescricaoProps {
 
 const MEMED_SCRIPT_ID = 'memed-sinapse-sdk'
 
-function getScriptUrl(): string | null {
-  // NEXT_PUBLIC_MEMED_API_KEY é a chave pública de carregamento do script (não é secret)
-  const apiKey = process.env.NEXT_PUBLIC_MEMED_API_KEY
-  if (!apiKey) return null
-  return `https://memed.com.br/modulos/plataforma.sinapse-care/build/sinapse-care.min.js?apiKey=${apiKey}`
+function getScriptUrl(): string {
+  // NEXT_PUBLIC_MEMED_SCRIPT_URL permite alternar entre staging e produção
+  // Staging:  https://integrations.memed.com.br/modulos/plataforma.sinapse-prescricao/build/sinapse-prescricao.min.js
+  // Produção: https://partners.memed.com.br/integration.js
+  return (
+    process.env.NEXT_PUBLIC_MEMED_SCRIPT_URL ??
+    'https://integrations.memed.com.br/modulos/plataforma.sinapse-prescricao/build/sinapse-prescricao.min.js'
+  )
 }
 
 function waitForSdk(maxMs = 10_000): Promise<boolean> {
@@ -120,11 +123,6 @@ export default function MemedPrescricao({
 
     // 2. Carrega o script do SDK com o token como atributo (conforme docs Memed)
     const scriptUrl = getScriptUrl()
-    if (!scriptUrl) {
-      setError('NEXT_PUBLIC_MEMED_API_KEY não configurada.')
-      setState('error')
-      return
-    }
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -194,8 +192,11 @@ export default function MemedPrescricao({
         sexo:      patientGender === 'F' ? 'Feminino'
                  : patientGender === 'M' ? 'Masculino'
                  : undefined,
-        telefone:         patientPhone    ?? undefined,
-        data_nascimento:  patientBirthday ?? undefined,  // YYYY-MM-DD aceito
+        telefone:        patientPhone ?? undefined,
+        // Memed exige dd/mm/YYYY; nossa base armazena YYYY-MM-DD
+        data_nascimento: patientBirthday
+          ? patientBirthday.split('-').reverse().join('/')   // YYYY-MM-DD → DD/MM/YYYY
+          : undefined,
       })
 
       // 4c. prescricaoImpressa — OBRIGATÓRIO: captura e persiste cada prescrição emitida

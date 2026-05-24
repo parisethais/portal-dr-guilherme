@@ -3,8 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 
 interface DoctorProfileInput {
-  crm:          string
-  especialidade: string
+  crm:             string
+  especialidade:   string
+  dataNascimento?: string | null  // YYYY-MM-DD
 }
 
 export async function saveDoctorProfile(input: DoctorProfileInput): Promise<{ error?: string }> {
@@ -15,8 +16,9 @@ export async function saveDoctorProfile(input: DoctorProfileInput): Promise<{ er
   const { error } = await supabase
     .from('profiles')
     .update({
-      crm:           input.crm.trim()           || null,
-      especialidade: input.especialidade.trim()  || null,
+      crm:             input.crm.trim()           || null,
+      especialidade:   input.especialidade.trim()  || null,
+      data_nascimento: input.dataNascimento?.trim() || null,
       // Limpa o token cacheado para forçar reautenticação com dados novos
       memed_token:    null,
       memed_token_at: null,

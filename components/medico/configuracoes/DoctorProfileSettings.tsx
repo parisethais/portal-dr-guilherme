@@ -5,22 +5,33 @@ import { Check, Loader2, Stethoscope } from 'lucide-react'
 import { saveDoctorProfile } from '@/app/actions/doctor-profile'
 
 interface Props {
-  initialCrm:          string | null
-  initialEspecialidade: string | null
-  initialCpf:          string | null
+  initialCrm:            string | null
+  initialEspecialidade:  string | null
+  initialCpf:            string | null
+  initialDataNascimento: string | null  // YYYY-MM-DD
 }
 
-export default function DoctorProfileSettings({ initialCrm, initialEspecialidade, initialCpf }: Props) {
-  const [crm,           setCrm]           = useState(initialCrm ?? '')
-  const [especialidade, setEspecialidade] = useState(initialEspecialidade ?? '')
-  const [saved,         setSaved]         = useState(false)
-  const [error,         setError]         = useState('')
-  const [isPending,     startTransition]  = useTransition()
+export default function DoctorProfileSettings({
+  initialCrm,
+  initialEspecialidade,
+  initialCpf,
+  initialDataNascimento,
+}: Props) {
+  const [crm,            setCrm]            = useState(initialCrm ?? '')
+  const [especialidade,  setEspecialidade]  = useState(initialEspecialidade ?? '')
+  const [dataNasc,       setDataNasc]       = useState(initialDataNascimento ?? '')
+  const [saved,          setSaved]          = useState(false)
+  const [error,          setError]          = useState('')
+  const [isPending,      startTransition]   = useTransition()
 
   function handleSave() {
     setError('')
     startTransition(async () => {
-      const res = await saveDoctorProfile({ crm, especialidade })
+      const res = await saveDoctorProfile({
+        crm,
+        especialidade,
+        dataNascimento: dataNasc || null,
+      })
       if (res.error) { setError(res.error); return }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -56,9 +67,27 @@ export default function DoctorProfileSettings({ initialCrm, initialEspecialidade
         </p>
       </div>
 
+      {/* Data de nascimento — obrigatória para a Memed desde fev/2026 */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+          Data de nascimento <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="date"
+          value={dataNasc}
+          onChange={e => setDataNasc(e.target.value)}
+          className="w-full sm:w-72 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p className="text-[11px] text-gray-400 mt-1">
+          Obrigatório para emitir prescrições pela Memed.
+        </p>
+      </div>
+
       {/* CRM */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">CRM</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+          CRM <span className="text-red-400">*</span>
+        </label>
         <input
           type="text"
           value={crm}
