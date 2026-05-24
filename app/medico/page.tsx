@@ -72,7 +72,21 @@ export default async function MedicoPage() {
   // Superadmin usa adminClient para ver todos os dados (bypassa RLS)
   // Médico/secretaria usa client normal (RLS filtra pela clínica deles)
   const supabase = await createClient()
-  const db = currentRole === 'superadmin' ? createAdminClient() : supabase
+  const adminDb  = createAdminClient()
+  const db       = currentRole === 'superadmin' ? adminDb : supabase
+
+  // Resolve tenant_id: superadmin vê tudo (null = sem filtro),
+  // médico/secretaria vê só os dados da própria clínica
+  let tenantId: string | null = null
+  if (currentRole !== 'superadmin') {
+    const { data: membership } = await adminDb
+      .from('clinic_members')
+      .select('clinic_id, clinics!clinic_id(tenant_id)')
+      .eq('user_id', userId)
+      .limit(1)
+      .single()
+    tenantId = (membership?.clinics as any)?.tenant_id ?? 'dr_guilherme'
+  }
 
   // Carrega só o essencial para a lista e agenda.
   // Dados pesados (consultas completas, lab, imagem, faturas) são
@@ -84,20 +98,36 @@ export default async function MedicoPage() {
     { data: consultas },
     { data: currentProfile },
   ] = await Promise.all([
-    db.from('profiles')
-      .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
-      .eq('role', 'paciente')
-      .order('full_name', { ascending: true }),
-    db.from('documents')
-      .select('id, patient_id, title, file_type, file_size, file_url, created_at, patient:profiles!patient_id(id, full_name)')
-      .order('created_at', { ascending: false }),
-    db.from('financial_entries')
-      .select('*')
-      .order('date', { ascending: false }),
+    (() => {
+      let q = db.from('profiles')
+        .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
+        .eq('role', 'paciente')
+        .order('full_name', { ascending: true })
+      if (tenantId) q = q.eq('tenant_id', tenantId)
+      return q
+    })(),
+    (() => {
+      let q = db.from('documents')
+        .select('id, patient_id, title, file_type, file_size, file_url, created_at, patient:profiles!patient_id(id, full_name)')
+        .order('created_at', { ascending: false })
+      if (tenantId) q = q.eq('tenant_id', tenantId)
+      return q
+    })(),
+    (() => {
+      let q = db.from('financial_entries')
+        .select('*')
+        .order('date', { ascending: false })
+      if (tenantId) q = q.eq('tenant_id', tenantId)
+      return q
+    })(),
     // Consultas leves: só campos para lista, panorama e agenda (sem textos longos nem diagnosticos JSON)
-    db.from('consultas')
-      .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
-      .order('data_hora', { ascending: true }),
+    (() => {
+      let q = db.from('consultas')
+        .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
+        .order('data_hora', { ascending: true })
+      if (tenantId) q = q.eq('tenant_id', tenantId)
+      return q
+    })(),
     // Perfil do usuário logado (para saudação personalizada)
     db.from('profiles').select('full_name, sexo').eq('id', userId).single(),
   ])
