@@ -75,11 +75,12 @@ export default async function MedicoPage({
     currentRole = roleProfile?.role ?? 'medico'
   }
 
-  // Superadmin usa adminClient para ver todos os dados (bypassa RLS)
-  // Médico/secretaria usa client normal (RLS filtra pela clínica deles)
+  // Superadmin/secretaria usam adminClient para ver todos os dados (bypassa RLS)
+  // O adminClient ainda filtra por tenant_id — não há acesso cruzado de clínicas
+  // Médico usa client normal (RLS garante isolamento adicional pela session)
   const supabase = await createClient()
   const adminDb  = createAdminClient()
-  const db       = currentRole === 'superadmin' ? adminDb : supabase
+  const db       = (currentRole === 'superadmin' || currentRole === 'secretaria') ? adminDb : supabase
 
   // Resolve tenant_id
   //   - Médico/secretaria   → clínica do próprio clinic_members
