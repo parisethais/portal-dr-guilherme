@@ -51,7 +51,7 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
       slotMinTime="07:00:00"
       slotMaxTime="20:00:00"
       slotDuration="00:30:00"
-      allDaySlot={false}
+      allDaySlot={true}
       nowIndicator={true}
       expandRows={true}
       eventDisplay="block"

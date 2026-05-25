@@ -307,25 +307,22 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
               Consultório
             </button>
 
-            {/* Chips: Google Calendars */}
-            {googleCalendars.map(cal => {
-              const hidden = hiddenCalendars.has(cal.id)
-              return (
-                <button
-                  key={cal.id}
-                  onClick={() => toggleCalendar(cal.id)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
-                  style={{
-                    backgroundColor: hidden ? 'transparent' : cal.color + '22',
-                    borderColor:     hidden ? '#d1d5db' : cal.color,
-                    color:           hidden ? '#9ca3af' : cal.color,
-                  }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hidden ? '#d1d5db' : cal.color }} />
-                  {cal.name}
-                </button>
-              )
-            })}
+            {/* Chips: Google Calendars (só os ativos) */}
+            {googleCalendars.filter(cal => !hiddenCalendars.has(cal.id)).map(cal => (
+              <button
+                key={cal.id}
+                onClick={() => toggleCalendar(cal.id)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                style={{
+                  backgroundColor: cal.color + '22',
+                  borderColor:     cal.color,
+                  color:           cal.color,
+                }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cal.color }} />
+                {cal.name}
+              </button>
+            ))}
             {googleLoading && <RefreshCw className="w-3.5 h-3.5 text-gray-300 animate-spin" />}
           </div>
 
