@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${base}/medico/configuracoes?google=error`)
+    const errBody = await tokenRes.json().catch(() => ({}))
+    console.error('[google/callback] token exchange falhou:', errBody)
+    const reason = (errBody as any).error ?? 'token_exchange_failed'
+    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=${encodeURIComponent(reason)}`)
   }
 
   const tokens = await tokenRes.json()
