@@ -223,7 +223,7 @@ export default async function MedicoPage({
           <p className="text-[10px] font-semibold tracking-[0.18em] uppercase" style={{ color: '#7A9E7E' }}>
             MedEn · Clinical Intelligence
           </p>
-          <span className="text-[11px] text-gray-300 capitalize tracking-wide hidden sm:block">
+          <span className="text-[11px] text-gray-400 capitalize tracking-wide hidden sm:block">
             {getDateLabel()}
           </span>
         </div>
