@@ -10,11 +10,12 @@ import { type EventClickArg } from '@fullcalendar/core'
 import ptBrLocale from '@fullcalendar/core/locales/pt-br'
 import type { CalendarEvent } from './AgendaTab'
 import type { Consulta } from '@/lib/types'
+import type { GoogleEvent } from '@/lib/google-calendar'
 
 interface Props {
   events:         CalendarEvent[]
   onDateClick:    (dateStr: string, allDay: boolean) => void
-  onEventClick:   (consulta: Consulta) => void
+  onEventClick:   (ev: { source: 'crm' | 'google'; consulta?: Consulta; googleEvent?: GoogleEvent }) => void
 }
 
 export default function FullCalendarWrapper({ events, onDateClick, onEventClick }: Props) {
@@ -23,8 +24,8 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
   }
 
   function handleEventClick(info: EventClickArg) {
-    const consulta = info.event.extendedProps.consulta as Consulta
-    onEventClick(consulta)
+    const props = info.event.extendedProps as CalendarEvent['extendedProps']
+    onEventClick(props)
   }
 
   return (

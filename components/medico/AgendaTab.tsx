@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Profile, Consulta, ConsultaStatus, ConsultaTipo } from '@/lib/types'
 import ConsultaModal, { TIPO_LABEL } from './ConsultaModal'
 import DayViewModal from './DayViewModal'
-import { CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, Plus, RefreshCw } from 'lucide-react'
+import type { GoogleCalendarInfo, GoogleEvent } from '@/lib/google-calendar'
 
 // Dynamic imports to avoid SSR issues
 import dynamic from 'next/dynamic'
@@ -47,15 +48,19 @@ export const STATUS_COLORS: Record<ConsultaStatus, { bg: string; border: string;
 // ── Types for FullCalendarWrapper ──────────────────────────
 
 export interface CalendarEvent {
-  id:             string
-  title:          string
-  start:          string
-  end:            string
+  id:              string
+  title:           string
+  start:           string
+  end:             string
   backgroundColor: string
-  borderColor:    string
-  textColor:      string
-  classNames:     string[]
-  extendedProps:  { consulta: Consulta }
+  borderColor:     string
+  textColor:       string
+  classNames:      string[]
+  extendedProps:   {
+    source:       'crm' | 'google'
+    consulta?:    Consulta
+    googleEvent?: GoogleEvent
+  }
 }
 
 // ── Legend por tipo ────────────────────────────────────────
@@ -73,6 +78,67 @@ function TipoLegend() {
           <span className="text-xs text-gray-500">{TIPO_LABEL[tipo]}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Google Event popup ─────────────────────────────────────
+
+interface GoogleEventPopupProps {
+  event: GoogleEvent
+  onClose: () => void
+}
+
+function GoogleEventPopup({ event, onClose }: GoogleEventPopupProps) {
+  const start = event.start.dateTime
+    ? new Date(event.start.dateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })
+    : event.start.date ?? ''
+  const end = event.end.dateTime
+    ? new Date(event.end.dateTime).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+    : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+            style={{ backgroundColor: event.calendarColor }}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 text-sm leading-snug">{event.summary}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{event.calendarName}</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-600 pl-6">
+          {start}{end ? ` → ${end}` : ''}
+        </p>
+        {event.location && (
+          <p className="text-xs text-gray-500 pl-6">📍 {event.location}</p>
+        )}
+        {event.description && (
+          <p className="text-xs text-gray-500 pl-6 line-clamp-3">{event.description}</p>
+        )}
+        {event.htmlLink && (
+          <a
+            href={event.htmlLink}
+            target="_blank"
+            rel="noreferrer"
+            className="block text-center text-xs text-primary underline pl-6"
+          >
+            Abrir no Google Agenda
+          </a>
+        )}
+        <button
+          onClick={onClose}
+          className="w-full text-sm text-gray-400 hover:text-gray-600 pt-1"
+        >
+          Fechar
+        </button>
+      </div>
     </div>
   )
 }
@@ -97,6 +163,34 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     open: false,
     date: '',
   })
+  const [googleEventPopup, setGoogleEventPopup] = useState<GoogleEvent | null>(null)
+
+  // Google Calendar state
+  const [googleConnected,  setGoogleConnected]  = useState(false)
+  const [googleCalendars,  setGoogleCalendars]  = useState<GoogleCalendarInfo[]>([])
+  const [googleEvents,     setGoogleEvents]     = useState<GoogleEvent[]>([])
+  const [hiddenCalendars,  setHiddenCalendars]  = useState<Set<string>>(new Set())
+  const [googleLoading,    setGoogleLoading]    = useState(true)
+
+  useEffect(() => {
+    fetch('/api/google/calendars')
+      .then(r => r.json())
+      .then(data => {
+        setGoogleConnected(data.connected ?? false)
+        setGoogleCalendars(data.calendars ?? [])
+        setGoogleEvents(data.events ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setGoogleLoading(false))
+  }, [])
+
+  function toggleCalendar(id: string) {
+    setHiddenCalendars(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   // Build a patient name lookup map
   const patientMap: Record<string, string> = {}
@@ -105,16 +199,14 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   })
 
   // Transform consultas → FullCalendar events
-  const events: CalendarEvent[] = consultas.map((c) => {
+  const crmEvents: CalendarEvent[] = consultas.map((c) => {
     const startDate   = new Date(c.data_hora)
     const endDate     = new Date(startDate.getTime() + c.duracao_min * 60_000)
     const tipoColors  = TIPO_COLORS[c.tipo]
     const patientName = c.patient?.full_name ?? patientMap[c.patient_id] ?? 'Paciente'
     const hora        = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-
-    // Consultas passadas (realizada/falta/cancelada) ficam mais apagadas
-    const isPast    = ['realizada', 'falta', 'cancelada'].includes(c.status)
-    const isFalta   = c.status === 'falta'
+    const isPast      = ['realizada', 'falta', 'cancelada'].includes(c.status)
+    const isFalta     = c.status === 'falta'
 
     return {
       id:              c.id,
@@ -125,23 +217,51 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
       borderColor:     isFalta ? '#dc2626' : (isPast ? '#6b7280' : tipoColors.border),
       textColor:       tipoColors.text,
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : [],
-      extendedProps:   { consulta: c },
+      extendedProps:   { source: 'crm', consulta: c },
     }
   })
+
+  // Transform Google events → FullCalendar events (filtered by hidden calendars)
+  const gEvents: CalendarEvent[] = googleEvents
+    .filter(ev => !hiddenCalendars.has(ev.calendarId))
+    .map(ev => {
+      const start = ev.start.dateTime ?? ev.start.date ?? ''
+      const end   = ev.end.dateTime   ?? ev.end.date   ?? ''
+      const hora  = ev.start.dateTime
+        ? new Date(ev.start.dateTime).toLocaleTimeString('pt-BR', {
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+          })
+        : ''
+      return {
+        id:              ev.id,
+        title:           hora ? `${hora} · ${ev.summary}` : ev.summary,
+        start,
+        end,
+        backgroundColor: ev.calendarColor + 'CC', // leve transparência para distinguir do CRM
+        borderColor:     ev.calendarColor,
+        textColor:       '#ffffff',
+        classNames:      ['fc-google-event'],
+        extendedProps:   { source: 'google', googleEvent: ev },
+      }
+    })
+
+  const events = [...crmEvents, ...gEvents]
 
   function handleDateClick(dateStr: string, allDay: boolean) {
     const dateOnly = dateStr.slice(0, 10)
     if (allDay) {
-      // Clique no dia na view mensal → abre o day modal
       setDayModal({ open: true, date: dateOnly })
     } else {
-      // Clique em horário específico (view semana/dia) → abre direto para criar
       setCreateModal({ open: true, defaultDateTime: dateStr.slice(0, 16) })
     }
   }
 
-  function handleEventClick(consulta: Consulta) {
-    setViewModal({ open: true, consulta })
+  function handleEventClick(ev: { source: 'crm' | 'google'; consulta?: Consulta; googleEvent?: GoogleEvent }) {
+    if (ev.source === 'crm' && ev.consulta) {
+      setViewModal({ open: true, consulta: ev.consulta })
+    } else if (ev.source === 'google' && ev.googleEvent) {
+      setGoogleEventPopup(ev.googleEvent)
+    }
   }
 
   return (
@@ -158,6 +278,38 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
           Nova consulta
         </button>
       </div>
+
+      {/* Google Calendar filter chips */}
+      {googleConnected && googleCalendars.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Google Agenda</span>
+          {googleCalendars.map(cal => {
+            const hidden = hiddenCalendars.has(cal.id)
+            return (
+              <button
+                key={cal.id}
+                onClick={() => toggleCalendar(cal.id)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                style={{
+                  backgroundColor: hidden ? 'transparent' : cal.color + '22',
+                  borderColor:     cal.color,
+                  color:           hidden ? '#9ca3af' : cal.color,
+                  opacity:         hidden ? 0.6 : 1,
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: hidden ? '#9ca3af' : cal.color }}
+                />
+                {cal.name}
+              </button>
+            )
+          })}
+          {googleLoading && (
+            <RefreshCw className="w-3.5 h-3.5 text-gray-300 animate-spin ml-1" />
+          )}
+        </div>
+      )}
 
       {/* Calendar */}
       <div
@@ -205,6 +357,14 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
         onSelectConsulta={(c) => setViewModal({ open: true, consulta: c })}
         onNewConsulta={(dt) => setCreateModal({ open: true, defaultDateTime: dt })}
       />
+
+      {/* Google event popup */}
+      {googleEventPopup && (
+        <GoogleEventPopup
+          event={googleEventPopup}
+          onClose={() => setGoogleEventPopup(null)}
+        />
+      )}
     </div>
   )
 }

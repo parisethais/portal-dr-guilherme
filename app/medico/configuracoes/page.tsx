@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { getGlobalExamCatalog } from '@/app/actions/exam-catalog'
 import ExamCatalogSettings from '@/components/medico/configuracoes/ExamCatalogSettings'
 import DoctorProfileSettings from '@/components/medico/configuracoes/DoctorProfileSettings'
+import GoogleCalendarSettings from '@/components/medico/configuracoes/GoogleCalendarSettings'
+import { Suspense } from 'react'
 import { Settings } from 'lucide-react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -51,6 +53,9 @@ export default async function ConfiguracoesPage() {
           initialCpf={profile?.cpf ?? null}
           initialDataNascimento={profile?.data_nascimento ?? null}
         />
+        <Suspense fallback={null}>
+          <GoogleCalendarSettings />
+        </Suspense>
         <ExamCatalogSettings initialExams={exams} />
       </div>
     </div>
