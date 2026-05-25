@@ -22,10 +22,39 @@ export async function GET(req: NextRequest) {
 
   const db = createAdminClient()
 
+  // Resolve qual user_id tem o token do Google:
+  // - médico/superadmin → próprio ID
+  // - secretaria → médico da clínica dela
+  const { data: selfProfile } = await db
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  let tokenUserId = user.id
+  if (selfProfile?.role === 'secretaria') {
+    const { data: membership } = await db
+      .from('clinic_members')
+      .select('clinic_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single()
+    if (membership?.clinic_id) {
+      const { data: doctor } = await db
+        .from('clinic_members')
+        .select('user_id')
+        .eq('clinic_id', membership.clinic_id)
+        .eq('role', 'medico')
+        .limit(1)
+        .single()
+      if (doctor?.user_id) tokenUserId = doctor.user_id
+    }
+  }
+
   const { data: tokenRow } = await db
     .from('google_tokens')
     .select('access_token, refresh_token, token_expiry')
-    .eq('user_id', user.id)
+    .eq('user_id', tokenUserId)
     .single()
 
   if (!tokenRow?.refresh_token) {
@@ -43,7 +72,7 @@ export async function GET(req: NextRequest) {
         access_token: refreshed.access_token,
         token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
         updated_at:   new Date().toISOString(),
-      }).eq('user_id', user.id)
+      }).eq('user_id', tokenUserId)
     } catch {
       return NextResponse.json({ connected: false, calendars: [], events: [], error: 'token_expired' })
     }
