@@ -159,7 +159,15 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   const [hiddenCalendars,  setHiddenCalendars]  = useState<Set<string>>(new Set())
   const [googleLoading,    setGoogleLoading]    = useState(true)
 
+  const LS_KEY = 'agenda_hidden_calendars'
+
   useEffect(() => {
+    // Restaura preferências de calendários ocultos do localStorage
+    try {
+      const saved = localStorage.getItem(LS_KEY)
+      if (saved) setHiddenCalendars(new Set(JSON.parse(saved)))
+    } catch {}
+
     fetch('/api/google/calendars')
       .then(r => r.json())
       .then(data => {
@@ -175,6 +183,7 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     setHiddenCalendars(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
+      try { localStorage.setItem(LS_KEY, JSON.stringify([...next])) } catch {}
       return next
     })
   }
