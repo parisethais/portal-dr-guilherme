@@ -11,10 +11,11 @@ import SumarioPanel from './SumarioPanel'
 import MemedPrescricao from './MemedPrescricao'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
+import AssinaturaModal, { AssinaturaSuccessModal } from './AssinaturaModal'
 import {
   ClipboardList, Stethoscope, FlaskConical, ScanLine,
   Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
-  Activity, Bot,
+  Activity, Bot, ShieldCheck, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
@@ -236,6 +237,8 @@ export default function ProntuarioTab({
   const [showNovaConsulta, setShowNova]     = useState(false)
   const [isPending, startTransition]        = useTransition()
   const [hasDirty, setHasDirty]            = useState(false)
+  const [showAssinatura, setShowAssinatura] = useState(false)
+  const [assinaturaResult, setAssinaturaResult] = useState<{ pdfUrl: string; assinaturaUrl: string } | null>(null)
 
   const selectedConsulta = realizadas.find(c => c.id === selectedId) ?? null
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
@@ -523,14 +526,24 @@ export default function ProntuarioTab({
               <p className="text-xs text-gray-400">
                 Salve o rascunho quantas vezes precisar. Finalize quando o prontuário estiver completo.
               </p>
-              <button
-                type="button"
-                onClick={() => setConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:border-gray-400 hover:text-gray-800 transition-colors flex-shrink-0"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Finalizar prontuário
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowAssinatura(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Finalizar e Assinar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirm(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:border-gray-400 hover:text-gray-800 transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  Só finalizar
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
@@ -578,7 +591,50 @@ export default function ProntuarioTab({
         </div>
       )}
 
+      {/* ── Banner de prontuário assinado ── */}
+      {isClinicTab && !isHistorico && isFinalized && selectedConsulta?.prontuario_assinado && (
+        <div className="px-5 py-3 border-t border-gray-100 bg-emerald-50/50 rounded-b-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-xs font-semibold">Prontuário assinado digitalmente (ICP-Brasil)</span>
+            </div>
+            {selectedConsulta?.prontuario_pdf_url && (
+              <a
+                href={selectedConsulta.prontuario_pdf_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-900 font-medium"
+              >
+                <Download className="w-3.5 h-3.5" /> Baixar PDF
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>{/* fim card */}
+
+    {/* ── Modais de assinatura ── */}
+    {showAssinatura && selectedConsulta && (
+      <AssinaturaModal
+        consultaId={selectedConsulta.id}
+        onClose={() => setShowAssinatura(false)}
+        onSuccess={(pdfUrl, assinaturaUrl) => {
+          setShowAssinatura(false)
+          setAssinaturaResult({ pdfUrl, assinaturaUrl })
+          router.refresh()
+        }}
+      />
+    )}
+
+    {assinaturaResult && (
+      <AssinaturaSuccessModal
+        pdfUrl={assinaturaResult.pdfUrl}
+        assinaturaUrl={assinaturaResult.assinaturaUrl}
+        onClose={() => setAssinaturaResult(null)}
+      />
+    )}
     </>
   )
 }

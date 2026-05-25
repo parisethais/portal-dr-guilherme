@@ -148,6 +148,10 @@ export interface Consulta {
   conduta:                   string | null
   prontuario_finalizado:     boolean
   prontuario_finalizado_at:  string | null
+  prontuario_assinado:       boolean
+  prontuario_assinado_at:    string | null
+  prontuario_pdf_url:        string | null
+  prontuario_assinatura_url: string | null
   created_by:                string | null
   created_at:   string
   updated_at:   string
