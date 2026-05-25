@@ -160,21 +160,33 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   const [hiddenCalendars,  setHiddenCalendars]  = useState<Set<string>>(new Set())
   const [googleLoading,    setGoogleLoading]    = useState(true)
 
-  const LS_KEY = 'agenda_hidden_calendars'
+  const LS_KEY = 'agenda_hidden_calendars_v2'
 
   useEffect(() => {
-    // Restaura preferências de calendários ocultos do localStorage
-    try {
-      const saved = localStorage.getItem(LS_KEY)
-      if (saved) setHiddenCalendars(new Set(JSON.parse(saved)))
-    } catch {}
-
     fetch('/api/google/calendars')
       .then(r => r.json())
       .then(data => {
         setGoogleConnected(data.connected ?? false)
-        setGoogleCalendars(data.calendars ?? [])
+        const cals: GoogleCalendarInfo[] = data.calendars ?? []
+        setGoogleCalendars(cals)
         setGoogleEvents(data.events ?? [])
+
+        // Restaura preferência salva — ou aplica padrão ocultando calendários duplicados
+        try {
+          const saved = localStorage.getItem(LS_KEY)
+          if (saved) {
+            setHiddenCalendars(new Set(JSON.parse(saved)))
+          } else {
+            // Primeira vez: oculta automaticamente calendários que duplicam o CRM
+            const autoHide = new Set(
+              cals
+                .filter(c => c.primary || /iclinic/i.test(c.name))
+                .map(c => c.id)
+            )
+            setHiddenCalendars(autoHide)
+            localStorage.setItem(LS_KEY, JSON.stringify([...autoHide]))
+          }
+        } catch {}
       })
       .catch(() => {})
       .finally(() => setGoogleLoading(false))

@@ -30,7 +30,8 @@ function getDateLabel(): string {
 }
 
 function getDisplayName(fullName: string | null, sexo: string | null, role: string): string {
-  const first = fullName?.split(' ')[0] ?? 'você'
+  const parts = fullName?.split(' ').filter(p => !/^dr[a]?\.?$/i.test(p)) ?? []
+  const first  = parts[0] ?? 'você'
   if (role === 'medico') {
     return `${sexo === 'F' || sexo === 'feminino' ? 'Dra.' : 'Dr.'} ${first}`
   }
