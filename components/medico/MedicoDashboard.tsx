@@ -28,6 +28,8 @@ const PanoramaTab = dynamic(() => import('./PanoramaTab'), {
 interface MedicoDashboardProps {
   currentRole: string
   doctorId: string
+  doctorName?: string | null
+  doctorCrm?:  string | null
   patients: Profile[]
   documents: Document[]
   consultas: Consulta[]
@@ -63,6 +65,8 @@ function pushUrl(params: Record<string, string | null>) {
 export default function MedicoDashboard({
   currentRole,
   doctorId,
+  doctorName,
+  doctorCrm,
   patients,
   documents,
   consultas,
@@ -191,6 +195,8 @@ export default function MedicoDashboard({
           <FinanceiroTab
             initialEntries={financialEntries}
             doctorId={doctorId}
+            doctorName={doctorName ?? null}
+            doctorCrm={doctorCrm ?? null}
             consultas={consultas}
             patients={patients}
           />

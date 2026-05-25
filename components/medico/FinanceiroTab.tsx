@@ -111,11 +111,62 @@ const EMPTY: Partial<EntryInput> = {
   nota_fiscal_status: 'nao_se_aplica', patient_id: null,
 }
 
+function gerarMailtoNF({
+  patient, amount, date, doctorName, doctorCrm,
+}: {
+  patient:    Profile
+  amount:     number
+  date:       string
+  doctorName: string
+  doctorCrm:  string | null
+}): string {
+  const nome  = patient.full_name ?? ''
+  const cpf   = patient.cpf
+    ? patient.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    : '—'
+  const email = patient.email ?? '—'
+  const valor = amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const dataFmt = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')
+  const crmFmt  = doctorCrm ? `CRM-SP ${doctorCrm}` : 'CRM-SP —'
+
+  const assunto = `Nota Fiscal ${nome}`
+  const corpo   = [
+    'Prezados, boa tarde.',
+    '',
+    'Solicito a emissão da nota fiscal conforme os dados abaixo.',
+    '',
+    'Obs: Não esquecer de adicionar os e-mails dos pacientes na hora do envio das notas, por favor.',
+    '',
+    'Tomador do Serviço:',
+    nome,
+    `CPF: ${cpf}`,
+    `E-mail: ${email}`,
+    '',
+    'Valor:',
+    valor,
+    '',
+    'Corpo da nota:',
+    `Consulta médica com ${doctorName} (${crmFmt})`,
+    nome,
+    `CPF: ${cpf}`,
+    `Data da Consulta: ${dataFmt}`,
+    '',
+    'Fico à disposição para esclarecimentos.',
+    'Agradeço a confirmação da emissão.',
+    '',
+    'Atenciosamente,',
+  ].join('\n')
+
+  return `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`
+}
+
 function EntryForm({
-  initial, doctorId, patients, onSave, onCancel, saving,
+  initial, doctorId, doctorName, doctorCrm, patients, onSave, onCancel, saving,
 }: {
   initial?: Partial<EntryInput>
-  doctorId: string
+  doctorId:   string
+  doctorName: string | null
+  doctorCrm:  string | null
   patients: Profile[]
   onSave: (data: EntryInput, notifyPortal: boolean) => void
   onCancel: () => void
@@ -328,6 +379,22 @@ function EntryForm({
         />
       </div>
 
+      {/* Botão solicitar NF por e-mail */}
+      {isReceita && form.patient_id && form.amount && form.date && doctorName && (
+        <a
+          href={gerarMailtoNF({
+            patient:    patients.find(p => p.id === form.patient_id)!,
+            amount:     form.amount,
+            date:       form.date,
+            doctorName,
+            doctorCrm,
+          })}
+          className="flex items-center gap-1.5 text-xs text-primary underline"
+        >
+          📧 Gerar e-mail de solicitação de NF
+        </a>
+      )}
+
       {/* Botões */}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
@@ -353,12 +420,14 @@ function EntryForm({
 
 interface Props {
   initialEntries: FinancialEntry[]
-  doctorId: string
+  doctorId:   string
+  doctorName?: string | null
+  doctorCrm?:  string | null
   consultas?: Consulta[]
   patients?: Profile[]
 }
 
-export default function FinanceiroTab({ initialEntries, doctorId, consultas = [], patients = [] }: Props) {
+export default function FinanceiroTab({ initialEntries, doctorId, doctorName = null, doctorCrm = null, consultas = [], patients = [] }: Props) {
   const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
   const [period, setPeriod]   = useState<'mes' | 'trimestre' | 'ano' | 'tudo'>('mes')
   const [scope,  setScope]    = useState<'all' | 'clinic' | 'personal'>('all')
@@ -714,6 +783,8 @@ export default function FinanceiroTab({ initialEntries, doctorId, consultas = []
               patient_id:          editingEntry.patient_id ?? null,
             } : undefined}
             doctorId={doctorId}
+            doctorName={doctorName}
+            doctorCrm={doctorCrm}
             patients={patients}
             onSave={editingEntry ? handleUpdate : handleCreate}
             onCancel={() => { setShowForm(false); setEditingEntry(null) }}

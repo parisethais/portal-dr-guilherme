@@ -168,8 +168,8 @@ export default async function MedicoPage({
       if (tenantId) q = q.eq('tenant_id', tenantId)
       return q
     })(),
-    // Perfil do usuário logado (para saudação personalizada)
-    db.from('profiles').select('full_name, sexo').eq('id', userId).single(),
+    // Perfil do usuário logado (para saudação personalizada e dados do médico)
+    db.from('profiles').select('full_name, sexo, crm').eq('id', userId).single(),
   ])
 
   // Subtítulo contextual de consultas (fuso Brasília)
@@ -256,6 +256,8 @@ export default async function MedicoPage({
         <MedicoDashboard
           currentRole={currentRole}
           doctorId={userId}
+          doctorName={currentProfile?.full_name ?? null}
+          doctorCrm={currentProfile?.crm ?? null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
