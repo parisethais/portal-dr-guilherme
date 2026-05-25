@@ -92,11 +92,17 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
-    // Superadmin em /medico: só permite se vier com ?tenant= explícito (botão CRM do /admin)
-    // Sem tenant → redireciona para o painel de administração
+    // Superadmin em /medico: permite via ?tenant= explícito OU via domínio customizado
+    // (ex: santa-catharina.meden.health/medico/configuracoes)
+    // Sem tenant E sem domínio customizado → painel admin
     if (role === 'superadmin' && pathname.startsWith('/medico')) {
-      const tenant = request.nextUrl.searchParams.get('tenant')
-      if (!tenant) return NextResponse.redirect(new URL('/admin', request.url))
+      const tenant      = request.nextUrl.searchParams.get('tenant')
+      const host        = request.headers.get('host') ?? ''
+      const isCustomDomain = host
+        && !host.includes('localhost')
+        && !host.includes('127.0.0.1')
+        && !host.includes('.vercel.app')
+      if (!tenant && !isCustomDomain) return NextResponse.redirect(new URL('/admin', request.url))
       return withUserHeaders()
     }
 
