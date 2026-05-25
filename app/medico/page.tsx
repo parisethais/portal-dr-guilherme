@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
+import WeekSummaryBadge from '@/components/medico/WeekSummaryBadge'
+import type { ConsultaSummaryItem } from '@/components/medico/WeekSummaryBadge'
 
 // ── Helpers de saudação ───────────────────────────────────────────────────────
 
@@ -177,39 +179,32 @@ export default async function MedicoPage({
   const todayBR = nowBR.toLocaleDateString('pt-BR')
 
   const allConsultas = (consultas ?? []).filter(c => c.status !== 'cancelado')
+  const patientMap   = new Map((patients ?? []).map(p => [p.id, p.full_name ?? '—']))
 
-  const consultasHoje = allConsultas.filter(c =>
-    new Date(c.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) === todayBR
-  )
+  // Início e fim da semana atual em BRT (seg–dom)
+  const startOfWeekBR = new Date(nowBR)
+  const dow = nowBR.getDay() // 0=dom
+  startOfWeekBR.setDate(nowBR.getDate() - ((dow + 6) % 7)) // recua para segunda
+  startOfWeekBR.setHours(0, 0, 0, 0)
+  const endOfWeekBR = new Date(startOfWeekBR)
+  endOfWeekBR.setDate(startOfWeekBR.getDate() + 7)
 
-  let subtitleMsg: string
-  const n = consultasHoje.length
-  if (n > 0) {
-    subtitleMsg = `Você tem ${n} consulta${n > 1 ? 's' : ''} agendada${n > 1 ? 's' : ''} para hoje.`
-  } else {
-    // Próxima consulta futura
-    const proxima = allConsultas
-      .map(c => ({ ...c, dt: new Date(c.data_hora) }))
-      .filter(c => c.dt > nowBR)
-      .sort((a, b) => a.dt.getTime() - b.dt.getTime())[0]
-
-    if (proxima) {
-      const label = proxima.dt.toLocaleDateString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        weekday: 'long',
-        day:     'numeric',
-        month:   'long',
-      })
-      const hora = proxima.dt.toLocaleTimeString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        hour:   '2-digit',
-        minute: '2-digit',
-      })
-      subtitleMsg = `Próxima consulta: ${label} às ${hora}.`
-    } else {
-      subtitleMsg = 'Nenhuma consulta agendada.'
-    }
+  function toSummary(c: typeof allConsultas[number]): ConsultaSummaryItem {
+    return { id: c.id, patientName: patientMap.get(c.patient_id) ?? '—', dataHora: c.data_hora }
   }
+
+  const consultasHoje: ConsultaSummaryItem[] = allConsultas
+    .filter(c => new Date(c.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) === todayBR)
+    .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())
+    .map(toSummary)
+
+  const consultasSemana: ConsultaSummaryItem[] = allConsultas
+    .filter(c => {
+      const dt = new Date(c.data_hora)
+      return dt >= startOfWeekBR && dt < endOfWeekBR
+    })
+    .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())
+    .map(toSummary)
 
   const displayName = getDisplayName(currentProfile?.full_name ?? null, currentProfile?.sexo ?? null, currentRole)
 
@@ -235,9 +230,7 @@ export default async function MedicoPage({
               {getGreeting()},{' '}
               <span style={{ color: '#2D2B6B' }}>{displayName}.</span>
             </h1>
-            <p className="text-gray-400 mt-1.5 text-sm font-normal">
-              {subtitleMsg}
-            </p>
+            <WeekSummaryBadge hoje={consultasHoje} semana={consultasSemana} />
           </div>
 
           {(currentRole === 'medico' || currentRole === 'superadmin') && (
