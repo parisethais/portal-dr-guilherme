@@ -19,6 +19,7 @@ export default function DoctorProfileSettings({
 }: Props) {
   const [crm,            setCrm]            = useState(initialCrm ?? '')
   const [especialidade,  setEspecialidade]  = useState(initialEspecialidade ?? '')
+  const [cpf,            setCpf]            = useState(initialCpf ?? '')
   const [dataNasc,       setDataNasc]       = useState(initialDataNascimento ?? '')
   const [saved,          setSaved]          = useState(false)
   const [error,          setError]          = useState('')
@@ -30,6 +31,7 @@ export default function DoctorProfileSettings({
       const res = await saveDoctorProfile({
         crm,
         especialidade,
+        cpf,
         dataNascimento: dataNasc || null,
       })
       if (res.error) { setError(res.error); return }
@@ -53,18 +55,16 @@ export default function DoctorProfileSettings({
         </div>
       </div>
 
-      {/* CPF (somente leitura — já cadastrado) */}
+      {/* CPF */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1.5">CPF</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">CPF</label>
         <input
           type="text"
-          value={initialCpf ? initialCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—'}
-          readOnly
-          className="w-full sm:w-72 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+          value={cpf}
+          onChange={e => setCpf(e.target.value)}
+          placeholder="000.000.000-00"
+          className="w-full sm:w-72 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <p className="text-[11px] text-gray-400 mt-1">
-          Para alterar o CPF, entre em contato com o suporte.
-        </p>
       </div>
 
       {/* Data de nascimento — obrigatória para a Memed desde fev/2026 */}
