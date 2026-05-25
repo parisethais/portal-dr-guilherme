@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { syncConsultaCreate, syncConsultaUpdate, syncConsultaCancel } from '@/lib/sync-google-calendar'
 
 async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
@@ -55,7 +56,19 @@ export async function createConsulta(data: {
 
   if (error) return { success: false, error: error.message }
 
-  // Notifica o copilot (fire and forget)
+  // Sync Google Calendar + notifica copilot (fire-and-forget)
+  const tenantId = await getCallerTenantId(user.id)
+  syncConsultaCreate(tenantId, {
+    id:          result.id,
+    patient_id:  data.patient_id,
+    tipo:        data.tipo,
+    local:       data.local,
+    data_hora:   data.data_hora,
+    duracao_min: data.duracao_min ?? 30,
+    status:      data.status ?? 'agendada',
+    observacoes: data.observacoes ?? null,
+  })
+
   buscarPerfil(supabase, data.patient_id).then(paciente => {
     if (paciente) {
       notificarCopilot({
@@ -79,12 +92,24 @@ export async function updateConsultaStatus(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { error } = await supabase
+  const { data: consulta, error } = await supabase
     .from('consultas')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
+    .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
+    .single()
 
   if (error) return { success: false, error: error.message }
+
+  // Sync Google Calendar (fire-and-forget)
+  if (consulta) {
+    const tenantId = await getCallerTenantId(user.id)
+    if (status === 'cancelada') {
+      syncConsultaCancel(tenantId, consultaId)
+    } else {
+      syncConsultaUpdate(tenantId, { ...consulta, status })
+    }
+  }
 
   revalidatePath('/medico')
   revalidatePath('/paciente')
@@ -127,12 +152,20 @@ export async function updateConsulta(
     }
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('consultas')
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
+    .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
+    .single()
 
   if (error) return { success: false, error: error.message }
+
+  // Sync Google Calendar (fire-and-forget)
+  if (updated) {
+    const tenantId = await getCallerTenantId(user.id)
+    syncConsultaUpdate(tenantId, updated)
+  }
 
   revalidatePath('/medico')
   revalidatePath('/paciente')

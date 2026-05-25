@@ -57,6 +57,73 @@ export async function getCalendars(accessToken: string): Promise<GoogleCalendarI
   }))
 }
 
+// ── Escrita ───────────────────────────────────────────────────────────────────
+
+export interface GoogleEventBody {
+  summary:      string
+  description?: string
+  location?:    string
+  start:        { dateTime: string; timeZone: string }
+  end:          { dateTime: string; timeZone: string }
+  extendedProperties?: {
+    private?: Record<string, string>
+  }
+  status?: 'confirmed' | 'cancelled'
+  colorId?: string
+}
+
+export async function createGoogleEvent(
+  accessToken: string,
+  calendarId:  string,
+  body:        GoogleEventBody,
+): Promise<{ id: string; htmlLink: string } | null> {
+  const res = await fetch(
+    `${GOOGLE_CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    },
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  return { id: data.id, htmlLink: data.htmlLink }
+}
+
+export async function updateGoogleEvent(
+  accessToken: string,
+  calendarId:  string,
+  eventId:     string,
+  body:        Partial<GoogleEventBody>,
+): Promise<boolean> {
+  const res = await fetch(
+    `${GOOGLE_CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    },
+  )
+  return res.ok
+}
+
+export async function deleteGoogleEvent(
+  accessToken: string,
+  calendarId:  string,
+  eventId:     string,
+): Promise<boolean> {
+  const res = await fetch(
+    `${GOOGLE_CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method:  'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  )
+  return res.ok || res.status === 404
+}
+
+// ── Leitura ───────────────────────────────────────────────────────────────────
+
 export async function getEvents(
   accessToken:  string,
   calendarId:   string,
