@@ -589,20 +589,28 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   }, [patients, isAtivo, primeiraConsultaMap, mesAtual, consultasMesCount, proximaConsultaMap])
 
   // ── Tabela filtrada ────────────────────────────────────────
-  const filtered = useMemo(() => patients.filter(p => {
-    const matchSearch = !search || normalizeStr(p.full_name ?? '').includes(normalizeStr(search))
-    const matchStatus =
-      filterStatus === 'todos'   ? true :
-      filterStatus === 'ativo'   ? isAtivo(p) :
-      /* inativos */               !isAtivo(p)
-    const alerta = getAlertRetorno(p)
-    const matchAlerta =
-      filterAlerta === 'all'      ? true :
-      filterAlerta === 'atrasado' ? (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'atrasado') :
-      /* chegando */                (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'chegando')
-    return matchSearch && matchStatus && matchAlerta
+  const filtered = useMemo(() => patients
+    .filter(p => {
+      const matchSearch = !search || normalizeStr(p.full_name ?? '').includes(normalizeStr(search))
+      const matchStatus =
+        filterStatus === 'todos'   ? true :
+        filterStatus === 'ativo'   ? isAtivo(p) :
+        /* inativos */               !isAtivo(p)
+      const alerta = getAlertRetorno(p)
+      const matchAlerta =
+        filterAlerta === 'all'      ? true :
+        filterAlerta === 'atrasado' ? (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'atrasado') :
+        /* chegando */                (p.status_paciente === 'ativo' && !getProxima(p.id) && alerta === 'chegando')
+      return matchSearch && matchStatus && matchAlerta
+    })
+    .sort((a, b) => {
+      const da = ultimaConsultaMap.get(a.id) ?? ''
+      const db = ultimaConsultaMap.get(b.id) ?? ''
+      if (da === db) return (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR')
+      return db.localeCompare(da) // mais recente primeiro
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [patients, search, filterStatus, filterAlerta, isAtivo, proximaConsultaMap])
+  }, [patients, search, filterStatus, filterAlerta, isAtivo, proximaConsultaMap, ultimaConsultaMap])
 
   // ── Render ─────────────────────────────────────────────────
   return (
