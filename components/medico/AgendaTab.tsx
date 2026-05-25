@@ -214,7 +214,7 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : [],
       extendedProps:   { source: 'crm', consulta: c },
     }
-  }))
+  })
 
   // Transform Google events → FullCalendar events (filtered by hidden calendars)
   const gEvents: CalendarEvent[] = googleEvents
