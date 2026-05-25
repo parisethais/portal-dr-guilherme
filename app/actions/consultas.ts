@@ -56,8 +56,7 @@ export async function createConsulta(data: {
 
   if (error) return { success: false, error: error.message }
 
-  // Sync Google Calendar + notifica copilot (fire-and-forget)
-  const tenantId = await getCallerTenantId(user.id)
+  // Sync Google Calendar (fire-and-forget) — tenantId já foi resolvido acima
   syncConsultaCreate(tenantId, {
     id:          result.id,
     patient_id:  data.patient_id,

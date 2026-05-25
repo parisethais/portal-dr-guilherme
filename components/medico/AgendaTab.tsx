@@ -63,24 +63,7 @@ export interface CalendarEvent {
   }
 }
 
-// ── Legend por tipo ────────────────────────────────────────
-
-function TipoLegend() {
-  const tipos = Object.keys(TIPO_COLORS) as ConsultaTipo[]
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {tipos.map(tipo => (
-        <div key={tipo} className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-3 rounded-sm inline-block flex-shrink-0"
-            style={{ backgroundColor: TIPO_COLORS[tipo].bg }}
-          />
-          <span className="text-xs text-gray-500">{TIPO_LABEL[tipo]}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+const CONSULTORIO_COLOR = '#2D2B6B'
 
 // ── Google Event popup ─────────────────────────────────────
 
@@ -165,6 +148,10 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   })
   const [googleEventPopup, setGoogleEventPopup] = useState<GoogleEvent | null>(null)
 
+  // Filtros de categoria
+  const [consultorioHidden, setConsultorioHidden] = useState(false)
+  const [hiddenTipos,       setHiddenTipos]       = useState<Set<ConsultaTipo>>(new Set())
+
   // Google Calendar state
   const [googleConnected,  setGoogleConnected]  = useState(false)
   const [googleCalendars,  setGoogleCalendars]  = useState<GoogleCalendarInfo[]>([])
@@ -192,14 +179,22 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     })
   }
 
+  function toggleTipo(tipo: ConsultaTipo) {
+    setHiddenTipos(prev => {
+      const next = new Set(prev)
+      next.has(tipo) ? next.delete(tipo) : next.add(tipo)
+      return next
+    })
+  }
+
   // Build a patient name lookup map
   const patientMap: Record<string, string> = {}
   patients.forEach((p) => {
     patientMap[p.id] = p.full_name ?? 'Paciente'
   })
 
-  // Transform consultas → FullCalendar events
-  const crmEvents: CalendarEvent[] = consultas.map((c) => {
+  // Transform consultas → FullCalendar events (filtradas por consultorio + tipo)
+  const crmEvents: CalendarEvent[] = consultorioHidden ? [] : consultas.filter(c => !hiddenTipos.has(c.tipo)).map((c) => {
     const startDate   = new Date(c.data_hora)
     const endDate     = new Date(startDate.getTime() + c.duracao_min * 60_000)
     const tipoColors  = TIPO_COLORS[c.tipo]
@@ -219,7 +214,7 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : [],
       extendedProps:   { source: 'crm', consulta: c },
     }
-  })
+  }))
 
   // Transform Google events → FullCalendar events (filtered by hidden calendars)
   const gEvents: CalendarEvent[] = googleEvents
@@ -264,52 +259,90 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      {/* Header row */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <TipoLegend />
-        <button
-          type="button"
-          onClick={() => setCreateModal({ open: true, defaultDateTime: '' })}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nova consulta
-        </button>
-      </div>
+  const tipos = Object.keys(TIPO_COLORS) as ConsultaTipo[]
 
-      {/* Google Calendar filter chips */}
-      {googleConnected && googleCalendars.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Google Agenda</span>
-          {googleCalendars.map(cal => {
-            const hidden = hiddenCalendars.has(cal.id)
-            return (
-              <button
-                key={cal.id}
-                onClick={() => toggleCalendar(cal.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
-                style={{
-                  backgroundColor: hidden ? 'transparent' : cal.color + '22',
-                  borderColor:     cal.color,
-                  color:           hidden ? '#9ca3af' : cal.color,
-                  opacity:         hidden ? 0.6 : 1,
-                }}
-              >
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: hidden ? '#9ca3af' : cal.color }}
-                />
-                {cal.name}
-              </button>
-            )
-          })}
-          {googleLoading && (
-            <RefreshCw className="w-3.5 h-3.5 text-gray-300 animate-spin ml-1" />
-          )}
+  return (
+    <div className="space-y-3">
+      {/* ── Filtros de categoria ── */}
+      <div className="space-y-2">
+        {/* Linha 1: categorias principais */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+
+            {/* Chip: Consultório (CRM) */}
+            <button
+              onClick={() => setConsultorioHidden(h => !h)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+              style={{
+                backgroundColor: consultorioHidden ? 'transparent' : CONSULTORIO_COLOR + '18',
+                borderColor:     CONSULTORIO_COLOR,
+                color:           consultorioHidden ? '#9ca3af' : CONSULTORIO_COLOR,
+                opacity:         consultorioHidden ? 0.6 : 1,
+              }}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: consultorioHidden ? '#9ca3af' : CONSULTORIO_COLOR }} />
+              Consultório
+            </button>
+
+            {/* Chips: Google Calendars */}
+            {googleCalendars.map(cal => {
+              const hidden = hiddenCalendars.has(cal.id)
+              return (
+                <button
+                  key={cal.id}
+                  onClick={() => toggleCalendar(cal.id)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                  style={{
+                    backgroundColor: hidden ? 'transparent' : cal.color + '22',
+                    borderColor:     cal.color,
+                    color:           hidden ? '#9ca3af' : cal.color,
+                    opacity:         hidden ? 0.6 : 1,
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hidden ? '#9ca3af' : cal.color }} />
+                  {cal.name}
+                </button>
+              )
+            })}
+            {googleLoading && <RefreshCw className="w-3.5 h-3.5 text-gray-300 animate-spin" />}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCreateModal({ open: true, defaultDateTime: '' })}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nova consulta
+          </button>
         </div>
-      )}
+
+        {/* Linha 2: subtipos do Consultório (só quando visível) */}
+        {!consultorioHidden && (
+          <div className="flex flex-wrap items-center gap-1.5 pl-1">
+            <span className="text-[10px] text-gray-300 uppercase tracking-wider mr-0.5">Tipo:</span>
+            {tipos.map(tipo => {
+              const hidden = hiddenTipos.has(tipo)
+              const color  = TIPO_COLORS[tipo].bg
+              return (
+                <button
+                  key={tipo}
+                  onClick={() => toggleTipo(tipo)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all"
+                  style={{
+                    backgroundColor: hidden ? 'transparent' : color + '18',
+                    borderColor:     hidden ? '#e5e7eb' : color,
+                    color:           hidden ? '#9ca3af' : color,
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hidden ? '#d1d5db' : color }} />
+                  {TIPO_LABEL[tipo]}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Calendar */}
       <div
