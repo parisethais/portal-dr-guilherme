@@ -1,31 +1,67 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { getGlobalExamCatalog } from '@/app/actions/exam-catalog'
-import ExamCatalogSettings from '@/components/medico/configuracoes/ExamCatalogSettings'
-import DoctorProfileSettings from '@/components/medico/configuracoes/DoctorProfileSettings'
-import GoogleCalendarSettings from '@/components/medico/configuracoes/GoogleCalendarSettings'
-import { Suspense } from 'react'
-import { Settings } from 'lucide-react'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { createClient }              from '@/lib/supabase/server'
+import { createAdminClient }         from '@/lib/supabase/admin-client'
+import { headers }                   from 'next/headers'
+import { redirect }                  from 'next/navigation'
+import { Suspense }                  from 'react'
+import Link                          from 'next/link'
+import { Settings, ArrowLeft }       from 'lucide-react'
+import { getGlobalExamCatalog }      from '@/app/actions/exam-catalog'
+import DoctorProfileSettings         from '@/components/medico/configuracoes/DoctorProfileSettings'
+import GoogleCalendarSettings        from '@/components/medico/configuracoes/GoogleCalendarSettings'
+import AssinaturaDigitalSettings     from '@/components/medico/configuracoes/AssinaturaDigitalSettings'
+import ExamCatalogSettings           from '@/components/medico/configuracoes/ExamCatalogSettings'
 
 export default async function ConfiguracoesPage() {
-  const supabase = await createClient()
+  const supabase      = await createClient()
+  const headersList   = await headers()
+  const middlewareRole = headersList.get('x-user-role')
+  const middlewareId   = headersList.get('x-user-id')
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, crm, especialidade, cpf, data_nascimento')
-    .eq('id', user.id)
-    .single()
+  const userId      = middlewareId  ?? user.id
+  const currentRole = middlewareRole ?? 'medico'
 
-  if (profile?.role !== 'medico') redirect('/medico')
+  const isStaff = ['medico', 'secretaria', 'superadmin'].includes(currentRole)
+  if (!isStaff) redirect('/medico')
 
-  const exams = await getGlobalExamCatalog()
+  // Para superadmin vendo configurações de uma clínica via domínio customizado,
+  // busca o perfil do médico da clínica (não o próprio perfil do superadmin)
+  let profileUserId = userId
+  if (currentRole === 'superadmin') {
+    const host        = headersList.get('host') ?? ''
+    const adminDb     = createAdminClient()
+    const { data: domainSetting } = await adminDb
+      .from('clinic_settings')
+      .select('clinic_id')
+      .eq('key', 'dominio')
+      .eq('value', host)
+      .maybeSingle()
+
+    if (domainSetting?.clinic_id) {
+      const { data: member } = await adminDb
+        .from('clinic_members')
+        .select('user_id')
+        .eq('clinic_id', domainSetting.clinic_id)
+        .eq('role', 'medico')
+        .limit(1)
+        .single()
+      if (member?.user_id) profileUserId = member.user_id
+    }
+  }
+
+  const db = createAdminClient()
+  const [{ data: profile }, exams] = await Promise.all([
+    db.from('profiles')
+      .select('role, crm, especialidade, cpf, data_nascimento')
+      .eq('id', profileUserId)
+      .single(),
+    getGlobalExamCatalog(),
+  ])
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8 pb-7 border-b border-black/[0.06]">
         <Link
@@ -46,17 +82,37 @@ export default async function ConfiguracoesPage() {
         </div>
       </div>
 
-      <div className="space-y-8">
-        <DoctorProfileSettings
-          initialCrm={profile?.crm ?? null}
-          initialEspecialidade={profile?.especialidade ?? null}
-          initialCpf={profile?.cpf ?? null}
-          initialDataNascimento={profile?.data_nascimento ?? null}
-        />
-        <Suspense fallback={null}>
-          <GoogleCalendarSettings />
-        </Suspense>
-        <ExamCatalogSettings initialExams={exams} />
+      <div className="space-y-10">
+
+        {/* ── Perfil ──────────────────────────────── */}
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Perfil</h2>
+          <DoctorProfileSettings
+            initialCrm={profile?.crm ?? null}
+            initialEspecialidade={profile?.especialidade ?? null}
+            initialCpf={profile?.cpf ?? null}
+            initialDataNascimento={profile?.data_nascimento ?? null}
+          />
+        </div>
+
+        {/* ── Integrações ─────────────────────────── */}
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Integrações</h2>
+          <Suspense fallback={null}>
+            <GoogleCalendarSettings />
+          </Suspense>
+          <AssinaturaDigitalSettings
+            cpf={profile?.cpf ?? null}
+            crm={profile?.crm ?? null}
+          />
+        </div>
+
+        {/* ── Catálogo de Exames ───────────────────── */}
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Catálogo de Exames</h2>
+          <ExamCatalogSettings initialExams={exams} />
+        </div>
+
       </div>
     </div>
   )
