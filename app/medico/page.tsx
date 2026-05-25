@@ -31,8 +31,8 @@ function getDateLabel(): string {
 
 function getDisplayName(fullName: string | null, sexo: string | null, role: string): string {
   const first = fullName?.split(' ')[0] ?? 'você'
-  if (role === 'medico' || role === 'superadmin') {
-    return `${sexo === 'feminino' ? 'Dra.' : 'Dr.'} ${first}`
+  if (role === 'medico') {
+    return `${sexo === 'F' || sexo === 'feminino' ? 'Dra.' : 'Dr.'} ${first}`
   }
   return first
 }
@@ -239,7 +239,7 @@ export default async function MedicoPage({
             </p>
           </div>
 
-          {currentRole === 'medico' && (
+          {(currentRole === 'medico' || currentRole === 'superadmin') && (
             <Link
               href="/medico/configuracoes"
               className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100 shrink-0 mt-0.5"
