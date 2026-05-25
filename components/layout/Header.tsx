@@ -11,6 +11,13 @@ interface HeaderProps {
   clinicName?: string | null
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  medico:     'Médico',
+  secretaria: 'Secretaria',
+  superadmin: 'Dev',
+  paciente:   'Paciente',
+}
+
 export default function Header({ profile, variant = 'medico', clinicName }: HeaderProps) {
   const [isPending, startTransition] = useTransition()
 
@@ -68,7 +75,7 @@ export default function Header({ profile, variant = 'medico', clinicName }: Head
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <span className="text-white/60 text-sm hidden sm:inline">
-          {profile.full_name || 'Usuário'}
+          {ROLE_LABEL[profile.role] ?? profile.role}
         </span>
 
         <button
