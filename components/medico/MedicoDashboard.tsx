@@ -99,7 +99,7 @@ export default function MedicoDashboard({
   ]
 
   const tabHeaders: Record<Tab, { title: string; sub: string }> = {
-    panorama:   { title: 'Panorama',          sub: 'Clique no nome ou no lápis para editar o cadastro completo do paciente.' },
+    panorama:   { title: 'Panorama',          sub: 'Visão geral da clínica: pacientes, consultas e indicações.' },
     pacientes:  { title: 'Lista de Pacientes', sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
     agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
     documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
