@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
 
   if (dbError) {
     console.error('[google/callback] falha ao salvar token:', dbError)
-    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=db_error`)
+    const detail = encodeURIComponent(dbError.code ?? dbError.message ?? 'unknown')
+    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=db_error&detail=${detail}`)
   }
 
   return NextResponse.redirect(`${base}/medico/configuracoes?google=success`)
