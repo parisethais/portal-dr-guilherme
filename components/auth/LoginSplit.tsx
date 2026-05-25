@@ -538,7 +538,7 @@ function FormPanel({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {/* Conteúdo do formulário */}
-      <div style={{ padding: '28px 36px 32px', flex: 1 }}>
+      <div style={{ padding: '28px 36px 32px', flex: 1, minHeight: 360, display: 'flex', flexDirection: 'column' }}>
         <h2 style={{
           fontFamily: 'var(--font-archivo)',
           fontSize: 20, fontWeight: 700, color: '#2D2B6B',
