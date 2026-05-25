@@ -52,6 +52,7 @@ export interface CalendarEvent {
   title:           string
   start:           string
   end:             string
+  allDay?:         boolean
   backgroundColor: string
   borderColor:     string
   textColor:       string
@@ -229,19 +230,33 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
   const gEvents: CalendarEvent[] = googleEvents
     .filter(ev => !hiddenCalendars.has(ev.calendarId))
     .map(ev => {
-      const start = ev.start.dateTime ?? ev.start.date ?? ''
-      const end   = ev.end.dateTime   ?? ev.end.date   ?? ''
-      const hora  = ev.start.dateTime
+      const start    = ev.start.dateTime ?? ev.start.date ?? ''
+      const end      = ev.end.dateTime   ?? ev.end.date   ?? ''
+      const isAllDay = !ev.start.dateTime  // sem horário = dia inteiro
+      const hora     = ev.start.dateTime
         ? new Date(ev.start.dateTime).toLocaleTimeString('pt-BR', {
             hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
           })
         : ''
+      // Eventos com duração > 4h ficam como "all day" para não dominar a grade horária
+      let displayStart = start
+      let displayEnd   = end
+      let allDay       = isAllDay
+      if (ev.start.dateTime && ev.end.dateTime) {
+        const durH = (new Date(ev.end.dateTime).getTime() - new Date(ev.start.dateTime).getTime()) / 3_600_000
+        if (durH >= 4) {
+          allDay       = true
+          displayStart = start.slice(0, 10)
+          displayEnd   = end.slice(0, 10)
+        }
+      }
       return {
         id:              ev.id,
-        title:           hora ? `${hora} · ${ev.summary}` : ev.summary,
-        start,
-        end,
-        backgroundColor: ev.calendarColor + 'CC', // leve transparência para distinguir do CRM
+        title:           allDay && !isAllDay ? `${hora} · ${ev.summary}` : (hora ? `${hora} · ${ev.summary}` : ev.summary),
+        start:           displayStart,
+        end:             displayEnd,
+        allDay,
+        backgroundColor: ev.calendarColor + 'BB',
         borderColor:     ev.calendarColor,
         textColor:       '#ffffff',
         classNames:      ['fc-google-event'],
@@ -284,12 +299,11 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
               style={{
                 backgroundColor: consultorioHidden ? 'transparent' : CONSULTORIO_COLOR + '18',
-                borderColor:     CONSULTORIO_COLOR,
+                borderColor:     consultorioHidden ? '#d1d5db' : CONSULTORIO_COLOR,
                 color:           consultorioHidden ? '#9ca3af' : CONSULTORIO_COLOR,
-                opacity:         consultorioHidden ? 0.6 : 1,
               }}
             >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: consultorioHidden ? '#9ca3af' : CONSULTORIO_COLOR }} />
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: consultorioHidden ? '#d1d5db' : CONSULTORIO_COLOR }} />
               Consultório
             </button>
 
@@ -303,12 +317,11 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
                   style={{
                     backgroundColor: hidden ? 'transparent' : cal.color + '22',
-                    borderColor:     cal.color,
+                    borderColor:     hidden ? '#d1d5db' : cal.color,
                     color:           hidden ? '#9ca3af' : cal.color,
-                    opacity:         hidden ? 0.6 : 1,
                   }}
                 >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hidden ? '#9ca3af' : cal.color }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hidden ? '#d1d5db' : cal.color }} />
                   {cal.name}
                 </button>
               )
