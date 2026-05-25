@@ -36,15 +36,25 @@ export async function GET(req: NextRequest) {
 
   const tokens = await tokenRes.json()
 
-  await createAdminClient()
+  if (!tokens.refresh_token) {
+    // Google só devolve refresh_token na primeira autorização; se vier vazio o flow falhou
+    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=no_refresh_token`)
+  }
+
+  const { error: dbError } = await createAdminClient()
     .from('google_tokens')
     .upsert({
       user_id:       userId,
       access_token:  tokens.access_token,
-      refresh_token: tokens.refresh_token ?? null,
+      refresh_token: tokens.refresh_token,
       token_expiry:  new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000).toISOString(),
       updated_at:    new Date().toISOString(),
     }, { onConflict: 'user_id' })
+
+  if (dbError) {
+    console.error('[google/callback] falha ao salvar token:', dbError)
+    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=db_error`)
+  }
 
   return NextResponse.redirect(`${base}/medico/configuracoes?google=success`)
 }
