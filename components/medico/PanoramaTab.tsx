@@ -610,7 +610,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       return db.localeCompare(da) // mais recente primeiro
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patients, search, filterStatus, filterAlerta, isAtivo, proximaConsultaMap, ultimaConsultaMap])
+  , [patients, search, filterStatus, filterAlerta, isAtivo, proximaConsultaMap, ultimaConsultaMap])
 
   // ── Render ─────────────────────────────────────────────────
   return (
