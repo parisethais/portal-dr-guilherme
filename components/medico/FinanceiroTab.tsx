@@ -365,6 +365,22 @@ function EntryForm({
               </span>
             </label>
           )}
+
+          {/* Botão solicitar NF por e-mail */}
+          {form.nota_fiscal_status === 'a_solicitar' && form.patient_id && doctorName && (
+            <a
+              href={gerarMailtoNF({
+                patient:    patients.find(p => p.id === form.patient_id)!,
+                amount:     form.amount ?? 0,
+                date:       form.date ?? new Date().toISOString().slice(0, 10),
+                doctorName,
+                doctorCrm,
+              })}
+              className="flex items-center gap-1.5 mt-2 text-xs text-primary underline"
+            >
+              📧 Gerar e-mail de solicitação de NF
+            </a>
+          )}
         </div>
       )}
 
@@ -378,22 +394,6 @@ function EntryForm({
           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
-
-      {/* Botão solicitar NF por e-mail */}
-      {isReceita && form.patient_id && form.amount && form.date && doctorName && (
-        <a
-          href={gerarMailtoNF({
-            patient:    patients.find(p => p.id === form.patient_id)!,
-            amount:     form.amount,
-            date:       form.date,
-            doctorName,
-            doctorCrm,
-          })}
-          className="flex items-center gap-1.5 text-xs text-primary underline"
-        >
-          📧 Gerar e-mail de solicitação de NF
-        </a>
-      )}
 
       {/* Botões */}
       <div className="flex justify-end gap-2 pt-1">
