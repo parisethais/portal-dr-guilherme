@@ -91,7 +91,10 @@ export async function updateConsultaStatus(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { data: consulta, error } = await supabase
+  // Usa adminClient para bypass de RLS — secretaria não tem policy de UPDATE
+  const db = createAdminClient()
+
+  const { data: consulta, error } = await db
     .from('consultas')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
@@ -130,9 +133,12 @@ export async function updateConsulta(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  // Usa adminClient para bypass de RLS — secretaria não tem policy de UPDATE
+  const db = createAdminClient()
+
   // Se mudou a data_hora, notifica como remarcação
   if (data.data_hora) {
-    const { data: consulta } = await supabase
+    const { data: consulta } = await db
       .from('consultas')
       .select('data_hora, patient_id')
       .eq('id', consultaId)
@@ -151,7 +157,7 @@ export async function updateConsulta(
     }
   }
 
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await db
     .from('consultas')
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
