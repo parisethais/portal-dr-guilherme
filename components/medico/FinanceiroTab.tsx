@@ -168,17 +168,19 @@ function EntryForm({
   doctorName: string | null
   doctorCrm:  string | null
   patients: Profile[]
-  onSave: (data: EntryInput, notifyPortal: boolean) => void
+  onSave: (data: EntryInput, notifyPortal: boolean, parcelas: number) => void
   onCancel: () => void
   saving: boolean
 }) {
   const [form, setForm] = useState<Partial<EntryInput>>({ ...EMPTY, ...initial })
   const [notifyPortal, setNotifyPortal] = useState(false)
+  const [parcelas, setParcelas] = useState(1)
   const set = <K extends keyof EntryInput>(k: K, v: EntryInput[K]) =>
     setForm(f => ({ ...f, [k]: v }))
 
   const cats = categoriesByType(form.type ?? 'receita')
-  const valid = form.amount && form.amount > 0 && form.category && form.date
+  // amount=0 é válido para retorno (consulta gratuita)
+  const valid = form.amount !== undefined && form.amount !== null && form.amount >= 0 && form.category && form.date
   const isReceita = form.type === 'receita'
 
   // Ajusta categoria e reseta NF quando muda o tipo
@@ -269,7 +271,10 @@ function EntryForm({
             min="0"
             step="0.01"
             value={form.amount ?? ''}
-            onChange={e => set('amount', parseFloat(e.target.value) || 0)}
+            onChange={e => {
+              const v = parseFloat(e.target.value)
+              set('amount', isNaN(v) ? (undefined as unknown as number) : v)
+            }}
             placeholder="0,00"
             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
@@ -311,6 +316,48 @@ function EntryForm({
           </select>
         </div>
       </div>
+
+      {/* Parcelamento no cartão */}
+      {form.payment_method === 'cartao' && isReceita && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Parcelas no cartão</label>
+          <div className="flex gap-2 flex-wrap">
+            {[1, 2, 3, 4, 6, 12].map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setParcelas(n)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                  parcelas === n
+                    ? 'bg-primary text-white border-primary'
+                    : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+                )}
+              >
+                {n}×
+              </button>
+            ))}
+          </div>
+          {parcelas > 1 && form.amount !== undefined && (
+            <p className="text-xs text-gray-500 mt-2">
+              {parcelas}× de{' '}
+              <strong>{fmtBRL((form.amount ?? 0) / parcelas)}</strong>
+              {' '}— vencimentos a partir de{' '}
+              {form.date
+                ? (() => {
+                    const base = new Date(form.date + 'T12:00:00')
+                    return Array.from({ length: parcelas }, (_, i) => {
+                      const d = new Date(base)
+                      d.setDate(d.getDate() + (i + 1) * 30)
+                      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                    }).join(', ')
+                  })()
+                : '—'
+              }
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Nota fiscal (só para receita) */}
       {isReceita && (
@@ -401,7 +448,7 @@ function EntryForm({
           Cancelar
         </button>
         <button
-          onClick={() => valid && onSave({ ...EMPTY, ...form, doctor_id: doctorId } as EntryInput, notifyPortal)}
+          onClick={() => valid && onSave({ ...EMPTY, ...form, doctor_id: doctorId } as EntryInput, notifyPortal, parcelas)}
           disabled={!valid || saving}
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -536,14 +583,42 @@ export default function FinanceiroTab({ initialEntries, doctorId, doctorName = n
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
-  async function handleCreate(data: EntryInput, notifyPortal: boolean) {
+  async function handleCreate(data: EntryInput, notifyPortal: boolean, parcelas: number) {
     setSaving(true)
-    const res = await createFinancialEntry(data)
+
+    if (parcelas > 1) {
+      // Cria N parcelas com datas escalonadas a cada 30 dias
+      const baseDate = new Date(data.date + 'T12:00:00')
+      const valorParcela = parseFloat((data.amount / parcelas).toFixed(2))
+      const novasEntradas: FinancialEntry[] = []
+
+      for (let i = 0; i < parcelas; i++) {
+        const d = new Date(baseDate)
+        d.setDate(d.getDate() + (i + 1) * 30)
+        const parcelaDate = d.toISOString().slice(0, 10)
+        const parcelaData: EntryInput = {
+          ...data,
+          date:        parcelaDate,
+          amount:      valorParcela,
+          status:      'pendente',
+          description: `${data.description ?? ''}${data.description ? ' ' : ''}(${i + 1}/${parcelas})`.trim(),
+        }
+        const res = await createFinancialEntry(parcelaData)
+        if (res.error) { setSaving(false); alert(res.error); return }
+        novasEntradas.push({ ...parcelaData, id: `tmp-${Date.now()}-${i}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      }
+
+      setEntries(prev => [...novasEntradas, ...prev])
+    } else {
+      const res = await createFinancialEntry(data)
+      if (res.error) { setSaving(false); alert(res.error); return }
+      const fake: FinancialEntry = { ...data, id: `tmp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+      setEntries(prev => [fake, ...prev])
+    }
+
     setSaving(false)
-    if (res.error) { alert(res.error); return }
-    const fake: FinancialEntry = { ...data, id: `tmp-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-    setEntries(prev => [fake, ...prev])
     setShowForm(false)
+
     if (notifyPortal && data.patient_id) {
       await notifyPatientNota({
         patientId:   data.patient_id,
@@ -554,7 +629,7 @@ export default function FinanceiroTab({ initialEntries, doctorId, doctorName = n
     }
   }
 
-  async function handleUpdate(data: EntryInput, notifyPortal: boolean) {
+  async function handleUpdate(data: EntryInput, notifyPortal: boolean, _parcelas: number) {
     if (!editingEntry) return
     setSaving(true)
     const res = await updateFinancialEntry(editingEntry.id, data)

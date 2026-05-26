@@ -7,13 +7,14 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
 import { createConsulta, updateConsulta, updateConsultaStatus } from '@/app/actions/consultas'
+import { createPlaceholderPatient } from '@/app/actions/patients'
 import { getConsultationTypes } from '@/app/actions/consultation-types'
 import type { ConsultationTypeDB } from '@/app/actions/consultation-types'
 import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
   UserRound, MapPin, Clock, CalendarDays,
-  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown,
+  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus,
 } from 'lucide-react'
 
 // ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
@@ -148,8 +149,22 @@ function PatientSearch({
       )}
 
       {open && query.length > 0 && filtered.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
-          <p className="text-sm text-gray-400">Nenhum paciente encontrado.</p>
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          <p className="text-xs text-gray-400 px-4 pt-2.5 pb-1.5">Nenhum paciente encontrado.</p>
+          <button
+            type="button"
+            onMouseDown={() => {
+              // Marca como provisório — criado no handleSubmit
+              onChange({ id: '__placeholder__', full_name: query } as Profile)
+              setOpen(false)
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors flex items-center gap-2 border-t border-gray-100"
+          >
+            <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <UserPlus className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <span className="font-medium text-amber-700">Agendar sem cadastro: &ldquo;{query}&rdquo;</span>
+          </button>
         </div>
       )}
     </div>
@@ -265,9 +280,17 @@ export default function ConsultaModal({
     const dataHoraISO = new Date(dataHora).toISOString()
 
     startTransition(async () => {
+      // Se for paciente provisório, cria o perfil primeiro
+      let patientId = selectedPatient.id
+      if (patientId === '__placeholder__') {
+        const placeholderResult = await createPlaceholderPatient(selectedPatient.full_name ?? '')
+        if (!placeholderResult.success || !placeholderResult.data) { setError((!placeholderResult.success ? placeholderResult.error : undefined) ?? 'Erro ao criar paciente'); return }
+        patientId = placeholderResult.data.id
+      }
+
       if (mode === 'create') {
         const result = await createConsulta({
-          patient_id:  selectedPatient.id,
+          patient_id:  patientId,
           tipo,
           local,
           data_hora:   dataHoraISO,
@@ -469,6 +492,17 @@ export default function ConsultaModal({
             value={selectedPatient}
             onChange={setSelectedPatient}
           />
+
+          {/* Aviso de paciente provisório */}
+          {selectedPatient?.id === '__placeholder__' && (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>
+                <strong>{selectedPatient.full_name}</strong> será cadastrado como paciente provisório.
+                Você poderá enviar o link de cadastro completo depois.
+              </span>
+            </div>
+          )}
 
           {/* Tipo + Local */}
           <div className="grid grid-cols-2 gap-3">

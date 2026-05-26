@@ -12,6 +12,7 @@ export const FINANCIAL_CATEGORIES: FinancialCategory[] = [
   { value: 'consulta_particular', label: 'Consulta particular', scope: 'clinic',   type: 'receita', color: '#22c55e' },
   { value: 'consulta_convenio',   label: 'Convênio',            scope: 'clinic',   type: 'receita', color: '#16a34a' },
   { value: 'procedimento',        label: 'Procedimento',        scope: 'clinic',   type: 'receita', color: '#4ade80' },
+  { value: 'retorno',             label: 'Retorno',             scope: 'clinic',   type: 'receita', color: '#60a5fa' },
 
   // ── Receitas pessoais ─────────────────────────────────────────
   { value: 'plantao',             label: 'Plantão',             scope: 'personal', type: 'receita', color: '#3b82f6' },

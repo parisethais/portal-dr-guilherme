@@ -56,6 +56,47 @@ export async function createPatient(
   return { success: true, data: { password: tempPassword } }
 }
 
+/**
+ * Cria um paciente provisório (sem login) para agendar antes do cadastro completo.
+ * O perfil fica com status_paciente = 'lead' até o paciente se registrar.
+ */
+export async function createPlaceholderPatient(
+  fullName: string,
+): Promise<ActionResult<{ id: string }>> {
+  if (!fullName.trim()) return { success: false, error: 'Nome é obrigatório.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
+
+  // E-mail placeholder nunca usado para login
+  const placeholderEmail = `provisorio-${Date.now()}@interno.portal`
+  const tempPassword = `Portal${Math.floor(1000 + Math.random() * 9000)}`
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email:         placeholderEmail,
+    password:      tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: fullName.trim(), role: 'paciente' },
+  })
+
+  if (error) return { success: false, error: error.message }
+
+  await admin.from('profiles').upsert({
+    id:              data.user!.id,
+    full_name:       fullName.trim(),
+    role:            'paciente',
+    tenant_id:       tenantId,
+    status_paciente: 'lead',
+  }, { onConflict: 'id' })
+
+  revalidatePath('/medico')
+  return { success: true, data: { id: data.user!.id } }
+}
+
 export async function deletePatient(patientId: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
