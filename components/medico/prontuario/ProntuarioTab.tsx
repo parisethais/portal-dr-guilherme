@@ -257,7 +257,7 @@ export default function ProntuarioTab({
       const res = await finalizarProntuario(selectedConsulta.id)
       if (!res.success) { setFinalizeError(res.error ?? 'Erro ao finalizar.'); return }
       setConfirm(false)
-      router.refresh()
+      onRefresh?.()   // re-busca detailData para refletir prontuario_finalizado=true
     })
   }
 
