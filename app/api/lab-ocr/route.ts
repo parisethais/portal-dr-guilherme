@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     admin.storage.from('exames').remove([path]).catch(() => {})
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const MODEL = 'claude-3-5-sonnet-20241022'
+    const MODEL = 'claude-opus-4-5'
 
     const examList = EXAM_CATALOG.map(e => `"${e.name}"`).join(', ')
     const prompt = `Você é um especialista em análise de laudos laboratoriais. Analise este laudo e extraia os resultados dos exames.
