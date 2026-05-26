@@ -3,7 +3,6 @@
 import { useState, useTransition, useRef } from 'react'
 import type { LabResult } from '@/lib/types'
 import { upsertLabResults, deleteLabResult } from '@/app/actions/prontuario'
-import { extractLabResultsFromFile } from '@/app/actions/lab-ocr'
 import { EXAM_CATALOG, EXAM_GROUPS, classifyValue, type ExamDef } from '@/lib/lab-catalog'
 import {
   Plus, Save, Loader2, Trash2, FlaskConical, X, CalendarPlus,
@@ -189,15 +188,17 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     setOcrError('')
 
     try {
-      // Usa FormData para não serializar base64 enorme no corpo da server action
       const fd = new FormData()
       fd.append('file', file)
       console.log('[lab-ocr] Enviando para análise:', { type: file.type, sizeKb: Math.round(file.size / 1024) })
-      const res = await extractLabResultsFromFile(fd)
+
+      // Usa API route direta — server actions não suportam File upload confiável
+      const httpRes = await fetch('/api/lab-ocr', { method: 'POST', body: fd })
+      const res = await httpRes.json() as { success: boolean; data?: Record<string, { value: string; unit: string }>; error?: string }
       console.log('[lab-ocr] Resposta recebida:', res.success ? 'OK' : res.error)
 
       if (!res.success) {
-        setOcrError(res.error)
+        setOcrError(res.error ?? 'Erro desconhecido ao analisar laudo.')
         setOcrLoading(false)
         return
       }
