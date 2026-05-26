@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
 
@@ -61,7 +62,8 @@ export async function createFinancialEntry(input: EntryInput) {
   if (!user) return { error: 'Não autorizado.' }
 
   const tenantId = await getCallerTenantId(user.id)
-  const { error } = await supabase.from('financial_entries').insert({ ...input, tenant_id: tenantId })
+  const db = createAdminClient()
+  const { error } = await db.from('financial_entries').insert({ ...input, tenant_id: tenantId })
   if (error) return { error: error.message }
   revalidatePath('/medico')
   return { success: true }
@@ -71,7 +73,11 @@ export async function createFinancialEntry(input: EntryInput) {
 
 export async function updateFinancialEntry(id: string, input: Partial<EntryInput>) {
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const db = createAdminClient()
+  const { error } = await db
     .from('financial_entries')
     .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -84,7 +90,11 @@ export async function updateFinancialEntry(id: string, input: Partial<EntryInput
 
 export async function deleteFinancialEntry(id: string) {
   const supabase = await createClient()
-  const { error } = await supabase.from('financial_entries').delete().eq('id', id)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  const db = createAdminClient()
+  const { error } = await db.from('financial_entries').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/medico')
   return { success: true }
