@@ -59,6 +59,10 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Ferro', name: 'Ferritina', unit: 'ng/mL', refMin: 12, refMax: 300, warnLow: 5, warnHigh: 500, critLow: 0, critHigh: 1000 },
   { group: 'Ferro', name: 'Índice de saturação de transferrina', unit: '%', refMin: 20, refMax: 50, warnLow: 10, warnHigh: 60, critLow: 5, critHigh: 80 },
 
+  // ── PROTEÍNAS SÉRICAS ─────────────────────────────────────────
+  { group: 'Proteínas Séricas', name: 'Albumina', unit: 'g/dL', refMin: 3.5, refMax: 5.0, warnLow: 3.0, critLow: 2.5 },
+  { group: 'Proteínas Séricas', name: 'Proteínas totais', unit: 'g/dL', refMin: 6.0, refMax: 8.0, warnLow: 5.0, critLow: 4.0 },
+
   // ── ELETROFORESE / PROTEÍNAS SÉRICAS ──────────────────────────
   { group: 'Proteínas Séricas', name: 'Eletroforese: pico monoclonal', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
   { group: 'Proteínas Séricas', name: 'Eletroforese: conc. pico monoclonal', unit: 'g/dL', altUnits: ['g/L'], refMax: 0, warnHigh: 1.0, critHigh: 2.0,
@@ -98,6 +102,9 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Gasometria Venosa', name: 'Gasometria venosa: BE', unit: 'mmol/L', refMin: -3, refMax: 3, warnLow: -8, warnHigh: 8, critLow: -12, critHigh: 12 },
 
   // ── AUTOIMUNE ─────────────────────────────────────────────────
+  { group: 'Autoimune', name: 'FAN', unit: 'neg/pos', altUnits: ['título'], qualitative: true, normalAnswer: 'neg' },
+  { group: 'Autoimune', name: 'Fator Reumatoide', unit: 'UI/mL', refMax: 14, warnHigh: 60, critHigh: 100 },
+  { group: 'Autoimune', name: 'Anti-CCP', unit: 'U/mL', refMax: 17, warnHigh: 50, critHigh: 100 },
   { group: 'Autoimune', name: 'Anti-Sm', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
   { group: 'Autoimune', name: 'Anti-DNA', unit: 'neg/pos', altUnits: ['UI/mL'], qualitative: true, normalAnswer: 'neg' },
   { group: 'Autoimune', name: 'Anti-RNP', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },

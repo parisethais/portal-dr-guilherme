@@ -39,33 +39,58 @@ Regras:
     let responseText: string
 
     if (isPdf) {
-      // PDFs requerem a API beta com suporte a documentos
-      const response = await client.beta.messages.create({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        betas: ['pdfs-2024-09-25'],
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: fileBase64,
+      // PDFs: tenta API estável primeiro (claude-sonnet-4-5+), fallback para beta se falhar
+      try {
+        const response = await client.messages.create({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 4096,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'document',
+                  source: {
+                    type: 'base64',
+                    media_type: 'application/pdf',
+                    data: fileBase64,
+                  },
+                } as any,
+                { type: 'text', text: prompt },
+              ],
+            },
+          ],
+        })
+        responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+      } catch {
+        // Fallback: API beta legacy
+        const response = await client.beta.messages.create({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 4096,
+          betas: ['pdfs-2024-09-25'],
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'document',
+                  source: {
+                    type: 'base64',
+                    media_type: 'application/pdf',
+                    data: fileBase64,
+                  },
                 },
-              },
-              { type: 'text', text: prompt },
-            ],
-          },
-        ],
-      })
-      responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+                { type: 'text', text: prompt },
+              ],
+            },
+          ],
+        })
+        responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+      }
     } else {
       // Imagens usam a API padrão
       const response = await client.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-5',
         max_tokens: 4096,
         messages: [
           {
