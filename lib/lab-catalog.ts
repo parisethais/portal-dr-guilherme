@@ -199,11 +199,16 @@ export function classifyValue(
   const ranges: Partial<ExamDef> =
     unit && def.unitRanges?.[unit] ? def.unitRanges[unit] : def
 
-  const { critLow, critHigh, warnLow, warnHigh } = ranges as any
+  const { refMin, refMax, critLow, critHigh, warnLow, warnHigh } = ranges as any
 
-  if (critLow !== undefined && num <= critLow) return 'crit'
+  // Crítico
+  if (critLow  !== undefined && num <= critLow)  return 'crit'
   if (critHigh !== undefined && num >= critHigh) return 'crit'
-  if (warnLow !== undefined && num <= warnLow) return 'warn'
+  // Atenção — limites explícitos de warn
+  if (warnLow  !== undefined && num <= warnLow)  return 'warn'
   if (warnHigh !== undefined && num >= warnHigh) return 'warn'
+  // Atenção — fora do intervalo de referência (ex: Creatinina 1,92 > refMax 1,3)
+  if (refMin !== undefined && num < refMin) return 'warn'
+  if (refMax !== undefined && num > refMax) return 'warn'
   return 'normal'
 }
