@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { EXAM_CATALOG } from '@/lib/lab-catalog'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 
 export async function POST(req: NextRequest) {
   // Verifica autenticação
@@ -16,21 +17,36 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-
-    if (!file || file.size === 0) {
-      return NextResponse.json({ success: false, error: 'Arquivo não recebido.' })
+    // Recebe apenas o path do Storage (corpo pequeno — arquivo já foi para o Supabase)
+    const { path } = await req.json() as { path: string }
+    if (!path) {
+      return NextResponse.json({ success: false, error: 'Path do arquivo não informado.' })
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      return NextResponse.json({ success: false, error: 'Arquivo muito grande. Use até 20 MB.' })
+    // Baixa o arquivo do Supabase Storage
+    const admin = createAdminClient()
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from('exames')
+      .download(path)
+
+    if (downloadError || !fileData) {
+      return NextResponse.json({ success: false, error: 'Não foi possível acessar o arquivo no storage.' })
     }
 
-    const arrayBuffer = await file.arrayBuffer()
+    // Determina tipo pelo caminho
+    const ext = path.split('.').pop()?.toLowerCase() ?? 'pdf'
+    const mimeType = ext === 'pdf'  ? 'application/pdf'
+                   : ext === 'png'  ? 'image/png'
+                   : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                   : ext === 'webp' ? 'image/webp'
+                   : 'application/pdf'
+    const isPdf = mimeType === 'application/pdf'
+
+    const arrayBuffer = await fileData.arrayBuffer()
     const base64 = Buffer.from(arrayBuffer).toString('base64')
-    const mimeType = file.type || 'application/pdf'
-    const isPdf = mimeType === 'application/pdf' || mimeType.includes('pdf')
+
+    // Remove o arquivo temporário (não espera — fire and forget)
+    admin.storage.from('exames').remove([path]).catch(() => {})
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const MODEL = 'claude-3-5-sonnet-20241022'

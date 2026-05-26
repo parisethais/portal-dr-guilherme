@@ -3,6 +3,31 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { EXAM_CATALOG } from '@/lib/lab-catalog'
 import type { ActionResult } from '@/lib/types'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
+
+/**
+ * Gera uma URL assinada para o cliente fazer upload direto ao Supabase Storage,
+ * sem passar pelo Next.js (evita limite de corpo da plataforma).
+ */
+export async function getLabOcrUploadUrl(
+  fileName: string,
+): Promise<ActionResult<{ signedUrl: string; path: string; token: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const ext  = fileName.split('.').pop() ?? 'pdf'
+  const path = `lab-ocr-temp/${user.id}/${Date.now()}.${ext}`
+
+  const { data, error } = await admin.storage
+    .from('exames')
+    .createSignedUploadUrl(path)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: { signedUrl: data.signedUrl, path, token: data.token } }
+}
 
 export type OcrExtracted = Record<string, { value: string; unit: string }>
 

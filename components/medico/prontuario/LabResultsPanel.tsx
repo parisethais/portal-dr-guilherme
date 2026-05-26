@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import type { LabResult } from '@/lib/types'
 import { upsertLabResults, deleteLabResult } from '@/app/actions/prontuario'
+import { getLabOcrUploadUrl } from '@/app/actions/lab-ocr'
 import { EXAM_CATALOG, EXAM_GROUPS, classifyValue, type ExamDef } from '@/lib/lab-catalog'
 import {
   Plus, Save, Loader2, Trash2, FlaskConical, X, CalendarPlus,
@@ -188,12 +189,35 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     setOcrError('')
 
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      console.log('[lab-ocr] Enviando para análise:', { type: file.type, sizeKb: Math.round(file.size / 1024) })
+      console.log('[lab-ocr] Iniciando upload:', { type: file.type, sizeKb: Math.round(file.size / 1024) })
 
-      // Usa API route direta — server actions não suportam File upload confiável
-      const httpRes = await fetch('/api/lab-ocr', { method: 'POST', body: fd })
+      // 1. Obtém URL assinada para upload direto ao Supabase (bypass do Next.js)
+      const urlResult = await getLabOcrUploadUrl(file.name)
+      if (!urlResult.success) {
+        setOcrError(urlResult.error)
+        setOcrLoading(false)
+        return
+      }
+      const { signedUrl, path } = urlResult.data!
+
+      // 2. Upload direto para o Supabase — sem passar pelo Next.js
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/pdf' },
+      })
+      if (!uploadRes.ok) {
+        setOcrError('Erro ao fazer upload do arquivo. Tente novamente.')
+        setOcrLoading(false)
+        return
+      }
+
+      // 3. Analisa: envia apenas o path (corpo pequeno)
+      const httpRes = await fetch('/api/lab-ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      })
       const res = await httpRes.json() as { success: boolean; data?: Record<string, { value: string; unit: string }>; error?: string }
       console.log('[lab-ocr] Resposta recebida:', res.success ? 'OK' : res.error)
 
