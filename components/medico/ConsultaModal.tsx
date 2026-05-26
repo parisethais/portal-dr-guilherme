@@ -14,7 +14,7 @@ import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } f
 import { cn } from '@/lib/utils'
 import {
   UserRound, MapPin, Clock, CalendarDays,
-  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus,
+  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope,
 } from 'lucide-react'
 
 // ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
@@ -207,6 +207,8 @@ interface ConsultaModalProps {
   patients: Profile[]
   defaultDateTime?: string   // for create mode
   consulta?: Consulta        // for view mode
+  currentRole?: string
+  onIniciarAtendimento?: (patientId: string, consultaId: string) => void
 }
 
 export default function ConsultaModal({
@@ -216,6 +218,8 @@ export default function ConsultaModal({
   patients,
   defaultDateTime = '',
   consulta,
+  currentRole,
+  onIniciarAtendimento,
 }: ConsultaModalProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -407,6 +411,22 @@ export default function ConsultaModal({
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
             </p>
+          )}
+
+          {/* Iniciar atendimento — só médico */}
+          {(currentRole === 'medico' || currentRole === 'superadmin') && onIniciarAtendimento && (
+            <button
+              type="button"
+              onClick={() => {
+                onIniciarAtendimento(consulta.patient_id, consulta.id)
+                onClose()
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: '#2D2B6B' }}
+            >
+              <Stethoscope className="w-4 h-4" />
+              Iniciar atendimento
+            </button>
           )}
 
           {/* Action buttons */}

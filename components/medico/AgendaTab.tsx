@@ -130,11 +130,13 @@ function GoogleEventPopup({ event, onClose }: GoogleEventPopupProps) {
 // ── Main component ─────────────────────────────────────────
 
 interface AgendaTabProps {
-  consultas: Consulta[]
-  patients:  Profile[]
+  consultas:  Consulta[]
+  patients:   Profile[]
+  currentRole?: string
+  onIniciarAtendimento?: (patientId: string, consultaId: string) => void
 }
 
-export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
+export default function AgendaTab({ consultas, patients, currentRole, onIniciarAtendimento }: AgendaTabProps) {
   const [createModal, setCreateModal] = useState<{ open: boolean; defaultDateTime: string }>({
     open: false,
     defaultDateTime: '',
@@ -412,6 +414,8 @@ export default function AgendaTab({ consultas, patients }: AgendaTabProps) {
           mode="view"
           patients={patients}
           consulta={viewModal.consulta}
+          currentRole={currentRole}
+          onIniciarAtendimento={onIniciarAtendimento}
         />
       )}
 

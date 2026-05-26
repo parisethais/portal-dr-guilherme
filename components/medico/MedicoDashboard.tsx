@@ -93,6 +93,12 @@ export default function MedicoDashboard({
     }
   }
 
+  function handleIniciarAtendimento(patientId: string, consultaId: string) {
+    setActiveTabState('pacientes')
+    setSelectedPatientId(patientId)
+    pushUrl({ tab: 'pacientes', p: patientId, dtab: 'prontuario', consulta: consultaId, stab: null })
+  }
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'panorama',    label: 'Panorama',    icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'pacientes',   label: 'Pacientes',   icon: <Users           className="w-4 h-4" /> },
@@ -165,7 +171,12 @@ export default function MedicoDashboard({
           />
         )}
         {activeTab === 'agenda' && (
-          <AgendaTab consultas={consultas} patients={patients} />
+          <AgendaTab
+            consultas={consultas}
+            patients={patients}
+            currentRole={currentRole}
+            onIniciarAtendimento={handleIniciarAtendimento}
+          />
         )}
         {activeTab === 'documentos' && (
           <div className="grid lg:grid-cols-2 gap-8">
