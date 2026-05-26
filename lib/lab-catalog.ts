@@ -33,6 +33,9 @@ export const EXAM_CATALOG: ExamDef[] = [
   },
   { group: 'Função Renal', name: 'Fósforo', unit: 'mg/dL', refMin: 2.5, refMax: 4.5, warnLow: 1.5, warnHigh: 6.0, critLow: 1.0, critHigh: 8.0 },
   { group: 'Função Renal', name: 'Ácido úrico', unit: 'mg/dL', refMin: 3.4, refMax: 7.0, warnHigh: 9.0, critHigh: 12.0 },
+  { group: 'Função Renal', name: 'Cistatina C', unit: 'mg/L', refMin: 0.53, refMax: 0.95, warnHigh: 1.2, critHigh: 2.0 },
+  { group: 'Função Renal', name: 'Clearance Creatinina 24h: volume urinário', unit: 'mL/24h', refMin: 600, refMax: 2500, warnLow: 400, warnHigh: 3500, critLow: 200 },
+  { group: 'Função Renal', name: 'Clearance Creatinina 24h: clearance', unit: 'mL/min/1,73m²', refMin: 90, warnLow: 60, critLow: 30 },
 
   // ── HEMATOLOGIA ────────────────────────────────────────────────
   { group: 'Hematologia', name: 'Hemoglobina', unit: 'g/dL', refMin: 12.0, refMax: 17.5, warnLow: 10.0, warnHigh: 18.5, critLow: 8.0, critHigh: 20.0 },
