@@ -160,12 +160,17 @@ function PatientSearch({
 
 function toDatetimeLocal(isoOrPartial: string): string {
   if (!isoOrPartial) return ''
-  // If allDay click (YYYY-MM-DD), default to 08:00
+  // Clique em dia inteiro (YYYY-MM-DD) → padrão 08:00 local
   if (/^\d{4}-\d{2}-\d{2}$/.test(isoOrPartial)) {
     return isoOrPartial + 'T08:00'
   }
-  // Otherwise slice to 16 chars: YYYY-MM-DDTHH:mm
-  return isoOrPartial.slice(0, 16)
+  // Converte o ISO UTC para horário local antes de exibir no input datetime-local
+  // (sem isso, "2026-05-26T20:00:00Z" = 17h BRT aparecia como 20:00 no formulário)
+  const d = new Date(isoOrPartial)
+  if (isNaN(d.getTime())) return isoOrPartial.slice(0, 16)
+  const offsetMs = d.getTimezoneOffset() * 60_000
+  const local    = new Date(d.getTime() - offsetMs)
+  return local.toISOString().slice(0, 16)
 }
 
 function formatDisplayDateTime(isoString: string): string {
