@@ -189,10 +189,11 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     setOcrError('')
 
     try {
-      const base64 = await fileToBase64(file)
-      const mimeType = file.type || 'application/pdf'
-      console.log('[lab-ocr] Enviando para análise:', { mimeType, sizeKb: Math.round(file.size / 1024) })
-      const res = await extractLabResultsFromFile(base64, mimeType)
+      // Usa FormData para não serializar base64 enorme no corpo da server action
+      const fd = new FormData()
+      fd.append('file', file)
+      console.log('[lab-ocr] Enviando para análise:', { type: file.type, sizeKb: Math.round(file.size / 1024) })
+      const res = await extractLabResultsFromFile(fd)
       console.log('[lab-ocr] Resposta recebida:', res.success ? 'OK' : res.error)
 
       if (!res.success) {

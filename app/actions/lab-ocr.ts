@@ -6,19 +6,33 @@ import type { ActionResult } from '@/lib/types'
 
 export type OcrExtracted = Record<string, { value: string; unit: string }>
 
+/**
+ * Recebe o arquivo via FormData (não base64) para evitar problemas de
+ * serialização de strings grandes em server actions do Next.js.
+ */
 export async function extractLabResultsFromFile(
-  fileBase64: string,
-  mimeType: string,
+  formData: FormData,
 ): Promise<ActionResult<OcrExtracted>> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { success: false, error: 'Chave da API Anthropic não configurada. Configure ANTHROPIC_API_KEY nas variáveis de ambiente.' }
+    return { success: false, error: 'Chave da API Anthropic não configurada.' }
   }
 
   try {
+    const file = formData.get('file') as File | null
+    if (!file || file.size === 0) {
+      return { success: false, error: 'Arquivo não recebido pelo servidor.' }
+    }
+
+    // Converte para base64 no servidor — evita trafegar string enorme no corpo da action
+    const arrayBuffer = await file.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const mimeType = file.type || 'application/pdf'
+    const isPdf = mimeType === 'application/pdf' || mimeType.includes('pdf')
+
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const MODEL = 'claude-3-5-sonnet-20241022'
 
     const examList = EXAM_CATALOG.map(e => `"${e.name}"`).join(', ')
-
     const prompt = `Você é um especialista em análise de laudos laboratoriais. Analise este laudo e extraia os resultados dos exames.
 
 Retorne SOMENTE um objeto JSON válido, sem texto adicional, no formato:
@@ -34,14 +48,9 @@ Regras:
 - Se um exame aparecer com resultado "alterado" ou "referência" sem valor numérico, ignore-o
 - Não inclua exames não encontrados`
 
-    const isPdf = mimeType === 'application/pdf'
-
     let responseText: string
 
-    const MODEL = 'claude-3-5-sonnet-20241022'
-
     if (isPdf) {
-      // PDFs: tenta API estável (document source), fallback para beta header
       try {
         const response = await client.messages.create({
           model: MODEL,
@@ -49,14 +58,14 @@ Regras:
           messages: [{
             role: 'user',
             content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } } as any,
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } } as any,
               { type: 'text', text: prompt },
             ],
           }],
         })
         responseText = response.content.find(b => b.type === 'text')?.text ?? ''
       } catch (pdfErr) {
-        console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : pdfErr)
+        console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : String(pdfErr))
         const response = await client.beta.messages.create({
           model: MODEL,
           max_tokens: 4096,
@@ -64,7 +73,7 @@ Regras:
           messages: [{
             role: 'user',
             content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } },
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
               { type: 'text', text: prompt },
             ],
           }],
@@ -78,7 +87,7 @@ Regras:
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: fileBase64 } },
+            { type: 'image', source: { type: 'base64', media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 } },
             { type: 'text', text: prompt },
           ],
         }],
@@ -86,7 +95,6 @@ Regras:
       responseText = response.content.find(b => b.type === 'text')?.text ?? ''
     }
 
-    // Extrai JSON da resposta (pode vir com ```json ou texto ao redor)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       console.error('[lab-ocr] Resposta sem JSON:', responseText.slice(0, 200))
@@ -101,8 +109,8 @@ Regras:
 
     return { success: true, data: extracted }
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erro desconhecido'
-    console.error('[lab-ocr] Erro ao chamar Anthropic:', message)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[lab-ocr] Erro:', message)
     return { success: false, error: `Erro ao analisar laudo: ${message}` }
   }
 }
