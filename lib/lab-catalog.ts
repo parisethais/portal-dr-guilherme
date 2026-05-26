@@ -155,6 +155,26 @@ export const EXAM_GROUPS = [...new Set(EXAM_CATALOG.map(e => e.group))]
 // Lookup por nome
 export const EXAM_BY_NAME = Object.fromEntries(EXAM_CATALOG.map(e => [e.name, e]))
 
+// Converte número formatado em pt-BR para float
+// Exemplos: "7.380" → 7380 | "222.000" → 222000 | "0,88" → 0.88 | "1.234,56" → 1234.56
+function parseLocalizedFloat(value: string): number {
+  const s = value.trim()
+  // Tem vírgula E ponto → formato europeu: 1.234,56
+  if (s.includes(',') && s.includes('.')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.'))
+  }
+  // Só vírgula → decimal: 0,88
+  if (s.includes(',')) {
+    return parseFloat(s.replace(',', '.'))
+  }
+  // Só ponto seguido de exatamente 3 dígitos no final → separador de milhar: 7.380
+  if (/\.\d{3}$/.test(s)) {
+    return parseFloat(s.replace(/\./g, ''))
+  }
+  // Ponto decimal normal: 0.88
+  return parseFloat(s)
+}
+
 // Classifica o valor: null = sem dado, 'normal' | 'warn' | 'crit'
 export function classifyValue(
   def: ExamDef,
@@ -172,7 +192,7 @@ export function classifyValue(
     return isNormal ? 'normal' : 'crit'
   }
 
-  const num = parseFloat(value.replace(',', '.'))
+  const num = parseLocalizedFloat(value)
   if (isNaN(num)) return null
 
   // Usa faixas específicas da unidade se disponível
