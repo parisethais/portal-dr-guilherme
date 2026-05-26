@@ -44,6 +44,14 @@ export default function PatientList({
       .catch(()   => setLoadingDetail(false))
   }, [selectedPatient?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-busca os dados do paciente sem mostrar o loading completo (pós-save)
+  function refreshDetailData() {
+    if (!selectedPatient) return
+    getPatientDetailData(selectedPatient.id)
+      .then(data => setDetailData(data))
+      .catch(() => {})
+  }
+
   // Índice de busca — apenas nome, CPF, email e diagnóstico do perfil
   const searchIndex = useMemo(() => {
     return new Map(patients.map(p => {
@@ -91,6 +99,7 @@ export default function PatientList({
         labResults={detailData.labResults}
         imagingResults={detailData.imagingResults}
         onBack={() => guardNavigation(() => onSelectPatient(null))}
+        onRefresh={refreshDetailData}
       />
     )
   }

@@ -209,6 +209,7 @@ interface Props {
   patientPhone?:   string | null
   patientBirthday?: string | null
   patientGender?:  'M' | 'F' | null
+  onRefresh?:      () => void
 }
 
 const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico', 'sumario']
@@ -217,6 +218,7 @@ export default function ProntuarioTab({
   consultas, labResults, imagingResults,
   patientId, patientName,
   patientPhone, patientBirthday, patientGender,
+  onRefresh,
 }: Props) {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -421,6 +423,7 @@ export default function ProntuarioTab({
             consultas={realizadas}
             isFinalized={isFinalized}
             onDirtyChange={setHasDirty}
+            onRefresh={onRefresh}
           />
         )}
         {activeTab === 'evolucao' && selectedConsulta && (
@@ -429,6 +432,7 @@ export default function ProntuarioTab({
             consultas={realizadas}
             isFinalized={isFinalized}
             onDirtyChange={setHasDirty}
+            onRefresh={onRefresh}
           />
         )}
         {/* ── Últimas consultas (resumo abaixo dos painéis clínicos) ── */}

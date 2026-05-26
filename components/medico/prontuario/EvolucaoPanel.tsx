@@ -12,6 +12,7 @@ interface Props {
   consultas:      Consulta[]
   isFinalized:    boolean
   onDirtyChange?: (dirty: boolean) => void
+  onRefresh?:     () => void
 }
 
 function fmt(v: number | null | undefined) {
@@ -96,7 +97,7 @@ function sanitizeForEdit(value: string | null | undefined): string {
   return isHtml(value) ? stripHtml(value) : value
 }
 
-export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
+export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
   const [evolucao,    setEvolucao]    = useState(sanitizeForEdit(consulta.evolucao))
   const [exameFisico, setExameFisico] = useState(sanitizeForEdit(consulta.exame_fisico))
   const [pas,         setPas]         = useState(fmt(consulta.pas))
@@ -153,6 +154,7 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
       if (!res.success) { setError(res.error); return }
       setSaved(true)
       onDirtyChange?.(false)
+      onRefresh?.()
       setTimeout(() => setSaved(false), 3000)
     })
   }

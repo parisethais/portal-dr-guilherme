@@ -47,6 +47,7 @@ interface PatientDetailProps {
   labResults: LabResult[]
   imagingResults: ImagingResult[]
   onBack: () => void
+  onRefresh?: () => void
 }
 
 const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento']
@@ -60,6 +61,7 @@ export default function PatientDetail({
   labResults,
   imagingResults,
   onBack,
+  onRefresh,
 }: PatientDetailProps) {
   const canSeeProntuario = currentRole !== 'secretaria'
   const defaultTab: DetailTab = canSeeProntuario ? 'prontuario' : 'exames'
@@ -153,6 +155,7 @@ export default function PatientDetail({
           patientPhone={patient.phone}
           patientBirthday={patient.data_nascimento}
           patientGender={patient.sexo}
+          onRefresh={onRefresh}
         />
       )}
 

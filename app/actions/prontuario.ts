@@ -37,7 +37,9 @@ export async function salvarConsultaFields(
     return { success: false, error: 'Este prontuário já foi finalizado e não pode ser editado.' }
   }
 
-  const { error } = await supabase
+  // Usa adminClient para bypass de RLS — secretaria não tem policy de UPDATE em consultas
+  const db = createAdminClient()
+  const { error } = await db
     .from('consultas')
     .update({ ...fields, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
@@ -48,7 +50,7 @@ export async function salvarConsultaFields(
   // Sempre que diagnósticos são salvos, atualiza o campo de perfil
   // com os nomes da consulta mais recente que tenha diagnósticos.
   if (fields.diagnosticos !== undefined && consulta?.patient_id) {
-    const { data: latest } = await supabase
+    const { data: latest } = await db
       .from('consultas')
       .select('diagnosticos')
       .eq('patient_id', consulta.patient_id)
@@ -76,7 +78,7 @@ export async function salvarConsultaFields(
       }
     }
 
-    await supabase
+    await db
       .from('profiles')
       .update({ diagnostico: syncedDiag })
       .eq('id', consulta.patient_id)
@@ -92,7 +94,8 @@ export async function finalizarProntuario(consultaId: string): Promise<ActionRes
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { error } = await supabase
+  const adminDb = createAdminClient()
+  const { error } = await adminDb
     .from('consultas')
     .update({
       prontuario_finalizado:    true,

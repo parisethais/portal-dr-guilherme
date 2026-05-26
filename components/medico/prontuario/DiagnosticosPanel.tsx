@@ -85,9 +85,10 @@ interface Props {
   consultas:      Consulta[]
   isFinalized:    boolean
   onDirtyChange?: (dirty: boolean) => void
+  onRefresh?:     () => void
 }
 
-export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange }: Props) {
+export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
   const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
   const [isDirty, setIsDirty]           = useState(false)
@@ -202,6 +203,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
       if (!res.success) { setError(res.error); return }
       setIsDirty(false)
       onDirtyChange?.(false)
+      onRefresh?.()
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     })
