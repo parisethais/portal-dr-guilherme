@@ -102,18 +102,20 @@ Seja objetivo. Extraia as informações diretamente do documento.`
   try {
     let rawText = ''
 
+    const MODEL = 'claude-3-5-sonnet-20241022'
+
     if (isPdf) {
-      // PDFs: tenta API estável primeiro, fallback para beta se falhar
       try {
         const message = await client.messages.create({
-          model: 'claude-sonnet-4-5',
+          model: MODEL,
           max_tokens: 1024,
           messages: [{ role: 'user', content: [fileContent, { type: 'text', text: prompt }] }],
         })
         rawText = message.content[0].type === 'text' ? message.content[0].text : ''
-      } catch {
+      } catch (pdfErr) {
+        console.warn('[imaging] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : pdfErr)
         const message = await client.beta.messages.create({
-          model: 'claude-sonnet-4-5',
+          model: MODEL,
           max_tokens: 1024,
           betas: ['pdfs-2024-09-25'],
           messages: [{ role: 'user', content: [fileContent, { type: 'text', text: prompt }] }],
@@ -122,7 +124,7 @@ Seja objetivo. Extraia as informações diretamente do documento.`
       }
     } else {
       const message = await client.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: MODEL,
         max_tokens: 1024,
         messages: [{ role: 'user', content: [fileContent, { type: 'text', text: prompt }] }],
       })

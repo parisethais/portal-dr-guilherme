@@ -38,76 +38,50 @@ Regras:
 
     let responseText: string
 
+    const MODEL = 'claude-3-5-sonnet-20241022'
+
     if (isPdf) {
-      // PDFs: tenta API estável primeiro (claude-sonnet-4-5+), fallback para beta se falhar
+      // PDFs: tenta API estável (document source), fallback para beta header
       try {
         const response = await client.messages.create({
-          model: 'claude-sonnet-4-5',
+          model: MODEL,
           max_tokens: 4096,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'document',
-                  source: {
-                    type: 'base64',
-                    media_type: 'application/pdf',
-                    data: fileBase64,
-                  },
-                } as any,
-                { type: 'text', text: prompt },
-              ],
-            },
-          ],
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } } as any,
+              { type: 'text', text: prompt },
+            ],
+          }],
         })
         responseText = response.content.find(b => b.type === 'text')?.text ?? ''
-      } catch {
-        // Fallback: API beta legacy
+      } catch (pdfErr) {
+        console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : pdfErr)
         const response = await client.beta.messages.create({
-          model: 'claude-sonnet-4-5',
+          model: MODEL,
           max_tokens: 4096,
           betas: ['pdfs-2024-09-25'],
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'document',
-                  source: {
-                    type: 'base64',
-                    media_type: 'application/pdf',
-                    data: fileBase64,
-                  },
-                },
-                { type: 'text', text: prompt },
-              ],
-            },
-          ],
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } },
+              { type: 'text', text: prompt },
+            ],
+          }],
         })
         responseText = response.content.find(b => b.type === 'text')?.text ?? ''
       }
     } else {
-      // Imagens usam a API padrão
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: MODEL,
         max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-                  data: fileBase64,
-                },
-              },
-              { type: 'text', text: prompt },
-            ],
-          },
-        ],
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: fileBase64 } },
+            { type: 'text', text: prompt },
+          ],
+        }],
       })
       responseText = response.content.find(b => b.type === 'text')?.text ?? ''
     }

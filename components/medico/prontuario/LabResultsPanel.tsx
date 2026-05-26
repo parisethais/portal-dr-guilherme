@@ -217,8 +217,10 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
       setMode('idle')
       setOcrLoading(false)
       setFormError(`${filled} resultado${filled !== 1 ? 's' : ''} extraído${filled !== 1 ? 's' : ''} automaticamente`)
-    } catch {
-      setOcrError('Erro ao processar o arquivo. Tente novamente.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      console.error('[lab-ocr] Exceção no handleAnalyze:', msg)
+      setOcrError(`Erro ao processar o arquivo: ${msg}`)
       setOcrLoading(false)
     }
   }
