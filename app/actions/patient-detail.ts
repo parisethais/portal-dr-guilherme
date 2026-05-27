@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
-import type { Consulta, LabResult, ImagingResult, Invoice, PatientExam, CarePlan, CarePlanAttachment } from '@/lib/types'
+import type { Consulta, LabResult, ImagingResult, Invoice, PatientExam, CarePlan, CarePlanAttachment, Prescricao } from '@/lib/types'
 
 export interface PatientDetailData {
   consultas:            Consulta[]
@@ -12,6 +12,7 @@ export interface PatientDetailData {
   patientExams:         PatientExam[]
   carePlans:            CarePlan[]
   carePlanAttachments:  CarePlanAttachment[]
+  prescricoes:          { ativas: Prescricao[]; inativas: Prescricao[] }
 }
 
 export async function getPatientDetailData(patientId: string): Promise<PatientDetailData> {
@@ -26,6 +27,8 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
     if (profile?.role === 'superadmin') db = createAdminClient()
   }
 
+  const adminClient = createAdminClient()
+
   const [
     { data: consultas },
     { data: labResults },
@@ -34,6 +37,7 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
     { data: patientExams },
     { data: carePlans },
     { data: carePlanAttachments },
+    { data: prescricoesRaw },
   ] = await Promise.all([
     db.from('consultas')
       .select('*')
@@ -63,7 +67,13 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
       .select('*')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false }),
+    adminClient.from('prescricoes')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('data_inicio', { ascending: false }),
   ])
+
+  const allPrescricoes = (prescricoesRaw ?? []) as Prescricao[]
 
   return {
     consultas:           consultas           ?? [],
@@ -73,5 +83,9 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
     patientExams:        patientExams        ?? [],
     carePlans:           carePlans           ?? [],
     carePlanAttachments: carePlanAttachments ?? [],
+    prescricoes: {
+      ativas:   allPrescricoes.filter(p => p.ativo),
+      inativas: allPrescricoes.filter(p => !p.ativo),
+    },
   }
 }
