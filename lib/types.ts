@@ -183,6 +183,22 @@ export interface ImagingResult {
   created_at:     string
 }
 
+export interface Prescricao {
+  id:          string
+  patient_id:  string
+  tenant_id:   string
+  created_by:  string | null
+  medicamento: string
+  dose:        string | null
+  posologia:   string | null
+  ativo:       boolean
+  data_inicio: string  // YYYY-MM-DD
+  data_fim:    string | null
+  obs:         string | null
+  created_at:  string
+  updated_at:  string
+}
+
 export type ActionResult<T = void> =
   | { success: true; data?: T }
   | { success: false; error: string }

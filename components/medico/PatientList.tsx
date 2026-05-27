@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import PatientDetail from './PatientDetail'
 import InvitePatientModal from './InvitePatientModal'
-import { Search, UserRound, Users, ChevronRight, UserPlus, Loader2 } from 'lucide-react'
+import { Search, UserRound, Users, ChevronRight, UserPlus, Loader2, CalendarClock } from 'lucide-react'
 import { getPatientDetailData, type PatientDetailData } from '@/app/actions/patient-detail'
 
 interface PatientListProps {
@@ -98,6 +98,7 @@ export default function PatientList({
         consultas={patientConsultas}
         labResults={detailData.labResults}
         imagingResults={detailData.imagingResults}
+        prescricoes={detailData.prescricoes}
         onBack={() => guardNavigation(() => onSelectPatient(null))}
         onRefresh={refreshDetailData}
       />
@@ -192,6 +193,20 @@ export default function PatientList({
                       {consultaCount} consulta{consultaCount > 1 ? 's' : ''}
                     </span>
                   )}
+                  {patient.retorno_previsto && (() => {
+                    const hoje = new Date().toISOString().slice(0,10)
+                    const diff = Math.floor((new Date(patient.retorno_previsto + 'T12:00:00').getTime() - Date.now()) / 86400000)
+                    const isOverdue = patient.retorno_previsto < hoje
+                    const isUrgent  = !isOverdue && diff <= 14
+                    return (
+                      <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                        isOverdue ? 'bg-red-100 text-red-700' : isUrgent ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-primary'
+                      }`}>
+                        <CalendarClock className="w-3 h-3" />
+                        {isOverdue ? 'Retorno vencido' : `Retorno ${new Date(patient.retorno_previsto + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`}
+                      </span>
+                    )
+                  })()}
                 </div>
               </Card>
             )

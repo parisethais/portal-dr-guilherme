@@ -5,7 +5,8 @@ import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { setProntuarioDirty } from '@/lib/prontuario-dirty'
-import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock } from 'lucide-react'
+import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, CalendarClock } from 'lucide-react'
+import { updateRetornoPrevisto } from '@/app/actions/profile'
 
 // ── Lista de diagnósticos de nefrologia ───────────────────────
 const PRESET_DIAGNOSES = [
@@ -79,22 +80,51 @@ export function parseDiagnosticos(raw: string | null): DiagnosisEntry[] {
   return []
 }
 
-// ── Props ─────────────────────────────────────────────────────
-interface Props {
-  consulta:       Consulta
-  consultas:      Consulta[]
-  isFinalized:    boolean
-  onDirtyChange?: (dirty: boolean) => void
-  onRefresh?:     () => void
+// ── Opções de retorno previsto ────────────────────────────────
+const RETORNO_OPCOES = [
+  { label: 'Não definido',  value: '' },
+  { label: '1 semana',      value: '1s' },
+  { label: '15 dias',       value: '15d' },
+  { label: '1 mês',         value: '1m' },
+  { label: '2 meses',       value: '2m' },
+  { label: '3 meses',       value: '3m' },
+  { label: '6 meses',       value: '6m' },
+  { label: '1 ano',         value: '1a' },
+  { label: 'Aguardar exame',value: 'exame' },
+]
+
+function calcRetornoDate(opcao: string): string | null {
+  if (!opcao || opcao === 'exame') return null
+  const d = new Date()
+  if (opcao === '1s')  d.setDate(d.getDate() + 7)
+  if (opcao === '15d') d.setDate(d.getDate() + 15)
+  if (opcao === '1m')  d.setMonth(d.getMonth() + 1)
+  if (opcao === '2m')  d.setMonth(d.getMonth() + 2)
+  if (opcao === '3m')  d.setMonth(d.getMonth() + 3)
+  if (opcao === '6m')  d.setMonth(d.getMonth() + 6)
+  if (opcao === '1a')  d.setFullYear(d.getFullYear() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
-export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
+// ── Props ─────────────────────────────────────────────────────
+interface Props {
+  consulta:           Consulta
+  consultas:          Consulta[]
+  isFinalized:        boolean
+  patientId:          string
+  retornoPrevisto?:   string | null
+  onDirtyChange?:     (dirty: boolean) => void
+  onRefresh?:         () => void
+}
+
+export default function DiagnosticosPanel({ consulta, consultas, isFinalized, patientId, retornoPrevisto, onDirtyChange, onRefresh }: Props) {
   const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
   const [isDirty, setIsDirty]           = useState(false)
   const [saved, setSaved]               = useState(false)
   const [error, setError]               = useState('')
   const [isPending, startTransition]    = useTransition()
+  const [retornoOpcao, setRetornoOpcao] = useState('')
 
   useUnsavedWarning(isDirty && !isFinalized)
 
@@ -201,6 +231,13 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
         diagnosticos: entries.length > 0 ? JSON.stringify(entries) : null,
       })
       if (!res.success) { setError(res.error); return }
+
+      // Salva retorno previsto no perfil do paciente (fire-and-forget se não alterado)
+      if (retornoOpcao) {
+        const novaData = retornoOpcao === 'exame' ? null : calcRetornoDate(retornoOpcao)
+        updateRetornoPrevisto(patientId, novaData).catch(console.error)
+      }
+
       setIsDirty(false)
       onDirtyChange?.(false)
       onRefresh?.()
@@ -243,9 +280,17 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
             ))}
           </div>
         )}
-        <div className="flex items-center gap-1.5 text-xs text-gray-400 pt-1">
-          <Lock className="w-3 h-3" />
-          {entries.length} diagnóstico{entries.length !== 1 ? 's' : ''} · prontuário finalizado
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <Lock className="w-3 h-3" />
+            {entries.length} diagnóstico{entries.length !== 1 ? 's' : ''} · prontuário finalizado
+          </div>
+          {retornoPrevisto && (
+            <div className="flex items-center gap-1.5 text-xs text-primary bg-blue-50 border border-primary/20 rounded-lg px-2.5 py-1">
+              <CalendarClock className="w-3 h-3" />
+              Retorno: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -388,6 +433,24 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
       {error && (
         <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
+
+      {/* ── Retorno previsto ── */}
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50/60 border border-primary/15 rounded-xl">
+        <CalendarClock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+        <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Retorno em:</span>
+        <select
+          value={retornoOpcao}
+          onChange={e => setRetornoOpcao(e.target.value)}
+          className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {RETORNO_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {retornoPrevisto && !retornoOpcao && (
+          <span className="text-[11px] text-gray-400 whitespace-nowrap">
+            Atual: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-400">

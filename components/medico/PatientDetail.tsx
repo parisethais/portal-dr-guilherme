@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult } from '@/lib/types'
+import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult, Prescricao } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import {
@@ -37,17 +37,18 @@ function actionLabel(fileType: string | null): string {
 type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento'
 
 interface PatientDetailProps {
-  currentRole: string
-  patient: Profile
-  exames: PatientExam[]
-  carePlan: CarePlan | null
-  attachments: CarePlanAttachment[]
-  invoices: Invoice[]
-  consultas: Consulta[]
-  labResults: LabResult[]
+  currentRole:  string
+  patient:       Profile
+  exames:        PatientExam[]
+  carePlan:      CarePlan | null
+  attachments:   CarePlanAttachment[]
+  invoices:      Invoice[]
+  consultas:     Consulta[]
+  labResults:    LabResult[]
   imagingResults: ImagingResult[]
-  onBack: () => void
-  onRefresh?: () => void
+  prescricoes?:  { ativas: Prescricao[]; inativas: Prescricao[] }
+  onBack:        () => void
+  onRefresh?:    () => void
 }
 
 const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento']
@@ -60,6 +61,7 @@ export default function PatientDetail({
   consultas,
   labResults,
   imagingResults,
+  prescricoes,
   onBack,
   onRefresh,
 }: PatientDetailProps) {
@@ -155,6 +157,8 @@ export default function PatientDetail({
           patientPhone={patient.phone}
           patientBirthday={patient.data_nascimento}
           patientGender={patient.sexo}
+          patientRetorno={patient.retorno_previsto}
+          initialPrescricoes={prescricoes}
           onRefresh={onRefresh}
         />
       )}
