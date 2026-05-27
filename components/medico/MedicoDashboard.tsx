@@ -13,6 +13,7 @@ import FinanceiroTab from './FinanceiroTab'
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
 import type { FinancialEntry } from '@/app/actions/financial'
+import { updateConsultaStatus } from '@/app/actions/consultas'
 
 // PanoramaTab importa Recharts (~300 KB) — carregado só quando a aba é ativada
 const PanoramaTab = dynamic(() => import('./PanoramaTab'), {
@@ -94,6 +95,8 @@ export default function MedicoDashboard({
   }
 
   function handleIniciarAtendimento(patientId: string, consultaId: string) {
+    // Marca como "em atendimento" para aparecer na agenda (fire-and-forget)
+    updateConsultaStatus(consultaId, 'em_atendimento').catch(console.error)
     setActiveTabState('pacientes')
     setSelectedPatientId(patientId)
     pushUrl({ tab: 'pacientes', p: patientId, dtab: 'prontuario', consulta: consultaId, stab: null })

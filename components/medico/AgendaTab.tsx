@@ -38,11 +38,12 @@ export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; tex
 
 // Mantido para compatibilidade com DayViewModal/outros componentes
 export const STATUS_COLORS: Record<ConsultaStatus, { bg: string; border: string; text: string }> = {
-  agendada:   { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
-  confirmada: { bg: '#16a34a', border: '#15803d', text: '#ffffff' },
-  realizada:  { bg: '#9ca3af', border: '#6b7280', text: '#ffffff' },
-  falta:      { bg: '#dc2626', border: '#b91c1c', text: '#ffffff' },
-  cancelada:  { bg: '#d1d5db', border: '#9ca3af', text: '#6b7280' },
+  agendada:       { bg: '#1a3a5c', border: '#122840', text: '#ffffff' },
+  confirmada:     { bg: '#16a34a', border: '#15803d', text: '#ffffff' },
+  em_atendimento: { bg: '#ea580c', border: '#c2410c', text: '#ffffff' },
+  realizada:      { bg: '#9ca3af', border: '#6b7280', text: '#ffffff' },
+  falta:          { bg: '#dc2626', border: '#b91c1c', text: '#ffffff' },
+  cancelada:      { bg: '#d1d5db', border: '#9ca3af', text: '#6b7280' },
 }
 
 // ── Types for FullCalendarWrapper ──────────────────────────
@@ -224,18 +225,19 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
     const tipoColors  = TIPO_COLORS[c.tipo]
     const patientName = c.patient?.full_name ?? patientMap[c.patient_id] ?? 'Paciente'
     const hora        = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    const isPast      = ['realizada', 'falta', 'cancelada'].includes(c.status)
-    const isFalta     = c.status === 'falta'
+    const isPast          = ['realizada', 'falta', 'cancelada'].includes(c.status)
+    const isFalta         = c.status === 'falta'
+    const isEmAtendimento = c.status === 'em_atendimento'
 
     return {
       id:              c.id,
-      title:           `${c.local === 'telemedicina' ? '📹 ' : ''}${hora} · ${patientName}`,
+      title:           `${isEmAtendimento ? '🟠 ' : c.local === 'telemedicina' ? '📹 ' : ''}${hora} · ${patientName}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
-      backgroundColor: isPast ? '#9ca3af' : tipoColors.bg,
-      borderColor:     isFalta ? '#dc2626' : (isPast ? '#6b7280' : tipoColors.border),
+      backgroundColor: isEmAtendimento ? '#ea580c' : (isPast ? '#9ca3af' : tipoColors.bg),
+      borderColor:     isEmAtendimento ? '#c2410c' : isFalta ? '#dc2626' : (isPast ? '#6b7280' : tipoColors.border),
       textColor:       tipoColors.text,
-      classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : [],
+      classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : isEmAtendimento ? ['fc-event-em-atendimento'] : [],
       extendedProps:   { source: 'crm', consulta: c },
     }
   })

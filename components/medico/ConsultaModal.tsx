@@ -64,19 +64,21 @@ export const LOCAL_LABEL: Record<ConsultaLocal, string> = {
 }
 
 export const STATUS_LABEL: Record<ConsultaStatus, string> = {
-  agendada:   'Agendada',
-  confirmada: 'Confirmada',
-  realizada:  'Realizada',
-  falta:      'Falta',
-  cancelada:  'Cancelada',
+  agendada:       'Agendada',
+  confirmada:     'Confirmada',
+  em_atendimento: 'Em atendimento',
+  realizada:      'Realizada',
+  falta:          'Falta',
+  cancelada:      'Cancelada',
 }
 
-export const STATUS_BADGE_VARIANT: Record<ConsultaStatus, 'blue' | 'green' | 'gray' | 'red'> = {
-  agendada:   'blue',
-  confirmada: 'green',
-  realizada:  'gray',
-  falta:      'red',
-  cancelada:  'gray',
+export const STATUS_BADGE_VARIANT: Record<ConsultaStatus, 'blue' | 'green' | 'gray' | 'red' | 'orange'> = {
+  agendada:       'blue',
+  confirmada:     'green',
+  em_atendimento: 'orange',
+  realizada:      'gray',
+  falta:          'red',
+  cancelada:      'gray',
 }
 
 // ── Patient search sub-component ──────────────────────────
@@ -433,7 +435,7 @@ export default function ConsultaModal({
           {consulta.status !== 'cancelada' && (
             <div className="border-t border-gray-100 pt-4 space-y-2">
               <div className="flex gap-2">
-                {consulta.status !== 'realizada' && consulta.status !== 'falta' && (
+                {consulta.status !== 'realizada' && consulta.status !== 'falta' && consulta.status !== 'em_atendimento' && (
                   <Button
                     type="button"
                     variant="secondary"

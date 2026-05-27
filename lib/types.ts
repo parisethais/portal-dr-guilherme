@@ -125,7 +125,7 @@ export type ConsultaTipo   =
   | 'primeira_consulta_desconto'
   | 'nova_consulta_desconto'
 export type ConsultaLocal  = 'consultorio' | 'telemedicina'
-export type ConsultaStatus = 'agendada' | 'confirmada' | 'realizada' | 'falta' | 'cancelada'
+export type ConsultaStatus = 'agendada' | 'confirmada' | 'em_atendimento' | 'realizada' | 'falta' | 'cancelada'
 
 export interface Consulta {
   id:           string
