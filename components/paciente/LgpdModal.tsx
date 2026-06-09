@@ -5,11 +5,13 @@ import { acceptLgpd } from '@/app/actions/lgpd'
 import Button from '@/components/ui/Button'
 import { ShieldCheck, AlertTriangle } from 'lucide-react'
 
-const LGPD_UPDATED_AT = '08 de maio de 2025'
+const LGPD_UPDATED_AT = '01 de junho de 2025'
+const LGPD_VERSION    = '2025-06-01'
 
 export default function LgpdModal() {
   const [acceptedTerms, setAcceptedTerms]  = useState(false)
   const [acceptedComms, setAcceptedComms]  = useState(false)
+  const [acceptedAI,    setAcceptedAI]     = useState(false)
   const [error, setError]                  = useState('')
   const [isPending, startTransition]       = useTransition()
 
@@ -17,11 +19,11 @@ export default function LgpdModal() {
 
   function handleAccept() {
     if (!allAccepted) {
-      setError('Você precisa marcar as duas caixas para continuar.')
+      setError('Você precisa marcar as duas primeiras caixas para continuar.')
       return
     }
     startTransition(async () => {
-      const result = await acceptLgpd()
+      const result = await acceptLgpd({ aiConsent: acceptedAI })
       if (!result.success) setError(result.error)
     })
   }
@@ -153,9 +155,18 @@ export default function LgpdModal() {
             <h3 className="font-semibold text-gray-900 mb-2">6. Compartilhamento de Dados</h3>
             <p>
               O Portal Dr. Guilherme <strong>não comercializa</strong> dados pessoais dos pacientes.
-              Os dados poderão ser compartilhados apenas quando necessário para prestação do atendimento,
-              operação técnica do Portal, cumprimento de obrigações legais ou determinações de autoridades
-              competentes.
+              Os dados poderão ser compartilhados com os seguintes fornecedores de tecnologia, que atuam como suboperadores e estão sujeitos a obrigações de confidencialidade e proteção de dados:
+            </p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Supabase Inc.</strong> (EUA) — banco de dados e armazenamento de arquivos</li>
+              <li><strong>Vercel Inc.</strong> (EUA) — hospedagem e infraestrutura da aplicação</li>
+              <li><strong>Anthropic PBC</strong> (EUA) — inteligência artificial para interpretação de exames e laudos, mediante consentimento específico do paciente</li>
+              <li><strong>Memed</strong> (Brasil) — emissão de prescrições eletrônicas</li>
+              <li><strong>Google LLC</strong> (EUA) — sincronização de agenda, quando habilitado pelo consultório</li>
+              <li><strong>Meta Platforms / WhatsApp</strong> (EUA) — comunicação via WhatsApp Business, quando habilitado</li>
+            </ul>
+            <p className="mt-2">
+              Os dados também poderão ser compartilhados para cumprimento de obrigações legais ou determinações de autoridades competentes.
             </p>
           </section>
 
@@ -298,6 +309,19 @@ export default function LgpdModal() {
               Autorizo o recebimento de comunicações do consultório por Portal, e-mail, telefone ou
               WhatsApp, exclusivamente para assuntos relacionados ao meu atendimento, envio de documentos,
               orientações médicas, solicitações de contato e comunicações administrativas do consultório.
+            </span>
+          </label>
+
+          {/* Checkbox 3 — opcional: consentimento para IA */}
+          <label className="flex items-start gap-3 cursor-pointer p-3 bg-blue-50/60 border border-primary/15 rounded-xl">
+            <input
+              type="checkbox"
+              checked={acceptedAI}
+              onChange={(e) => { setAcceptedAI(e.target.checked); setError('') }}
+              className="mt-0.5 w-4 h-4 accent-primary flex-shrink-0"
+            />
+            <span className="text-xs text-gray-700 leading-relaxed">
+              <strong>(Opcional)</strong> Autorizo o uso de inteligência artificial (Anthropic Claude) para auxiliar na interpretação dos meus dados clínicos, como resultados de exames e laudos, com o objetivo de apoiar o meu atendimento médico. Estou ciente de que esses dados poderão ser processados em servidores nos Estados Unidos e que posso revogar este consentimento a qualquer momento.
             </span>
           </label>
 

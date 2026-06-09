@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
-export async function acceptLgpd(): Promise<ActionResult> {
+export async function acceptLgpd(opts?: {
+  aiConsent?: boolean
+}): Promise<ActionResult> {
   const supabase = await createClient()
 
   const {
@@ -12,11 +14,16 @@ export async function acceptLgpd(): Promise<ActionResult> {
   } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  const now = new Date().toISOString()
+
   const { error } = await supabase
     .from('profiles')
     .update({
-      lgpd_accepted: true,
-      lgpd_accepted_at: new Date().toISOString(),
+      lgpd_accepted:      true,
+      lgpd_accepted_at:   now,
+      lgpd_version:       '2025-06-01',
+      lgpd_ai_consent:    opts?.aiConsent ?? false,
+      lgpd_ai_consent_at: opts?.aiConsent ? now : null,
     })
     .eq('id', user.id)
 
