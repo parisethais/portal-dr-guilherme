@@ -538,7 +538,7 @@ function FormPanel({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       {/* Conteúdo do formulário */}
-      <div style={{ padding: '28px 36px 32px', flex: 1, minHeight: 360, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: 'clamp(20px, 5vw, 28px) clamp(20px, 6vw, 36px) 32px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <h2 style={{
           fontFamily: 'var(--font-archivo)',
           fontSize: 20, fontWeight: 700, color: '#2D2B6B',
@@ -555,12 +555,58 @@ function FormPanel({ isAdmin }: { isAdmin: boolean }) {
 // ── Export principal ──────────────────────────────────────────
 
 export default function LoginSplit() {
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin,   setIsAdmin]   = useState(false)
+  const [isMobile,  setIsMobile]  = useState(false)
 
   useEffect(() => {
     const host = window.location.hostname
     setIsAdmin(MEDEN_ADMIN_HOSTS.some(h => host === h || host.startsWith('localhost')))
+
+    function check() { setIsMobile(window.innerWidth < 640) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
+
+  if (isMobile) {
+    return (
+      <div style={{
+        width: '100%',
+        maxWidth: 420,
+        borderRadius: 18,
+        overflow: 'hidden',
+        border: '1px solid rgba(45,43,107,0.1)',
+        boxShadow: '0 4px 36px rgba(45,43,107,0.12), 0 1px 4px rgba(45,43,107,0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Cabeçalho compacto no mobile */}
+        <div style={{
+          backgroundColor: '#F5F0E8',
+          padding: '18px 24px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(45,43,107,0.08)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>Med</span>
+            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#7A9E7E',  letterSpacing: '-0.03em', lineHeight: 1 }}>E</span>
+            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>n</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#7A9E7E', boxShadow: '0 0 0 2px rgba(122,158,126,0.28)' }} />
+            <span style={{ fontFamily: 'var(--font-jakarta)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(45,43,107,0.38)', textTransform: 'uppercase' }}>
+              {isAdmin ? 'Administração' : 'Portal de Saúde'}
+            </span>
+          </div>
+        </div>
+
+        {/* Formulário */}
+        <FormPanel isAdmin={isAdmin} />
+      </div>
+    )
+  }
 
   return (
     <div style={{
