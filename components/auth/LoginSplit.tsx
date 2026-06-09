@@ -555,12 +555,21 @@ function FormPanel({ isAdmin }: { isAdmin: boolean }) {
 // ── Export principal ──────────────────────────────────────────
 
 export default function LoginSplit() {
-  const [isAdmin,   setIsAdmin]   = useState(false)
-  const [isMobile,  setIsMobile]  = useState(false)
+  const [isAdmin,    setIsAdmin]    = useState(false)
+  const [isMobile,   setIsMobile]   = useState(false)
+  const [clinicName, setClinicName] = useState<string | null>(null)
 
   useEffect(() => {
     const host = window.location.hostname
-    setIsAdmin(MEDEN_ADMIN_HOSTS.some(h => host === h || host.startsWith('localhost')))
+    const isAdminHost = MEDEN_ADMIN_HOSTS.some(h => host === h || host.startsWith('localhost'))
+    setIsAdmin(isAdminHost)
+
+    if (!isAdminHost) {
+      fetch(`/api/clinic-by-domain?host=${encodeURIComponent(host)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.name) setClinicName(d.name) })
+        .catch(() => {})
+    }
 
     function check() { setIsMobile(window.innerWidth < 640) }
     check()
@@ -583,23 +592,41 @@ export default function LoginSplit() {
         {/* Cabeçalho compacto no mobile */}
         <div style={{
           backgroundColor: '#F5F0E8',
-          padding: '18px 24px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          padding: '18px 24px 20px',
           borderBottom: '1px solid rgba(45,43,107,0.08)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
         }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>Med</span>
-            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#7A9E7E',  letterSpacing: '-0.03em', lineHeight: 1 }}>E</span>
-            <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>n</span>
+          {/* Linha 1: logo + indicador */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>Med</span>
+              <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#7A9E7E',  letterSpacing: '-0.03em', lineHeight: 1 }}>E</span>
+              <span style={{ fontFamily: 'var(--font-archivo)', fontSize: 26, fontWeight: 800, color: '#2D2B6B', letterSpacing: '-0.03em', lineHeight: 1 }}>n</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#7A9E7E', boxShadow: '0 0 0 2px rgba(122,158,126,0.28)' }} />
+              <span style={{ fontFamily: 'var(--font-jakarta)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(45,43,107,0.38)', textTransform: 'uppercase' }}>
+                {isAdmin ? 'Administração' : 'Portal de Saúde'}
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#7A9E7E', boxShadow: '0 0 0 2px rgba(122,158,126,0.28)' }} />
-            <span style={{ fontFamily: 'var(--font-jakarta)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'rgba(45,43,107,0.38)', textTransform: 'uppercase' }}>
-              {isAdmin ? 'Administração' : 'Portal de Saúde'}
-            </span>
-          </div>
+
+          {/* Linha 2: nome da clínica */}
+          {!isAdmin && clinicName && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 20, height: 2, backgroundColor: '#7A9E7E', borderRadius: 2, opacity: 0.7, flexShrink: 0 }} />
+              <div>
+                <p style={{ fontFamily: 'var(--font-jakarta)', fontSize: 9, fontWeight: 600, letterSpacing: '0.13em', color: 'rgba(45,43,107,0.38)', textTransform: 'uppercase', margin: '0 0 2px' }}>
+                  Consultório
+                </p>
+                <p style={{ fontFamily: 'var(--font-jakarta)', fontSize: 14, fontWeight: 600, color: '#2D2B6B', margin: 0, letterSpacing: '-0.01em' }}>
+                  {clinicName}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Formulário */}
