@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
-const SECRET = process.env.COPILOT_SECRET ?? 'copilot2026guilherme'
+const SECRET = process.env.COPILOT_SECRET
 
 export async function POST(req: NextRequest) {
   // Valida o secret

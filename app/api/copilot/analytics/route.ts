@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { computeLabAlerts } from '@/lib/lab-alerts'
 
-const SECRET = process.env.COPILOT_SECRET ?? 'copilot2026guilherme'
+const SECRET = process.env.COPILOT_SECRET
 
 export async function GET(req: NextRequest) {
   if (req.headers.get('x-copilot-secret') !== SECRET) {
