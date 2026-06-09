@@ -3,14 +3,6 @@
 -- Conformidade: CFM Res. 1.821/2007 (guarda mínima 20 anos)
 --               LGPD Art. 46 (medidas técnicas de proteção)
 -- ══════════════════════════════════════════════════════════════════
---
--- Antes: ON DELETE CASCADE → excluir paciente apagava prontuário completo
--- Depois: ON DELETE RESTRICT → impede exclusão do paciente se houver dados clínicos
---
--- Para "remover" um paciente, use status_paciente = 'inativo' no perfil.
--- Exclusão física só é possível se todos os dados clínicos forem removidos primeiro
--- (o que para prontuários finalizados viola a lei — portanto funciona como proteção).
--- ══════════════════════════════════════════════════════════════════
 
 -- ── consultas ──────────────────────────────────────────────────
 ALTER TABLE public.consultas
@@ -39,18 +31,24 @@ ALTER TABLE public.imaging_results
   FOREIGN KEY (patient_id) REFERENCES public.profiles(id)
   ON DELETE RESTRICT;
 
--- ── prescricoes ────────────────────────────────────────────────
-ALTER TABLE public.prescricoes
-  DROP CONSTRAINT IF EXISTS prescricoes_patient_id_fkey;
+-- ── prescricoes (só altera se a tabela já existir) ─────────────
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'prescricoes'
+  ) THEN
+    ALTER TABLE public.prescricoes
+      DROP CONSTRAINT IF EXISTS prescricoes_patient_id_fkey;
 
-ALTER TABLE public.prescricoes
-  ADD CONSTRAINT prescricoes_patient_id_fkey
-  FOREIGN KEY (patient_id) REFERENCES public.profiles(id)
-  ON DELETE RESTRICT;
+    ALTER TABLE public.prescricoes
+      ADD CONSTRAINT prescricoes_patient_id_fkey
+      FOREIGN KEY (patient_id) REFERENCES public.profiles(id)
+      ON DELETE RESTRICT;
+  END IF;
+END $$;
 
--- ── Soft-delete: marca data de exclusão ao invés de apagar ─────
--- Garante que o perfil do paciente possa ser "desativado" sem excluir
--- os dados clínicos associados (prontuários, exames, etc.)
+-- ── Soft-delete ────────────────────────────────────────────────
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
 
