@@ -10,7 +10,9 @@ import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import MedicoDashboard from '@/components/medico/MedicoDashboard'
 import WeekSummaryBadge from '@/components/medico/WeekSummaryBadge'
+import AvisosPanel from '@/components/medico/AvisosPanel'
 import type { ConsultaSummaryItem } from '@/components/medico/WeekSummaryBadge'
+import { getNotificacoes } from '@/app/actions/notificacoes'
 
 // ── Helpers de saudação ───────────────────────────────────────────────────────
 
@@ -139,6 +141,7 @@ export default async function MedicoPage({
     { data: financialEntries },
     { data: consultas },
     { data: currentProfile },
+    notificacoes,
   ] = await Promise.all([
     (() => {
       let q = db.from('profiles')
@@ -172,6 +175,8 @@ export default async function MedicoPage({
     })(),
     // Perfil do usuário logado (para saudação personalizada e dados do médico)
     db.from('profiles').select('full_name, sexo, crm').eq('id', userId).single(),
+    // Notificações para a secretaria
+    tenantId ? getNotificacoes(tenantId) : Promise.resolve([]),
   ])
 
   // Subtítulo contextual de consultas (fuso Brasília)
@@ -233,15 +238,20 @@ export default async function MedicoPage({
             <WeekSummaryBadge hoje={consultasHoje} semana={consultasSemana} />
           </div>
 
-          {(currentRole === 'medico' || currentRole === 'superadmin') && (
-            <Link
-              href="/medico/configuracoes"
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100 shrink-0 mt-0.5"
-            >
-              <Settings className="w-4 h-4" />
-              Configurações
-            </Link>
-          )}
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            {currentRole === 'secretaria' && tenantId && (
+              <AvisosPanel notificacoes={notificacoes} tenantId={tenantId} />
+            )}
+            {(currentRole === 'medico' || currentRole === 'superadmin') && (
+              <Link
+                href="/medico/configuracoes"
+                className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+              >
+                <Settings className="w-4 h-4" />
+                Configurações
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 

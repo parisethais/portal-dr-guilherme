@@ -166,18 +166,39 @@ export async function resetPatientPassword(
 export async function updateRetornoPrevisto(
   patientId: string,
   retorno_previsto: string | null,
+  opts?: { consultaId?: string; notificar?: boolean }
 ): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const admin = createAdminClient()
-  const { error } = await admin
-    .from('profiles')
-    .update({ retorno_previsto, updated_at: new Date().toISOString() })
-    .eq('id', patientId)
+
+  const [{ error }, { data: patient }] = await Promise.all([
+    admin
+      .from('profiles')
+      .update({ retorno_previsto, updated_at: new Date().toISOString() })
+      .eq('id', patientId),
+    admin
+      .from('profiles')
+      .select('full_name, tenant_id')
+      .eq('id', patientId)
+      .single(),
+  ])
 
   if (error) return { success: false, error: error.message }
+
+  // Cria notificação para a secretaria quando o médico define retorno
+  if (opts?.notificar && retorno_previsto && patient?.tenant_id && opts.consultaId) {
+    const { criarNotificacaoRetorno } = await import('@/app/actions/notificacoes')
+    await criarNotificacaoRetorno({
+      tenantId:    patient.tenant_id,
+      patientId,
+      patientName: patient.full_name ?? 'Paciente',
+      consultaId:  opts.consultaId,
+      retornoData: retorno_previsto,
+    }).catch(console.error)
+  }
 
   revalidatePath('/medico')
   return { success: true }

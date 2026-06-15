@@ -232,10 +232,13 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
       })
       if (!res.success) { setError(res.error); return }
 
-      // Salva retorno previsto no perfil do paciente (fire-and-forget se não alterado)
+      // Salva retorno previsto + notifica secretaria
       if (retornoOpcao) {
         const novaData = retornoOpcao === 'exame' ? null : calcRetornoDate(retornoOpcao)
-        updateRetornoPrevisto(patientId, novaData).catch(console.error)
+        updateRetornoPrevisto(patientId, novaData, {
+          consultaId: consulta.id,
+          notificar: true,
+        }).catch(console.error)
       }
 
       setIsDirty(false)
