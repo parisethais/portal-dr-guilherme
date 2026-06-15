@@ -142,7 +142,7 @@ export default async function MedicoPage({
   ] = await Promise.all([
     (() => {
       let q = db.from('profiles')
-        .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role')
+        .select('id, full_name, email, phone, cpf, sexo, data_nascimento, status_paciente, perfil_completo, como_conheceu, obs_secretaria, retorno_previsto, lgpd_accepted, diagnostico, created_at, role, cep, endereco, cidade_estado, nome_mae, profissao, cns')
         .eq('role', 'paciente')
         .order('full_name', { ascending: true })
       if (tenantId) q = q.eq('tenant_id', tenantId)
