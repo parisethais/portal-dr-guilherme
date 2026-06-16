@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { Resend } from 'resend'
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const NF_FROM = 'notas@santacatharina.com'
+const NF_TO   = ['notas@sejamedeasy.com.br', 'leonardo@sejamedeasy.com.br', 'Emanuelle@sejamedeasy.com.br']
 
 export type NotaFiscalStatus = 'nao_se_aplica' | 'a_solicitar' | 'solicitada' | 'emitida'
 
@@ -160,5 +165,74 @@ export async function upsertClinicSetting(key: string, value: string) {
 
   if (error) return { error: error.message }
   revalidatePath('/medico')
+  return { success: true }
+}
+
+// ── Enviar e-mail de solicitação de NF ao contador ────────────────────────
+
+export async function enviarEmailNFContador({
+  pacienteNome,
+  pacienteCpf,
+  pacienteEmail,
+  valor,
+  dataConsulta,
+  doctorName,
+  doctorCrm,
+}: {
+  pacienteNome:  string
+  pacienteCpf:   string | null
+  pacienteEmail: string | null
+  valor:         number
+  dataConsulta:  string
+  doctorName:    string
+  doctorCrm:     string | null
+}): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+
+  if (!resend) return { error: 'Serviço de e-mail não configurado.' }
+
+  const cpfFmt   = pacienteCpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') ?? '—'
+  const emailFmt = pacienteEmail ?? '—'
+  const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const dataFmt  = new Date(dataConsulta + 'T12:00:00').toLocaleDateString('pt-BR')
+  const crmFmt   = doctorCrm ? `CRM-SP ${doctorCrm}` : 'CRM-SP —'
+
+  const corpo = [
+    'Prezados, boa tarde.',
+    '',
+    'Solicito a emissão da nota fiscal conforme os dados abaixo.',
+    '',
+    'Obs: Não esquecer de adicionar os e-mails dos pacientes na hora do envio das notas, por favor.',
+    '',
+    'Tomador do Serviço:',
+    pacienteNome,
+    `CPF: ${cpfFmt}`,
+    `E-mail: ${emailFmt}`,
+    '',
+    'Valor:',
+    valorFmt,
+    '',
+    'Corpo da nota:',
+    `Consulta médica com ${doctorName} (${crmFmt})`,
+    pacienteNome,
+    `CPF: ${cpfFmt}`,
+    `Data da Consulta: ${dataFmt}`,
+    '',
+    'Fico à disposição para esclarecimentos.',
+    'Agradeço a confirmação da emissão.',
+    '',
+    'Atenciosamente,',
+  ].join('\n')
+
+  const { error } = await resend.emails.send({
+    from:    NF_FROM,
+    to:      NF_TO,
+    subject: `Nota Fiscal ${pacienteNome}`,
+    text:    corpo,
+  })
+
+  if (error) return { error: (error as any).message ?? 'Erro ao enviar e-mail.' }
   return { success: true }
 }
