@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const SECRET    = process.env.COPILOT_SECRET
-const GI_WHATS  = 'https://wa.me/5511934544550'
+const SECRET   = process.env.COPILOT_SECRET
+const GI_WHATS = 'https://wa.me/5511934544550'
+const DIAS_ANTES = 15
 
 export async function GET(req: NextRequest) {
   if (req.headers.get('x-copilot-secret') !== SECRET) {
@@ -11,21 +12,26 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Data de corte: hoje - 2 dias (fuso Brasília)
+  // Janela: amanhã até hoje + 15 dias (fuso Brasília)
   const agora = new Date()
-  const hoje = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const hoje  = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   hoje.setHours(0, 0, 0, 0)
-  const corte = new Date(hoje)
-  corte.setDate(corte.getDate() - 2)
 
-  // Pacientes ativos com retorno_previsto até a data de corte
+  const amanha = new Date(hoje)
+  amanha.setDate(amanha.getDate() + 1)
+
+  const limite = new Date(hoje)
+  limite.setDate(limite.getDate() + DIAS_ANTES)
+
+  // Pacientes ativos com retorno_previsto nos próximos 15 dias (sem incluir hoje)
   const { data: pacientes, error } = await admin
     .from('profiles')
     .select('id, full_name, phone, retorno_previsto')
     .eq('role', 'paciente')
     .eq('status_paciente', 'ativo')
     .not('retorno_previsto', 'is', null)
-    .lte('retorno_previsto', corte.toISOString().slice(0, 10))
+    .gt('retorno_previsto',  amanha.toISOString().slice(0, 10))
+    .lte('retorno_previsto', limite.toISOString().slice(0, 10))
     .order('retorno_previsto', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -53,11 +59,11 @@ export async function GET(req: NextRequest) {
       const mensagem = [
         `Olá, ${primeiroNome}! 😊`,
         '',
-        `Estou entrando em contato para lembrar que já passou o prazo recomendado para o seu retorno com o Dr. Guilherme, que estava previsto para ${dataFormatada}/${ano}.`,
+        `Passando para lembrar que o seu prazo de retorno com o Dr. Guilherme está se aproximando — previsto para ${dataFormatada}.`,
         '',
-        'Manter o acompanhamento em dia é importante para garantir que o tratamento siga conforme o planejado e que tudo continue bem com a sua saúde.',
+        'Para garantir que o acompanhamento continue em dia, que tal já agendarmos a sua consulta?',
         '',
-        'Para agendar sua consulta, chame a Gi aqui 👇',
+        'Para agendar, chame a Gi aqui 👇',
         GI_WHATS,
       ].join('\n')
 
