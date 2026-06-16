@@ -11,20 +11,23 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Data de corte: hoje - 2 dias (fuso Brasília)
+  // Janela: entre hoje-90 dias e hoje-2 dias (fuso Brasília)
   const agora = new Date()
   const hoje = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   hoje.setHours(0, 0, 0, 0)
   const corte = new Date(hoje)
   corte.setDate(corte.getDate() - 2)
+  const limite = new Date(hoje)
+  limite.setDate(limite.getDate() - 90)
 
-  // Pacientes ativos com retorno_previsto até a data de corte
+  // Pacientes ativos com retorno_previsto nos últimos 90 dias (sem os 2 dias de graça)
   const { data: pacientes, error } = await admin
     .from('profiles')
     .select('id, full_name, phone, retorno_previsto')
     .eq('role', 'paciente')
     .eq('status_paciente', 'ativo')
     .not('retorno_previsto', 'is', null)
+    .gte('retorno_previsto', limite.toISOString().slice(0, 10))
     .lte('retorno_previsto', corte.toISOString().slice(0, 10))
     .order('retorno_previsto', { ascending: true })
 
