@@ -270,6 +270,7 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
           <option value="dialise">Diálise</option>
+          <option value="alta">Alta</option>
           <option value="obito">Óbito</option>
         </SelectField>
         <div className="space-y-1">

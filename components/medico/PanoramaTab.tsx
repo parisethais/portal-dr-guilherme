@@ -54,6 +54,7 @@ const STATUS_CONFIG: Record<StatusPaciente, { label: string; className: string }
   ativo:   { label: 'Ativo',    className: 'bg-green-100 text-green-700' },
   inativo: { label: 'Inativo',  className: 'bg-gray-100 text-gray-600' },
   dialise: { label: 'Diálise',  className: 'bg-blue-100 text-blue-700' },
+  alta:    { label: 'Alta',     className: 'bg-purple-100 text-purple-700' },
   obito:   { label: 'Óbito',    className: 'bg-red-100 text-red-700' },
 }
 
@@ -210,6 +211,9 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
             {patient.status_paciente === 'dialise' && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Diálise</span>
             )}
+            {patient.status_paciente === 'alta' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Alta</span>
+            )}
             {!patient.perfil_completo && patient.status_paciente === 'ativo' && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium">Cadastro incompleto</span>
             )}
@@ -334,6 +338,11 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
             {patient.status_paciente === 'dialise' && (
               <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium mt-0.5 inline-block">
                 Diálise
+              </span>
+            )}
+            {patient.status_paciente === 'alta' && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium mt-0.5 inline-block">
+                Alta
               </span>
             )}
             {!patient.perfil_completo && patient.status_paciente === 'ativo' && (

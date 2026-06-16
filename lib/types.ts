@@ -1,6 +1,6 @@
 export type UserRole = 'paciente' | 'medico'
 
-export type StatusPaciente = 'ativo' | 'inativo' | 'obito' | 'dialise'
+export type StatusPaciente = 'ativo' | 'inativo' | 'obito' | 'dialise' | 'alta'
 
 export interface Profile {
   id: string
