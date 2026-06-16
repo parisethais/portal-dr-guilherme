@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         '',
         'Para garantir que o acompanhamento continue em dia, que tal já agendarmos a sua consulta?',
         '',
-        'Para agendar, chame a Gi aqui 👇',
+        'Para agendar, é só clicar aqui e falar com nossa secretaria 👇',
         GI_WHATS,
       ].join('\n')
 

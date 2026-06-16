@@ -56,11 +56,11 @@ export async function GET(req: NextRequest) {
       const mensagem = [
         `Olá, ${primeiroNome}! 😊`,
         '',
-        `Estou entrando em contato para lembrar que já passou o prazo recomendado para o seu retorno com o Dr. Guilherme, que estava previsto para ${dataFormatada}/${ano}.`,
+        `Como vai? Estou entrando em contato para lembrar que já passou o prazo recomendado para o seu retorno com o Dr. Guilherme. Estava previsto em ${dataFormatada}/${ano}.`,
         '',
         'Manter o acompanhamento em dia é importante para garantir que o tratamento siga conforme o planejado e que tudo continue bem com a sua saúde.',
         '',
-        'Para agendar sua consulta, chame a Gi aqui 👇',
+        'Para agendar, é só clicar aqui e falar com nossa secretaria 👇',
         GI_WHATS,
       ].join('\n')
 
