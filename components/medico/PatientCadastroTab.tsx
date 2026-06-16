@@ -269,6 +269,7 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
         <SelectField label="Status do paciente" value={form.status_paciente} onChange={set('status_paciente')}>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
+          <option value="dialise">Diálise</option>
           <option value="obito">Óbito</option>
         </SelectField>
         <div className="space-y-1">

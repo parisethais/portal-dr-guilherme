@@ -51,9 +51,10 @@ function PieLabel({ cx, cy, midAngle, outerRadius, value, percent }: any) {
 
 // ── Status config ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<StatusPaciente, { label: string; className: string }> = {
-  ativo:   { label: 'Ativo',   className: 'bg-green-100 text-green-700' },
-  inativo: { label: 'Inativo', className: 'bg-gray-100 text-gray-600' },
-  obito:   { label: 'Óbito',   className: 'bg-red-100 text-red-700' },
+  ativo:   { label: 'Ativo',    className: 'bg-green-100 text-green-700' },
+  inativo: { label: 'Inativo',  className: 'bg-gray-100 text-gray-600' },
+  dialise: { label: 'Diálise',  className: 'bg-blue-100 text-blue-700' },
+  obito:   { label: 'Óbito',    className: 'bg-red-100 text-red-700' },
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -206,6 +207,9 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
             {patient.status_paciente === 'inativo' && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Inativo</span>
             )}
+            {patient.status_paciente === 'dialise' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Diálise</span>
+            )}
             {!patient.perfil_completo && patient.status_paciente === 'ativo' && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium">Cadastro incompleto</span>
             )}
@@ -325,6 +329,11 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
             {patient.status_paciente === 'inativo' && (
               <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium mt-0.5 inline-block">
                 Inativo
+              </span>
+            )}
+            {patient.status_paciente === 'dialise' && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium mt-0.5 inline-block">
+                Diálise
               </span>
             )}
             {!patient.perfil_completo && patient.status_paciente === 'ativo' && (
