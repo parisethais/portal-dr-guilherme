@@ -82,27 +82,25 @@ export function parseDiagnosticos(raw: string | null): DiagnosisEntry[] {
 
 // ── Opções de retorno previsto ────────────────────────────────
 const RETORNO_OPCOES = [
-  { label: 'Não definido',  value: '' },
-  { label: '1 semana',      value: '1s' },
-  { label: '15 dias',       value: '15d' },
-  { label: '1 mês',         value: '1m' },
-  { label: '2 meses',       value: '2m' },
-  { label: '3 meses',       value: '3m' },
-  { label: '6 meses',       value: '6m' },
-  { label: '1 ano',         value: '1a' },
-  { label: 'Aguardar exame',value: 'exame' },
+  { label: 'Não definido', value: '' },
+  { label: '30 dias',      value: '30d' },
+  { label: '45 dias',      value: '45d' },
+  { label: '3 meses',      value: '3m' },
+  { label: '6 meses',      value: '6m' },
+  { label: 'Outro...',     value: 'outro' },
 ]
 
-function calcRetornoDate(opcao: string): string | null {
-  if (!opcao || opcao === 'exame') return null
+function calcRetornoDate(opcao: string, outroValor?: number, outroUnidade?: 'dias' | 'meses'): string | null {
+  if (!opcao) return null
   const d = new Date()
-  if (opcao === '1s')  d.setDate(d.getDate() + 7)
-  if (opcao === '15d') d.setDate(d.getDate() + 15)
-  if (opcao === '1m')  d.setMonth(d.getMonth() + 1)
-  if (opcao === '2m')  d.setMonth(d.getMonth() + 2)
-  if (opcao === '3m')  d.setMonth(d.getMonth() + 3)
-  if (opcao === '6m')  d.setMonth(d.getMonth() + 6)
-  if (opcao === '1a')  d.setFullYear(d.getFullYear() + 1)
+  if (opcao === '30d') d.setDate(d.getDate() + 30)
+  else if (opcao === '45d') d.setDate(d.getDate() + 45)
+  else if (opcao === '3m')  d.setMonth(d.getMonth() + 3)
+  else if (opcao === '6m')  d.setMonth(d.getMonth() + 6)
+  else if (opcao === 'outro' && outroValor && outroValor > 0) {
+    if (outroUnidade === 'meses') d.setMonth(d.getMonth() + outroValor)
+    else d.setDate(d.getDate() + outroValor)
+  } else return null
   return d.toISOString().slice(0, 10)
 }
 
@@ -124,7 +122,9 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
   const [saved, setSaved]               = useState(false)
   const [error, setError]               = useState('')
   const [isPending, startTransition]    = useTransition()
-  const [retornoOpcao, setRetornoOpcao] = useState('')
+  const [retornoOpcao, setRetornoOpcao]   = useState('')
+  const [outroValor, setOutroValor]       = useState('')
+  const [outroUnidade, setOutroUnidade]   = useState<'dias' | 'meses'>('dias')
 
   useUnsavedWarning(isDirty && !isFinalized)
 
@@ -234,7 +234,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
 
       // Salva retorno previsto + notifica secretaria
       if (retornoOpcao) {
-        const novaData = retornoOpcao === 'exame' ? null : calcRetornoDate(retornoOpcao)
+        const novaData = calcRetornoDate(retornoOpcao, Number(outroValor) || undefined, outroUnidade)
         updateRetornoPrevisto(patientId, novaData, {
           consultaId: consulta.id,
           notificar: true,
@@ -438,20 +438,49 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
       )}
 
       {/* ── Retorno previsto ── */}
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50/60 border border-primary/15 rounded-xl">
-        <CalendarClock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-        <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Retorno em:</span>
-        <select
-          value={retornoOpcao}
-          onChange={e => setRetornoOpcao(e.target.value)}
-          className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          {RETORNO_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        {retornoPrevisto && !retornoOpcao && (
-          <span className="text-[11px] text-gray-400 whitespace-nowrap">
-            Atual: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
-          </span>
+      <div className="space-y-2 px-3 py-2.5 bg-blue-50/60 border border-primary/15 rounded-xl">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Retorno em:</span>
+          <select
+            value={retornoOpcao}
+            onChange={e => { setRetornoOpcao(e.target.value); setOutroValor('') }}
+            className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {RETORNO_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {retornoPrevisto && !retornoOpcao && (
+            <span className="text-[11px] text-gray-400 whitespace-nowrap">
+              Atual: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </span>
+          )}
+        </div>
+
+        {retornoOpcao === 'outro' && (
+          <div className="flex items-center gap-2 pl-6">
+            <input
+              type="number"
+              min={1}
+              value={outroValor}
+              onChange={e => setOutroValor(e.target.value)}
+              placeholder="Ex: 60"
+              className="w-20 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={() => setOutroUnidade('dias')}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'dias' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              dias
+            </button>
+            <button
+              type="button"
+              onClick={() => setOutroUnidade('meses')}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'meses' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}
+            >
+              meses
+            </button>
+          </div>
         )}
       </div>
 

@@ -2,7 +2,15 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { submitCadastro } from '@/app/actions/cadastro'
-import { CheckCircle2, Copy, Check, Mail, ShieldCheck, AlertTriangle, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react'
+import { CheckCircle2, Copy, Check, Mail, ShieldCheck, AlertTriangle, ArrowRight, ArrowLeft, ChevronDown, Loader2 } from 'lucide-react'
+
+async function fetchViaCep(cep: string) {
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+    const d = await r.json()
+    return d.erro ? null : d
+  } catch { return null }
+}
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal-dr-guilherme.vercel.app'
 
@@ -160,7 +168,25 @@ export default function CadastroForm() {
   const [comoConheceu, setComoConheceu]     = useState('')
   const [indicadoPor, setIndicadoPor]       = useState('')
   const [outroTexto, setOutroTexto]         = useState('')
+  const [cepValor, setCepValor]             = useState('')
+  const [endereco, setEndereco]             = useState('')
+  const [cidadeEstado, setCidadeEstado]     = useState('')
+  const [cepLoading, setCepLoading]         = useState(false)
   const formRef                       = useRef<HTMLFormElement>(null)
+
+  async function handleCepChange(v: string) {
+    setCepValor(v)
+    const raw = v.replace(/\D/g, '')
+    if (raw.length !== 8) return
+    setCepLoading(true)
+    const data = await fetchViaCep(raw)
+    setCepLoading(false)
+    if (!data) return
+    const rua    = [data.logradouro, data.bairro].filter(Boolean).join(', ')
+    const cidade = [data.localidade, data.uf].filter(Boolean).join(' - ')
+    if (rua)    setEndereco(rua)
+    if (cidade) setCidadeEstado(cidade)
+  }
 
   function copyText(text: string, onSuccess: () => void) {
     // Tenta clipboard API moderna; fallback para execCommand (Safari desktop)
@@ -385,9 +411,65 @@ export default function CadastroForm() {
             <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
               <Field label="E-mail" name="email" type="email" autoComplete="email" placeholder="ana@email.com" required />
               <Field label="Celular com DDD" name="phone" inputMode="tel" placeholder="11999999999" hint="Somente números" required />
-              <Field label="CEP" name="cep" inputMode="numeric" placeholder="01310100" maxLength={8} hint="Somente números" required />
-              <Field label="Endereço" name="endereco" placeholder="Rua das Flores, 123, Apto 45" required />
-              <Field label="Cidade e Estado" name="cidade_estado" placeholder="São Paulo, SP" required />
+
+              {/* CEP com autocomplete ViaCEP */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  CEP<span className="text-primary ml-1">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    name="cep"
+                    inputMode="numeric"
+                    placeholder="01310100"
+                    maxLength={9}
+                    required
+                    value={cepValor}
+                    onChange={e => handleCepChange(e.target.value)}
+                    className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900
+                               placeholder-gray-400 focus:outline-none focus:border-primary transition-colors
+                               bg-gray-50 focus:bg-white"
+                  />
+                  {cepLoading && (
+                    <Loader2 className="w-5 h-5 animate-spin absolute right-4 top-1/2 -translate-y-1/2 text-primary" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 pl-1">Somente números — endereço preenchido automaticamente</p>
+              </div>
+
+              {/* Endereço — preenchido via CEP, editável */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Endereço (número e complemento)<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="endereco"
+                  required
+                  value={endereco}
+                  onChange={e => setEndereco(e.target.value)}
+                  placeholder="Rua das Flores, 123, Apto 45"
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900
+                             placeholder-gray-400 focus:outline-none focus:border-primary transition-colors
+                             bg-gray-50 focus:bg-white"
+                />
+              </div>
+
+              {/* Cidade e Estado — preenchido via CEP, editável */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Cidade e Estado<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="cidade_estado"
+                  required
+                  value={cidadeEstado}
+                  onChange={e => setCidadeEstado(e.target.value)}
+                  placeholder="São Paulo - SP"
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900
+                             placeholder-gray-400 focus:outline-none focus:border-primary transition-colors
+                             bg-gray-50 focus:bg-white"
+                />
+              </div>
             </div>
           </div>
 
