@@ -6,7 +6,7 @@ import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
-import { createConsulta, updateConsulta, updateConsultaStatus } from '@/app/actions/consultas'
+import { createConsulta, updateConsulta, updateConsultaStatus, deleteConsulta } from '@/app/actions/consultas'
 import { createPlaceholderPatient } from '@/app/actions/patients'
 import { getConsultationTypes } from '@/app/actions/consultation-types'
 import type { ConsultationTypeDB } from '@/app/actions/consultation-types'
@@ -14,7 +14,7 @@ import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } f
 import { cn } from '@/lib/utils'
 import {
   UserRound, MapPin, Clock, CalendarDays,
-  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope,
+  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope, Trash2,
 } from 'lucide-react'
 
 // ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
@@ -306,6 +306,7 @@ export default function ConsultaModal({
         if (!result.success) { setError(result.error); return }
       } else if (consulta) {
         const result = await updateConsulta(consulta.id, {
+          patient_id:  patientId,
           tipo,
           local,
           data_hora:   dataHoraISO,
@@ -489,7 +490,7 @@ export default function ConsultaModal({
           )}
 
           {consulta.status === 'cancelada' && (
-            <div className="border-t border-gray-100 pt-4">
+            <div className="border-t border-gray-100 pt-4 space-y-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -499,6 +500,24 @@ export default function ConsultaModal({
                 loading={isPending}
               >
                 Reagendar (voltar para Agendada)
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-red-600 hover:bg-red-50"
+                loading={isPending}
+                onClick={async () => {
+                  if (!confirm('Excluir este agendamento permanentemente?')) return
+                  startTransition(async () => {
+                    const res = await deleteConsulta(consulta.id)
+                    if (!res.success) { setError(res.error ?? 'Erro ao excluir.'); return }
+                    onClose()
+                  })
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Excluir permanentemente
               </Button>
             </div>
           )}

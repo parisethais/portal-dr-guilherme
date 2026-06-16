@@ -121,6 +121,7 @@ export async function updateConsultaStatus(
 export async function updateConsulta(
   consultaId: string,
   data: {
+    patient_id?:  string
     tipo?:        ConsultaTipo
     local?:       ConsultaLocal
     data_hora?:   string
@@ -171,6 +172,20 @@ export async function updateConsulta(
     const tenantId = await getCallerTenantId(user.id)
     syncConsultaUpdate(tenantId, updated)
   }
+
+  revalidatePath('/medico')
+  revalidatePath('/paciente')
+  return { success: true }
+}
+
+export async function deleteConsulta(consultaId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const db = createAdminClient()
+  const { error } = await db.from('consultas').delete().eq('id', consultaId)
+  if (error) return { success: false, error: error.message }
 
   revalidatePath('/medico')
   revalidatePath('/paciente')

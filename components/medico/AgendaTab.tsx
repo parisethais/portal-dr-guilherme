@@ -155,6 +155,7 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
   // Filtros de categoria
   const [consultorioHidden, setConsultorioHidden] = useState(false)
   const [hiddenTipos,       setHiddenTipos]       = useState<Set<ConsultaTipo>>(new Set())
+  const [showCanceladas,    setShowCanceladas]    = useState(false)
 
   // Google Calendar state
   const [googleConnected,  setGoogleConnected]  = useState(false)
@@ -218,8 +219,11 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
     patientMap[p.id] = p.full_name ?? 'Paciente'
   })
 
-  // Transform consultas → FullCalendar events (filtradas por consultorio + tipo)
-  const crmEvents: CalendarEvent[] = consultorioHidden ? [] : consultas.filter(c => !hiddenTipos.has(c.tipo)).map((c) => {
+  // Transform consultas → FullCalendar events (filtradas por consultorio + tipo + canceladas)
+  const crmEvents: CalendarEvent[] = consultorioHidden ? [] : consultas
+    .filter(c => !hiddenTipos.has(c.tipo))
+    .filter(c => showCanceladas || c.status !== 'cancelada')
+    .map((c) => {
     const startDate   = new Date(c.data_hora)
     const endDate     = new Date(startDate.getTime() + c.duracao_min * 60_000)
     const tipoColors  = TIPO_COLORS[c.tipo]
@@ -356,7 +360,7 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
           </button>
         </div>
 
-        {/* Linha 2: subtipos do Consultório (só quando visível) */}
+        {/* Linha 2: subtipos do Consultório + toggle canceladas */}
         {!consultorioHidden && (
           <div className="flex flex-wrap items-center gap-1.5 pl-1">
             <span className="text-[10px] text-gray-300 uppercase tracking-wider mr-0.5">Tipo:</span>
@@ -379,6 +383,18 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
                 </button>
               )
             })}
+            <button
+              onClick={() => setShowCanceladas(v => !v)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all"
+              style={{
+                backgroundColor: showCanceladas ? '#f3f4f6' : 'transparent',
+                borderColor:     showCanceladas ? '#9ca3af' : '#e5e7eb',
+                color:           showCanceladas ? '#6b7280' : '#d1d5db',
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: showCanceladas ? '#9ca3af' : '#e5e7eb' }} />
+              Canceladas
+            </button>
           </div>
         )}
       </div>
@@ -426,7 +442,7 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
         open={dayModal.open}
         onClose={() => setDayModal({ open: false, date: '' })}
         date={dayModal.date}
-        consultas={consultas.filter((c) => c.data_hora.startsWith(dayModal.date))}
+        consultas={consultas.filter((c) => c.data_hora.startsWith(dayModal.date) && (showCanceladas || c.status !== 'cancelada'))}
         patients={patients}
         onSelectConsulta={(c) => setViewModal({ open: true, consulta: c })}
         onNewConsulta={(dt) => setCreateModal({ open: true, defaultDateTime: dt })}
