@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useMemo } from 'react'
 import type { FinancialEntry, EntryInput, NotaFiscalStatus } from '@/app/actions/financial'
 import type { Profile, Consulta } from '@/lib/types'
-import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry, notifyPatientNota } from '@/app/actions/financial'
+import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry, notifyPatientNota, enviarEmailNFContador } from '@/app/actions/financial'
 import {
   FINANCIAL_CATEGORIES, PAYMENT_METHODS,
   categoryLabel, categoryColor, categoriesByType,
@@ -177,6 +177,10 @@ function EntryForm({
   const [form, setForm] = useState<Partial<EntryInput>>({ ...EMPTY, ...initial })
   const [notifyPortal, setNotifyPortal] = useState(false)
   const [parcelas, setParcelas] = useState(1)
+  const [showNfPreview, setShowNfPreview] = useState(false)
+  const [nfSending, setNfSending] = useState(false)
+  const [nfSent, setNfSent] = useState(false)
+  const [nfError, setNfError] = useState('')
   const set = <K extends keyof EntryInput>(k: K, v: EntryInput[K]) =>
     setForm(f => ({ ...f, [k]: v }))
 
@@ -415,21 +419,110 @@ function EntryForm({
             </label>
           )}
 
-          {/* Botão solicitar NF por e-mail */}
-          {form.nota_fiscal_status === 'a_solicitar' && form.patient_id && doctorName && (
-            <a
-              href={gerarMailtoNF({
-                patient:    patients.find(p => p.id === form.patient_id)!,
-                amount:     form.amount ?? 0,
-                date:       form.date ?? new Date().toISOString().slice(0, 10),
-                doctorName,
+          {/* Botão / preview de solicitação de NF por e-mail */}
+          {form.nota_fiscal_status === 'a_solicitar' && form.patient_id && doctorName && (() => {
+            const patient   = patients.find(p => p.id === form.patient_id)!
+            const cpfFmt    = patient?.cpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') ?? '—'
+            const emailFmt  = patient?.email ?? '—'
+            const valorFmt  = (form.amount ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+            const dataFmt   = form.date ? new Date(form.date + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
+            const crmFmt    = doctorCrm ? `CRM-SP ${doctorCrm}` : 'CRM-SP —'
+            const corpo = [
+              'Prezados, boa tarde.',
+              '',
+              'Solicito a emissão da nota fiscal conforme os dados abaixo.',
+              '',
+              'Obs: Não esquecer de adicionar os e-mails dos pacientes na hora do envio das notas, por favor.',
+              '',
+              'Tomador do Serviço:',
+              patient?.full_name ?? '—',
+              `CPF: ${cpfFmt}`,
+              `E-mail: ${emailFmt}`,
+              '',
+              'Valor:',
+              valorFmt,
+              '',
+              'Corpo da nota:',
+              `Consulta médica com ${doctorName} (${crmFmt})`,
+              patient?.full_name ?? '—',
+              `CPF: ${cpfFmt}`,
+              `Data da Consulta: ${dataFmt}`,
+              '',
+              'Fico à disposição para esclarecimentos.',
+              'Agradeço a confirmação da emissão.',
+              '',
+              'Atenciosamente,',
+            ].join('\n')
+
+            async function handleEnviar() {
+              setNfSending(true)
+              setNfError('')
+              const res = await enviarEmailNFContador({
+                pacienteNome:  patient?.full_name ?? '',
+                pacienteCpf:   patient?.cpf ?? null,
+                pacienteEmail: patient?.email ?? null,
+                valor:         form.amount ?? 0,
+                dataConsulta:  form.date ?? new Date().toISOString().slice(0, 10),
+                doctorName:    doctorName ?? '',
                 doctorCrm,
-              })}
-              className="flex items-center gap-1.5 mt-2 text-xs text-primary underline"
-            >
-              📧 Gerar e-mail de solicitação de NF
-            </a>
-          )}
+              })
+              setNfSending(false)
+              if (res.error) { setNfError(res.error) } else { setNfSent(true) }
+            }
+
+            return (
+              <div className="mt-2">
+                {!showNfPreview && !nfSent && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowNfPreview(true); setNfError('') }}
+                    className="flex items-center gap-1.5 text-xs text-primary underline hover:opacity-80"
+                  >
+                    📧 Solicitar NF por e-mail
+                  </button>
+                )}
+
+                {nfSent && (
+                  <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> E-mail enviado ao contador!
+                  </p>
+                )}
+
+                {showNfPreview && !nfSent && (
+                  <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2 text-xs">
+                    <p className="font-semibold text-gray-700">Prévia do e-mail</p>
+                    <div className="space-y-1 text-gray-600">
+                      <p><span className="font-medium text-gray-800">De:</span> notas@santacatharina.com</p>
+                      <p><span className="font-medium text-gray-800">Para:</span> notas@sejamedeasy.com.br, leonardo@sejamedeasy.com.br, Emanuelle@sejamedeasy.com.br</p>
+                      <p><span className="font-medium text-gray-800">Assunto:</span> Nota Fiscal {patient?.full_name}</p>
+                    </div>
+                    <pre className="whitespace-pre-wrap bg-white border border-gray-200 rounded p-2 text-gray-700 leading-relaxed text-[11px] max-h-48 overflow-y-auto">
+                      {corpo}
+                    </pre>
+                    {nfError && <p className="text-red-600">{nfError}</p>}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleEnviar}
+                        disabled={nfSending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium disabled:opacity-60"
+                      >
+                        {nfSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        {nfSending ? 'Enviando…' : 'Enviar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNfPreview(false); setNfError('') }}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-100"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
