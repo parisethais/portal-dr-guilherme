@@ -157,7 +157,9 @@ function gerarMailtoNF({
     'Atenciosamente,',
   ].join('\n')
 
-  return `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`
+  const destinatarios = 'notas@sejamedeasy.com.br,leonardo@sejamedeasy.com.br,Emanuelle@sejamedeasy.com.br'
+
+  return `mailto:${destinatarios}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`
 }
 
 function EntryForm({
