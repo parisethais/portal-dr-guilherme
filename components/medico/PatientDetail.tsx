@@ -119,14 +119,14 @@ export default function PatientDetail({
       </div>
 
       {/* Main tab bar — fundo primary no ativo, claramente diferente dos sub-tabs */}
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {detailTabs.map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => guardNavigation(() => setActiveDetailTab(tab.id))}
             className={cn(
-              'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all',
+              'flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all',
               activeDetailTab === tab.id
                 ? 'bg-primary text-white shadow-sm'
                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'

@@ -129,38 +129,41 @@ export default function MedicoDashboard({
         boxShadow: '0 2px 24px rgba(26,31,46,0.08), 0 1px 4px rgba(26,31,46,0.04)',
       }}
     >
-      {/* Tab bar */}
-      <div className="flex overflow-x-auto" style={{ borderBottom: '1px solid rgba(26,31,46,0.07)' }}>
+      {/* Tab bar — grid 3×2 em mobile, flex scrollável em sm+ */}
+      <div
+        className="grid grid-cols-3 sm:flex sm:overflow-x-auto"
+        style={{ borderBottom: '1px solid rgba(26,31,46,0.07)' }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-2 px-5 py-3.5 text-sm whitespace-nowrap relative border-b-2 transition-all duration-150',
+              'flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm whitespace-nowrap relative border-b-2 transition-all duration-150',
               activeTab === tab.id
                 ? 'text-primary font-semibold border-primary-light'
                 : 'text-gray-400 font-medium border-transparent hover:text-gray-600 hover:bg-black/[0.018]'
             )}
           >
             {tab.icon}
-            {tab.label}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
       {/* Tab header */}
-      <div className="px-6 pt-5 pb-3" style={{ borderBottom: '1px solid rgba(45,43,107,0.08)' }}>
+      <div className="px-4 pt-4 pb-2 sm:px-6 sm:pt-5 sm:pb-3" style={{ borderBottom: '1px solid rgba(45,43,107,0.08)' }}>
         <div className="flex items-start gap-3">
           <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7A9E7E' }} />
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">{tabHeaders[activeTab].title}</h2>
-            <p className="text-sm text-gray-500 mt-0.5">{tabHeaders[activeTab].sub}</p>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">{tabHeaders[activeTab].title}</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 hidden sm:block">{tabHeaders[activeTab].sub}</p>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-6 pt-4">
+      <div className="p-3 pt-3 sm:p-6 sm:pt-4">
         {activeTab === 'panorama' && (
           <PanoramaTab patients={patients} consultas={consultas} />
         )}

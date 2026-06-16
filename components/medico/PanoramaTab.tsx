@@ -132,9 +132,10 @@ interface RowProps {
   proximaConsulta: string | null
   ultimoTipo:      string | null    // tipo da última consulta (label)
   alertRetorno:    'atrasado' | 'chegando' | null
+  mobileCard?:     boolean
 }
 
-function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, alertRetorno }: RowProps) {
+function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, alertRetorno, mobileCard }: RowProps) {
   const [modalOpen, setModalOpen]     = useState(false)
   const [isPending, startTransition]  = useTransition()
   const [newPassword, setNewPassword] = useState<string | null>(null)
@@ -165,6 +166,112 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
     navigator.clipboard.writeText(texto)
     setCopiedPwd(true)
     setTimeout(() => setCopiedPwd(false), 2000)
+  }
+
+  // ── Render mobile card ───────────────────────────────────────
+  if (mobileCard) {
+    return (
+      <>
+        {modalOpen && <PatientEditModal patient={patient} onClose={() => setModalOpen(false)} />}
+        <div
+          className={`rounded-xl border border-white/60 bg-white/80 px-4 py-3 space-y-2 ${patient.status_paciente === 'obito' ? 'opacity-50' : ''}`}
+          style={{ boxShadow: '0 1px 4px rgba(26,31,46,0.06)' }}
+        >
+          {/* Nome + ações */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900 text-sm truncate">{patient.full_name ?? '—'}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {patient.sexo ?? '—'} · {calcIdade(patient.data_nascimento)}
+                {patient.phone && <> · <span className="font-mono">{patient.phone}</span></>}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Badges de status */}
+          <div className="flex flex-wrap gap-1.5">
+            {ultimoTipo && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-primary font-medium">{ultimoTipo}</span>
+            )}
+            {patient.status_paciente === 'obito' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Óbito</span>
+            )}
+            {patient.status_paciente === 'inativo' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Inativo</span>
+            )}
+            {!patient.perfil_completo && patient.status_paciente === 'ativo' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium">Cadastro incompleto</span>
+            )}
+          </div>
+
+          {/* Retorno + última consulta */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Última</span>
+              <span className="text-xs text-gray-600">{ultimaConsulta ? formatDate(ultimaConsulta) : '—'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Retorno</span>
+              <input
+                type="date"
+                value={retornoPrevisto}
+                onChange={e => handleRetornoPrevisto(e.target.value)}
+                className={`text-xs border rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary transition-colors ${
+                  !proximaConsulta && alertRetorno === 'atrasado'
+                    ? 'border-red-300 bg-red-50 text-red-700'
+                    : !proximaConsulta && alertRetorno === 'chegando'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700'
+                    : 'border-gray-200 bg-white text-gray-700'
+                }`}
+              />
+              {savingRetorno && <Clock className="w-3 h-3 text-gray-300 animate-spin" />}
+            </div>
+          </div>
+
+          {/* Alerta de retorno */}
+          {!proximaConsulta && alertRetorno === 'atrasado' && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700">
+              <AlertTriangle className="w-2.5 h-2.5" /> Retorno atrasado
+            </span>
+          )}
+          {!proximaConsulta && alertRetorno === 'chegando' && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700">
+              <AlertTriangle className="w-2.5 h-2.5" /> Agendar em breve
+            </span>
+          )}
+          {proximaConsulta && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">
+              <Check className="w-2.5 h-2.5" /> Agendado · {formatDate(proximaConsulta)}
+            </span>
+          )}
+
+          {/* Obs */}
+          {patient.obs_secretaria && (
+            <p className="text-xs text-gray-500 line-clamp-2 border-t border-gray-100 pt-2">{patient.obs_secretaria}</p>
+          )}
+
+          {newPassword && (
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-1">
+              <KeyRound className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-amber-700 font-medium">Nova senha</p>
+                <p className="text-sm font-bold text-amber-900 tracking-widest">{newPassword}</p>
+              </div>
+              <button type="button" onClick={handleCopyPassword} className="p-1.5 text-amber-600 hover:text-amber-800">
+                {copiedPwd ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          )}
+        </div>
+      </>
+    )
   }
 
   return (
@@ -892,7 +999,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
 
           return (
             <>
-              <div className="rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
+              {/* ── Tabela — desktop (sm+) ── */}
+              <div className="hidden sm:block rounded-xl border border-white/60 backdrop-blur-sm overflow-x-auto" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
                 <table className="w-full text-sm" style={{ minWidth: 950 }}>
                   <colgroup>
                     <col style={{ width:  60 }} />
@@ -933,6 +1041,31 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* ── Cards — mobile (< sm) ── */}
+              <div className="block sm:hidden space-y-2">
+                {pageSlice.length === 0 ? (
+                  <p className="text-center text-sm text-gray-400 py-10">Nenhum paciente encontrado.</p>
+                ) : (
+                  pageSlice.map(p => {
+                    const ultima   = getUltima(p.id)
+                    const proxima  = getProxima(p.id)
+                    const tipo     = getUltimoTipo(p.id)
+                    const alerta   = getAlertRetorno(p)
+                    return (
+                      <PanoramaRow
+                        key={p.id}
+                        patient={p}
+                        ultimaConsulta={ultima}
+                        proximaConsulta={proxima}
+                        ultimoTipo={tipo}
+                        alertRetorno={alerta}
+                        mobileCard
+                      />
+                    )
+                  })
+                )}
               </div>
 
               {/* Paginação */}

@@ -231,7 +231,7 @@ export default async function MedicoPage({
         {/* Linha principal: saudação + botão configurações */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight leading-snug" style={{ color: '#2D2B6B' }}>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight leading-snug" style={{ color: '#2D2B6B' }}>
               {getGreeting()},{' '}
               <span style={{ color: '#2D2B6B' }}>{displayName}.</span>
             </h1>
