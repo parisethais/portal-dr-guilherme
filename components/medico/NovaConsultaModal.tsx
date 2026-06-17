@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useTransition, useEffect, useRef } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { createConsulta } from '@/app/actions/consultas'
 import { getConsultationTypes } from '@/app/actions/consultation-types'
 import type { ConsultaTipo, ConsultaLocal } from '@/lib/types'
@@ -39,7 +39,10 @@ function defaultDateTime() {
 
 export default function NovaConsultaModal({ patientId, patientName, onClose }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const submitting = useRef(false)
   const [error, setError] = useState('')
   const [tipos, setTipos] = useState(TIPOS_FALLBACK)
 
@@ -75,6 +78,8 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
   }
 
   function handleCreate() {
+    if (submitting.current) return
+    submitting.current = true
     setError('')
     startTransition(async () => {
       const res = await createConsulta({
@@ -84,11 +89,14 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
         data_hora:   form.data_hora,
         duracao_min: parseInt(form.duracao_min) || 30,
         observacoes: form.observacoes || null,
-        status:      'realizada',   // consulta avulsa = já realizada
+        status:      'realizada',
       })
+      submitting.current = false
       if (!res.success) { setError(res.error); return }
-      router.refresh()
       onClose()
+      const params = new URLSearchParams(searchParams.toString())
+      if (res.data?.id) params.set('consulta', res.data.id)
+      router.push(`${pathname}?${params}`)
     })
   }
 

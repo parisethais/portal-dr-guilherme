@@ -7,13 +7,14 @@ import Card from '@/components/ui/Card'
 import {
   ArrowLeft, UserRound, FileText, Image, File, Video,
   Download, ClipboardList,
-  Stethoscope, Receipt, Contact, Activity,
+  Stethoscope, Receipt, Contact, Activity, Pill,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
 import ProntuarioTab from './prontuario/ProntuarioTab'
 import PatientCadastroTab from './PatientCadastroTab'
 import MonitoramentoTab from './prontuario/MonitoramentoTab'
+import MemedPrescricao from './prontuario/MemedPrescricao'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
@@ -34,7 +35,7 @@ function actionLabel(fileType: string | null): string {
   return 'Baixar'
 }
 
-type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento'
+type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento' | 'prescricao'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -51,7 +52,7 @@ interface PatientDetailProps {
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento']
+const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento', 'prescricao']
 
 export default function PatientDetail({
   currentRole,
@@ -87,6 +88,7 @@ export default function PatientDetail({
     { id: 'exames',        label: 'Exames',        icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'faturas',       label: 'Faturas',       icon: <Receipt       className="w-4 h-4" /> },
     { id: 'cadastro',      label: 'Cadastro',      icon: <Contact       className="w-4 h-4" /> },
+    ...(canSeeProntuario ? [{ id: 'prescricao' as DetailTab, label: 'Prescrição', icon: <Pill className="w-4 h-4" /> }] : []),
   ]
 
   return (
@@ -213,6 +215,18 @@ export default function PatientDetail({
       {/* ── Tab: Cadastro ── */}
       {activeDetailTab === 'cadastro' && (
         <PatientCadastroTab patient={patient} onDeleted={onBack} />
+      )}
+
+      {/* ── Tab: Prescrição ── */}
+      {activeDetailTab === 'prescricao' && canSeeProntuario && (
+        <MemedPrescricao
+          patientId={patient.id}
+          consultaId={null}
+          patientName={patient.full_name ?? 'Paciente'}
+          patientPhone={patient.phone}
+          patientBirthday={patient.data_nascimento}
+          patientGender={patient.sexo}
+        />
       )}
 
     </div>
