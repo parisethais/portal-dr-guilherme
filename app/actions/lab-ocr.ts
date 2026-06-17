@@ -76,14 +76,17 @@ Regras:
       if (!pdfText.trim()) {
         return { success: false, error: 'Não foi possível ler o texto deste PDF. Tente inserir os valores manualmente.' }
       }
-      console.log(`[lab-ocr] PDF extraído: ${pdfText.length} chars`)
+      // ~100k chars ≈ 75k tokens — bem abaixo do limite de 200k da Anthropic
+      const MAX_CHARS = 100_000
+      const truncated = pdfText.length > MAX_CHARS ? pdfText.slice(0, MAX_CHARS) : pdfText
+      console.log(`[lab-ocr] PDF extraído: ${pdfText.length} chars → enviando ${truncated.length}`)
 
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 4096,
         messages: [{
           role: 'user',
-          content: `${basePrompt}\n\nConteúdo do laudo:\n${pdfText}`,
+          content: `${basePrompt}\n\nConteúdo do laudo:\n${truncated}`,
         }],
       })
       responseText = response.content.find(b => b.type === 'text')?.text ?? ''
