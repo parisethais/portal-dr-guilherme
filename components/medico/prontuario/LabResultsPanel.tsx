@@ -185,6 +185,12 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
       return
     }
 
+    // Aviso para PDFs grandes — podem exceder o contexto do modelo
+    if (file.type === 'application/pdf' && file.size > 5 * 1024 * 1024) {
+      setOcrError('PDF muito grande (acima de 5 MB). Se der erro, tente enviar somente as páginas com os resultados.')
+      // Não retorna — deixa tentar mesmo assim
+    }
+
     setOcrLoading(true)
     setOcrError('')
 

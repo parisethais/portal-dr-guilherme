@@ -136,6 +136,12 @@ Regras:
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[lab-ocr] Erro:', message)
+    if (message.includes('prompt is too long') || message.includes('maximum context length')) {
+      return {
+        success: false,
+        error: 'O laudo tem muitas páginas e não pôde ser lido automaticamente. Tente enviar somente as páginas com os resultados (geralmente as 2–3 primeiras) ou insira os valores manualmente.',
+      }
+    }
     return { success: false, error: `Erro ao analisar laudo: ${message}` }
   }
 }
