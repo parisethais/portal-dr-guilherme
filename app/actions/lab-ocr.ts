@@ -1,10 +1,15 @@
 'use server'
 
 import Anthropic from '@anthropic-ai/sdk'
+import * as pdfParseModule from 'pdf-parse'
+const pdfParse = (pdfParseModule as any).default ?? pdfParseModule
 import { EXAM_CATALOG } from '@/lib/lab-catalog'
 import type { ActionResult } from '@/lib/types'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
+
+// ~100k caracteres ≈ 25k tokens — mais do que suficiente pra qualquer laudo
+const MAX_PDF_TEXT_CHARS = 100_000
 
 /**
  * Gera uma URL assinada para o cliente fazer upload direto ao Supabase Storage,
@@ -76,34 +81,60 @@ Regras:
     let responseText: string
 
     if (isPdf) {
+      // Tenta extrair texto do PDF primeiro — evita mandar o binário inteiro ao modelo
+      let pdfText = ''
       try {
+        const parsed = await pdfParse(Buffer.from(arrayBuffer))
+        pdfText = parsed.text?.trim() ?? ''
+      } catch (parseErr) {
+        console.warn('[lab-ocr] pdf-parse falhou (provavelmente PDF escaneado):', parseErr instanceof Error ? parseErr.message : String(parseErr))
+      }
+
+      if (pdfText.length > 200) {
+        // PDF com texto extraível — manda como texto, truncando se necessário
+        const truncated = pdfText.length > MAX_PDF_TEXT_CHARS
+          ? pdfText.slice(0, MAX_PDF_TEXT_CHARS) + '\n[... conteúdo truncado ...]'
+          : pdfText
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
           messages: [{
             role: 'user',
-            content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } } as any,
-              { type: 'text', text: prompt },
-            ],
+            content: [{ type: 'text', text: `${prompt}\n\nConteúdo do laudo:\n${truncated}` }],
           }],
         })
         responseText = response.content.find(b => b.type === 'text')?.text ?? ''
-      } catch (pdfErr) {
-        console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : String(pdfErr))
-        const response = await client.beta.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          betas: ['pdfs-2024-09-25'],
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-              { type: 'text', text: prompt },
-            ],
-          }],
-        })
-        responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+      } else {
+        // PDF escaneado (sem texto) — manda como documento para visão do modelo
+        try {
+          const response = await client.messages.create({
+            model: MODEL,
+            max_tokens: 4096,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } } as any,
+                { type: 'text', text: prompt },
+              ],
+            }],
+          })
+          responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+        } catch (pdfErr) {
+          console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : String(pdfErr))
+          const response = await client.beta.messages.create({
+            model: MODEL,
+            max_tokens: 4096,
+            betas: ['pdfs-2024-09-25'],
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+                { type: 'text', text: prompt },
+              ],
+            }],
+          })
+          responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+        }
       }
     } else {
       const response = await client.messages.create({
