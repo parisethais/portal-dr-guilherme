@@ -6,10 +6,6 @@ import type { ActionResult } from '@/lib/types'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 
-/**
- * Gera uma URL assinada para o cliente fazer upload direto ao Supabase Storage,
- * sem passar pelo Next.js (evita limite de corpo da plataforma).
- */
 export async function getLabOcrUploadUrl(
   fileName: string,
 ): Promise<ActionResult<{ signedUrl: string; path: string; token: string }>> {
@@ -31,10 +27,12 @@ export async function getLabOcrUploadUrl(
 
 export type OcrExtracted = Record<string, { value: string; unit: string }>
 
-/**
- * Recebe o arquivo via FormData (não base64) para evitar problemas de
- * serialização de strings grandes em server actions do Next.js.
- */
+async function extractPdfText(buffer: ArrayBuffer): Promise<string> {
+  const { extractText } = await import('unpdf')
+  const { text } = await extractText(new Uint8Array(buffer), { mergePages: true })
+  return text
+}
+
 export async function extractLabResultsFromFile(
   formData: FormData,
 ): Promise<ActionResult<OcrExtracted>> {
@@ -48,9 +46,7 @@ export async function extractLabResultsFromFile(
       return { success: false, error: 'Arquivo não recebido pelo servidor.' }
     }
 
-    // Converte para base64 no servidor — evita trafegar string enorme no corpo da action
     const arrayBuffer = await file.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
     const mimeType = file.type || 'application/pdf'
     const isPdf = mimeType === 'application/pdf' || mimeType.includes('pdf')
 
@@ -58,7 +54,7 @@ export async function extractLabResultsFromFile(
     const MODEL = 'claude-3-5-sonnet-20241022'
 
     const examList = EXAM_CATALOG.map(e => `"${e.name}"`).join(', ')
-    const prompt = `Você é um especialista em análise de laudos laboratoriais. Analise este laudo e extraia os resultados dos exames.
+    const basePrompt = `Você é um especialista em análise de laudos laboratoriais. Analise este laudo e extraia os resultados dos exames.
 
 Retorne SOMENTE um objeto JSON válido, sem texto adicional, no formato:
 {"nome_exame": {"value": "valor_numerico_ou_qualitativo", "unit": "unidade"}}
@@ -76,36 +72,23 @@ Regras:
     let responseText: string
 
     if (isPdf) {
-      try {
-        const response = await client.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } } as any,
-              { type: 'text', text: prompt },
-            ],
-          }],
-        })
-        responseText = response.content.find(b => b.type === 'text')?.text ?? ''
-      } catch (pdfErr) {
-        console.warn('[lab-ocr] API estável falhou, tentando beta:', pdfErr instanceof Error ? pdfErr.message : String(pdfErr))
-        const response = await client.beta.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          betas: ['pdfs-2024-09-25'],
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-              { type: 'text', text: prompt },
-            ],
-          }],
-        })
-        responseText = response.content.find(b => b.type === 'text')?.text ?? ''
+      const pdfText = await extractPdfText(arrayBuffer)
+      if (!pdfText.trim()) {
+        return { success: false, error: 'Não foi possível ler o texto deste PDF. Tente inserir os valores manualmente.' }
       }
+      console.log(`[lab-ocr] PDF extraído: ${pdfText.length} chars`)
+
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: `${basePrompt}\n\nConteúdo do laudo:\n${pdfText}`,
+        }],
+      })
+      responseText = response.content.find(b => b.type === 'text')?.text ?? ''
     } else {
+      const base64 = Buffer.from(arrayBuffer).toString('base64')
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 4096,
@@ -113,7 +96,7 @@ Regras:
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 } },
-            { type: 'text', text: prompt },
+            { type: 'text', text: basePrompt },
           ],
         }],
       })
@@ -136,12 +119,6 @@ Regras:
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[lab-ocr] Erro:', message)
-    if (message.includes('prompt is too long') || message.includes('maximum context length')) {
-      return {
-        success: false,
-        error: 'O laudo tem muitas páginas e não pôde ser lido automaticamente. Tente enviar somente as páginas com os resultados (geralmente as 2–3 primeiras) ou insira os valores manualmente.',
-      }
-    }
     return { success: false, error: `Erro ao analisar laudo: ${message}` }
   }
 }
