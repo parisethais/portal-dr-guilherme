@@ -111,6 +111,10 @@ export async function updatePatientFull(
 
   if (error) return { success: false, error: error.message }
 
+  if (data.email) {
+    await admin.auth.admin.updateUserById(patientId, { email: data.email })
+  }
+
   revalidatePath('/medico')
   return { success: true }
 }

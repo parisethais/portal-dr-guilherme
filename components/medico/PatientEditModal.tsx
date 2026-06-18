@@ -98,6 +98,7 @@ export default function PatientEditModal({ patient, onClose }: Props) {
     startTransition(async () => {
       const res = await updatePatientFull(patient.id, {
         full_name:       form.full_name       || undefined,
+        email:           form.email           || undefined,
         cpf:             form.cpf             || undefined,
         phone:           form.phone           || undefined,
         data_nascimento: form.data_nascimento || null,
@@ -126,7 +127,7 @@ export default function PatientEditModal({ patient, onClose }: Props) {
         <Section title="Identificação">
           <Row>
             <Field label="Nome completo"       value={form.full_name}       onChange={set('full_name')}       placeholder="Nome completo" />
-            <Field label="E-mail"              value={form.email}           readOnly hint="Alterar e-mail requer suporte" />
+            <Field label="E-mail"              value={form.email}           onChange={set('email')}           placeholder="paciente@email.com" />
           </Row>
           <Row>
             <Field label="CPF"                 value={form.cpf}             onChange={set('cpf')}             placeholder="Somente números" />
