@@ -417,8 +417,9 @@ export default function CadastroForm() {
             <div className="bg-amber-400 rounded-2xl px-4 py-3.5 flex items-start gap-3 shadow-md">
               <AlertTriangle className="w-5 h-5 text-amber-900 flex-shrink-0 mt-0.5" />
               <p className="text-[13px] text-amber-900 font-medium leading-relaxed">
-                <strong>Atenção:</strong> seus dados serão usados para emitir receitas médicas e notas fiscais.
-                Preencha exatamente como está no seu documento. Erros aqui aparecerão nos seus documentos.
+                <strong>Atenção:</strong> os dados informados serão usados para emitir suas receitas e notas fiscais.
+                <br /><br />
+                Preencha com cuidado e exatamente como aparece no seu documento. Erros no preenchimento poderão constar nos documentos emitidos.
               </p>
             </div>
 
