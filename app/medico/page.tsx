@@ -142,6 +142,7 @@ export default async function MedicoPage({
     { data: consultas },
     { data: currentProfile },
     notificacoes,
+    { data: medicoProfile },
   ] = await Promise.all([
     (() => {
       let q = db.from('profiles')
@@ -177,6 +178,10 @@ export default async function MedicoPage({
     db.from('profiles').select('full_name, sexo, crm').eq('id', userId).single(),
     // Notificações para a secretaria
     tenantId ? getNotificacoes(tenantId) : Promise.resolve([]),
+    // Perfil do médico da clínica (usado pela secretaria na nota fiscal)
+    currentRole === 'secretaria' && tenantId
+      ? adminDb.from('profiles').select('full_name, crm').eq('role', 'medico').eq('tenant_id', tenantId).limit(1).single()
+      : Promise.resolve({ data: null }),
   ])
 
   // Subtítulo contextual de consultas (fuso Brasília)
@@ -259,8 +264,8 @@ export default async function MedicoPage({
         <MedicoDashboard
           currentRole={currentRole}
           doctorId={userId}
-          doctorName={currentProfile?.full_name ?? null}
-          doctorCrm={currentProfile?.crm ?? null}
+          doctorName={(currentRole === 'secretaria' ? medicoProfile?.full_name : currentProfile?.full_name) ?? null}
+          doctorCrm={(currentRole === 'secretaria' ? medicoProfile?.crm : currentProfile?.crm) ?? null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
