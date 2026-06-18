@@ -155,6 +155,24 @@ const STEPS = [
   { title: 'Últimas informações', emoji: '✅' },
 ]
 
+// ── Formatadores ────────────────────────────────────────────────
+function toTitleCase(s: string) {
+  return s.replace(/\b\w/g, c => c.toUpperCase()).replace(/\b(De|Da|Do|Das|Dos|E|Em|A|O|As|Os)\b/g, w => w.toLowerCase())
+}
+function formatCpf(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4')
+         .replace(/(\d{3})(\d{3})(\d{1,3})$/, '$1.$2.$3')
+         .replace(/(\d{3})(\d{1,3})$/, '$1.$2')
+}
+function formatPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 2)  return d.length ? `(${d}` : ''
+  if (d.length <= 6)  return `(${d.slice(0,2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`
+}
+
 export default function CadastroForm() {
   const [step, setStep]              = useState(0)
   const [error, setError]            = useState('')
@@ -172,6 +190,12 @@ export default function CadastroForm() {
   const [endereco, setEndereco]             = useState('')
   const [cidadeEstado, setCidadeEstado]     = useState('')
   const [cepLoading, setCepLoading]         = useState(false)
+  // Campos com formatação automática
+  const [nomeCompleto, setNomeCompleto]     = useState('')
+  const [nomeMae, setNomeMae]               = useState('')
+  const [profissao, setProfissao]           = useState('')
+  const [cpfValor, setCpfValor]             = useState('')
+  const [phoneValor, setPhoneValor]         = useState('')
   const formRef                       = useRef<HTMLFormElement>(null)
 
   async function handleCepChange(v: string) {
@@ -388,10 +412,35 @@ export default function CadastroForm() {
 
           {/* ── Etapa 0: Quem é você? ── */}
           <div data-step="0" className={step === 0 ? 'space-y-5' : 'hidden'}>
-            <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
-              <Field label="Nome completo" name="full_name" autoComplete="name" autoCapitalize="words" placeholder="Ana Paula Vieira" required />
 
-              {/* Data de nascimento: 3 selects */}
+            {/* Banner de atenção */}
+            <div className="bg-amber-400 rounded-2xl px-4 py-3.5 flex items-start gap-3 shadow-md">
+              <AlertTriangle className="w-5 h-5 text-amber-900 flex-shrink-0 mt-0.5" />
+              <p className="text-[13px] text-amber-900 font-medium leading-relaxed">
+                <strong>Atenção:</strong> seus dados serão usados para emitir receitas médicas e notas fiscais.
+                Preencha exatamente como está no seu documento. Erros aqui aparecerão nos seus documentos.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
+
+              {/* Nome completo — title case automático */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Nome completo<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="full_name"
+                  required
+                  autoComplete="name"
+                  placeholder="Ana Paula Vieira"
+                  value={nomeCompleto}
+                  onChange={e => setNomeCompleto(e.target.value)}
+                  onBlur={e => setNomeCompleto(toTitleCase(e.target.value))}
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white"
+                />
+              </div>
+
               <DatePicker required />
 
               <SelectField label="Sexo" name="sexo" required>
@@ -400,9 +449,55 @@ export default function CadastroForm() {
                 <option value="M">Masculino</option>
               </SelectField>
 
-              <Field label="CPF" name="cpf" inputMode="numeric" placeholder="00000000000" maxLength={11} hint="Somente números" required />
-              <Field label="Nome completo da mãe" name="nome_mae" autoCapitalize="words" placeholder="Maria Silva Vieira" required />
-              <Field label="Profissão" name="profissao" autoCapitalize="words" placeholder="Professora" required />
+              {/* CPF — máscara automática */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  CPF<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="cpf"
+                  required
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  value={cpfValor}
+                  onChange={e => setCpfValor(formatCpf(e.target.value))}
+                  maxLength={14}
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white"
+                />
+              </div>
+
+              {/* Nome da mãe — title case automático */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Nome completo da mãe<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="nome_mae"
+                  required
+                  placeholder="Maria Silva Vieira"
+                  value={nomeMae}
+                  onChange={e => setNomeMae(e.target.value)}
+                  onBlur={e => setNomeMae(toTitleCase(e.target.value))}
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white"
+                />
+              </div>
+
+              {/* Profissão — title case automático */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Profissão<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="profissao"
+                  required
+                  placeholder="Professora"
+                  value={profissao}
+                  onChange={e => setProfissao(e.target.value)}
+                  onBlur={e => setProfissao(toTitleCase(e.target.value))}
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white"
+                />
+              </div>
+
             </div>
           </div>
 
@@ -410,7 +505,23 @@ export default function CadastroForm() {
           <div data-step="1" className={step === 1 ? 'space-y-5' : 'hidden'}>
             <div className="bg-white rounded-3xl p-6 shadow-xl space-y-5">
               <Field label="E-mail" name="email" type="email" autoComplete="email" placeholder="ana@email.com" required />
-              <Field label="Celular com DDD" name="phone" inputMode="tel" placeholder="11999999999" hint="Somente números" required />
+
+              {/* Telefone — máscara automática */}
+              <div className="space-y-2">
+                <label className="block text-[15px] font-semibold text-gray-800">
+                  Celular com DDD<span className="text-primary ml-1">*</span>
+                </label>
+                <input
+                  name="phone"
+                  required
+                  inputMode="tel"
+                  placeholder="(11) 99999-9999"
+                  value={phoneValor}
+                  onChange={e => setPhoneValor(formatPhone(e.target.value))}
+                  maxLength={15}
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors bg-gray-50 focus:bg-white"
+                />
+              </div>
 
               {/* CEP com autocomplete ViaCEP */}
               <div className="space-y-2">
