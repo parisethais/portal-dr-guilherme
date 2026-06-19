@@ -62,6 +62,7 @@ export async function createPatient(
  */
 export async function createPlaceholderPatient(
   fullName: string,
+  phone?: string,
 ): Promise<ActionResult<{ id: string }>> {
   if (!fullName.trim()) return { success: false, error: 'Nome é obrigatório.' }
 
@@ -91,6 +92,7 @@ export async function createPlaceholderPatient(
     role:            'paciente',
     tenant_id:       tenantId,
     status_paciente: 'lead',
+    ...(phone?.trim() ? { phone: phone.trim() } : {}),
   }, { onConflict: 'id' })
 
   revalidatePath('/medico')

@@ -14,7 +14,7 @@ import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } f
 import { cn } from '@/lib/utils'
 import {
   UserRound, MapPin, Clock, CalendarDays,
-  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope, Trash2, Link2, Check,
+  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope, Trash2, Link2, Check, Phone,
 } from 'lucide-react'
 
 // ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
@@ -228,6 +228,8 @@ export default function ConsultaModal({
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState(false)
+  const [placeholderPhone, setPlaceholderPhone] = useState('')
+  const [agendadoComWhats, setAgendadoComWhats] = useState<{ nome: string; phone: string } | null>(null)
 
   // Tipos de consulta carregados do DB (fallback para hardcoded)
   const [tipoOptions, setTipoOptions] = useState(TIPO_OPTIONS_FALLBACK)
@@ -251,6 +253,8 @@ export default function ConsultaModal({
     if (!open) return
     setError('')
     setIsEditing(false)
+    setPlaceholderPhone('')
+    setAgendadoComWhats(null)
 
     if (mode === 'create') {
       setSelectedPatient(null)
@@ -289,8 +293,9 @@ export default function ConsultaModal({
     startTransition(async () => {
       // Se for paciente provisório, cria o perfil primeiro
       let patientId = selectedPatient.id
-      if (patientId === '__placeholder__') {
-        const placeholderResult = await createPlaceholderPatient(selectedPatient.full_name ?? '')
+      const isPlaceholder = patientId === '__placeholder__'
+      if (isPlaceholder) {
+        const placeholderResult = await createPlaceholderPatient(selectedPatient.full_name ?? '', placeholderPhone || undefined)
         if (!placeholderResult.success || !placeholderResult.data) { setError((!placeholderResult.success ? placeholderResult.error : undefined) ?? 'Erro ao criar paciente'); return }
         patientId = placeholderResult.data.id
       }
@@ -305,6 +310,10 @@ export default function ConsultaModal({
           observacoes: obs || null,
         })
         if (!result.success) { setError(result.error); return }
+        if (isPlaceholder && placeholderPhone) {
+          setAgendadoComWhats({ nome: selectedPatient.full_name ?? '', phone: placeholderPhone })
+          return
+        }
       } else if (consulta) {
         const result = await updateConsulta(consulta.id, {
           patient_id:  patientId,
@@ -550,8 +559,33 @@ export default function ConsultaModal({
         </div>
       )}
 
+      {/* ── SUCESSO COM WHATSAPP ──────────────────────── */}
+      {agendadoComWhats && (
+        <div className="space-y-4 text-center">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900">Consulta agendada!</p>
+            <p className="text-sm text-gray-500 mt-1">Envie o link de cadastro para <strong>{agendadoComWhats.nome}</strong>.</p>
+          </div>
+          <a
+            href={`https://wa.me/55${agendadoComWhats.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá, ${agendadoComWhats.nome.split(' ')[0]}! Sua consulta com o Dr. Guilherme foi agendada. Para finalizar, preencha seu cadastro pelo link: ${typeof window !== 'undefined' ? window.location.origin : 'https://app.meden.health'}/cadastro`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#25D366] text-white rounded-xl text-sm font-semibold hover:bg-[#1ebe5d] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Enviar link pelo WhatsApp
+          </a>
+          <button type="button" onClick={onClose} className="w-full text-sm text-gray-500 hover:text-gray-700">
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* ── CREATE / EDIT FORM ─────────────────────────── */}
-      {isCreateOrEdit && (
+      {!agendadoComWhats && isCreateOrEdit && (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Patient search */}
           <PatientSearch
@@ -560,14 +594,23 @@ export default function ConsultaModal({
             onChange={setSelectedPatient}
           />
 
-          {/* Aviso de paciente provisório */}
+          {/* Aviso + telefone para paciente provisório */}
           {selectedPatient?.id === '__placeholder__' && (
-            <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>
-                <strong>{selectedPatient.full_name}</strong> será cadastrado como paciente provisório.
-                Você poderá enviar o link de cadastro completo depois.
-              </span>
+            <div className="space-y-2.5 px-3 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-2 text-xs text-amber-800">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span><strong>{selectedPatient.full_name}</strong> será agendado sem cadastro. Adicione o WhatsApp para enviar o link depois.</span>
+              </div>
+              <div className="relative">
+                <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-500" />
+                <input
+                  type="tel"
+                  value={placeholderPhone}
+                  onChange={e => setPlaceholderPhone(e.target.value)}
+                  placeholder="WhatsApp (opcional)"
+                  className="w-full pl-8 pr-3 py-2 border border-amber-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-gray-400"
+                />
+              </div>
             </div>
           )}
 
