@@ -176,22 +176,34 @@ export async function enviarEmailNFContador({
   pacienteEmail,
   valor,
   dataConsulta,
-  doctorName,
-  doctorCrm,
 }: {
   pacienteNome:  string
   pacienteCpf:   string | null
   pacienteEmail: string | null
   valor:         number
   dataConsulta:  string
-  doctorName:    string
-  doctorCrm:     string | null
 }): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
   if (!resend) return { error: 'Serviço de e-mail não configurado.' }
+
+  const admin = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
+
+  // Busca o médico da clínica diretamente no servidor (não depende do frontend)
+  const { data: medico } = await admin
+    .from('clinic_members')
+    .select('user_id, profiles!user_id(full_name, crm)')
+    .eq('role', 'medico')
+    .eq('clinics.tenant_id', tenantId)
+    .limit(1)
+    .maybeSingle()
+
+  const medicoProfile = (medico?.profiles as any) ?? null
+  const doctorName = medicoProfile?.full_name ?? 'Guilherme Santa Catharina'
+  const doctorCrm  = medicoProfile?.crm ?? null
 
   const cpfFmt   = pacienteCpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') ?? '—'
   const emailFmt = pacienteEmail ?? '—'

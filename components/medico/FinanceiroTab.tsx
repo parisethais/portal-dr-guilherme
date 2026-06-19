@@ -463,8 +463,6 @@ function EntryForm({
                 pacienteEmail: patient?.email ?? null,
                 valor:         form.amount ?? 0,
                 dataConsulta:  form.date ?? new Date().toISOString().slice(0, 10),
-                doctorName:    doctorName ?? '',
-                doctorCrm,
               })
               setNfSending(false)
               if (res.error) { setNfError(res.error) } else { setNfSent(true) }
