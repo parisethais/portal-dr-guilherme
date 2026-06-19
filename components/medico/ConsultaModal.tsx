@@ -14,7 +14,7 @@ import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } f
 import { cn } from '@/lib/utils'
 import {
   UserRound, MapPin, Clock, CalendarDays,
-  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope, Trash2,
+  CheckCircle2, XCircle, AlertCircle, Pencil, ChevronDown, UserPlus, Stethoscope, Trash2, Link2, Check,
 } from 'lucide-react'
 
 // ── Labels (fallback estático — fonte de verdade é o DB) ──────────────────
@@ -227,6 +227,7 @@ export default function ConsultaModal({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
+  const [linkCopiado, setLinkCopiado] = useState(false)
 
   // Tipos de consulta carregados do DB (fallback para hardcoded)
   const [tipoOptions, setTipoOptions] = useState(TIPO_OPTIONS_FALLBACK)
@@ -409,6 +410,31 @@ export default function ConsultaModal({
               <p className="text-sm text-gray-700 leading-relaxed">{consulta.observacoes}</p>
             </div>
           )}
+
+          {/* Link de cadastro — aparece quando paciente não completou o cadastro */}
+          {(() => {
+            const patient = patients.find(p => p.id === consulta.patient_id)
+            if (patient?.perfil_completo) return null
+            const link = `${typeof window !== 'undefined' ? window.location.origin : 'https://app.meden.health'}/cadastro`
+            return (
+              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <p className="text-xs text-amber-800 flex-1">Paciente ainda não fez o cadastro completo.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(link)
+                    setLinkCopiado(true)
+                    setTimeout(() => setLinkCopiado(false), 2000)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors flex-shrink-0"
+                >
+                  {linkCopiado ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+                  {linkCopiado ? 'Copiado!' : 'Copiar link'}
+                </button>
+              </div>
+            )
+          })()}
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
