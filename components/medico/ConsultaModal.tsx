@@ -424,7 +424,7 @@ export default function ConsultaModal({
           {(() => {
             const patient = patients.find(p => p.id === consulta.patient_id)
             if (patient?.perfil_completo) return null
-            const link = `${typeof window !== 'undefined' ? window.location.origin : 'https://app.meden.health'}/cadastro`
+            const link = 'https://app.meden.health/cadastro'
             return (
               <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
@@ -570,7 +570,7 @@ export default function ConsultaModal({
             <p className="text-sm text-gray-500 mt-1">Envie o link de cadastro para <strong>{agendadoComWhats.nome}</strong>.</p>
           </div>
           <a
-            href={`https://wa.me/55${agendadoComWhats.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá, ${agendadoComWhats.nome.split(' ')[0]}! Sua consulta com o Dr. Guilherme foi agendada. Para finalizar, preencha seu cadastro pelo link: ${typeof window !== 'undefined' ? window.location.origin : 'https://app.meden.health'}/cadastro`)}`}
+            href={`https://wa.me/55${agendadoComWhats.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá, ${agendadoComWhats.nome.split(' ')[0]}! Sua consulta com o Dr. Guilherme foi agendada. Para finalizar, preencha seu cadastro pelo link: https://app.meden.health/cadastro`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#25D366] text-white rounded-xl text-sm font-semibold hover:bg-[#1ebe5d] transition-colors"
