@@ -245,11 +245,8 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
 
   // Gestão state
   const [gPeriod,      setGPeriod]      = useState(12)
-  const [gFaltaMin,    setGFaltaMin]    = useState(20)
-  const [gSortKey,     setGSortKey]     = useState('faltaRate')
-  const [gSortDir,     setGSortDir]     = useState<SortDir>('desc')
   const [vSortKey,     setVSortKey]     = useState('daysOverdue')
-  const [vSortDir,     setVSortDir]     = useState<SortDir>('desc')
+  const [vSortDir,     setVSortDir]     = useState<SortDir>('asc')
 
   // Pesquisa state
   const [pPeriod,    setPPeriod]    = useState(0)
@@ -348,39 +345,15 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
     const d            = new Date()
     const monthStart   = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
     const consultasMes = consultas.filter(c => c.data_hora >= monthStart && c.status === 'realizada').length
-    const pastG        = gConsultas.filter(c => c.data_hora <= today)
-    const taxaFalta    = pastG.length > 0
-      ? Math.round((pastG.filter(c => c.status === 'falta').length / pastG.length) * 100)
-      : 0
-    const critCount    = patientData.filter(pd => pd.alerts.critical > 0).length
-    return { ativos, consultasMes, taxaFalta, critCount }
-  }, [patients, consultas, gConsultas, patientData, today])
+    return { ativos, consultasMes }
+  }, [patients, consultas])
 
   const ativos = useMemo(() => patientData.filter(pd => pd.patient.status_paciente === 'ativo'), [patientData])
 
-  const baixaAdesao = useMemo(() =>
-    ativos.filter(pd => pd.faltaRate >= gFaltaMin && pd.pastC.length >= 2),
-  [ativos, gFaltaMin])
-
-  function toggleGSort(k: string) {
-    if (gSortKey === k) setGSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setGSortKey(k); setGSortDir('desc') }
-  }
   function toggleVSort(k: string) {
     if (vSortKey === k) setVSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setVSortKey(k); setVSortDir('desc') }
   }
-
-  const sortedBaixaAdesao = useMemo(() => {
-    return [...baixaAdesao].sort((a, b) => {
-      let cmp = 0
-      if (gSortKey === 'name')       cmp = (a.patient.full_name ?? '').localeCompare(b.patient.full_name ?? '')
-      else if (gSortKey === 'faltaRate')  cmp = a.faltaRate - b.faltaRate
-      else if (gSortKey === 'faltaCount') cmp = a.faltaCount - b.faltaCount
-      else if (gSortKey === 'pastC')  cmp = a.pastC.length - b.pastC.length
-      return gSortDir === 'asc' ? cmp : -cmp
-    })
-  }, [baixaAdesao, gSortKey, gSortDir])
 
   const retornoVencidoList = useMemo(() =>
     ativos.filter(pd => pd.retornoVencido),
@@ -564,86 +537,10 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard icon={<Users className="w-5 h-5" />}      label="Pacientes ativos"           value={gStats.ativos} />
-            <StatCard icon={<Stethoscope className="w-5 h-5" />} label="Realizadas este mês"        value={gStats.consultasMes} />
-            <StatCard
-              icon={<UserMinus className="w-5 h-5" />}
-              label={`Taxa de falta (${PERIOD_OPTIONS.find(p => p.months === gPeriod)?.label})`}
-              value={`${gStats.taxaFalta}%`}
-              accent={gStats.taxaFalta >= 20 ? '#dc2626' : gStats.taxaFalta >= 10 ? '#d97706' : undefined}
-            />
-            <StatCard
-              icon={<AlertTriangle className="w-5 h-5" />}
-              label="Com alertas críticos lab"
-              value={gStats.critCount}
-              accent={gStats.critCount > 0 ? '#dc2626' : undefined}
-              sub={`de ${patients.length} pacientes`}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard icon={<Users className="w-5 h-5" />}       label="Pacientes ativos"    value={gStats.ativos} />
+            <StatCard icon={<Stethoscope className="w-5 h-5" />}  label="Realizadas este mês" value={gStats.consultasMes} />
           </div>
-
-          {/* ── Baixa Adesão ── */}
-          <SectionCard
-            title="Baixa adesão — pacientes com maior taxa de falta"
-            icon={<CalendarX className="w-4 h-4" />}
-            count={sortedBaixaAdesao.length}
-          >
-            <div className="px-4 py-2.5 border-b border-gray-50 flex items-center gap-3">
-              <label className="text-xs text-gray-500 flex-shrink-0">Exibir pacientes com falta ≥</label>
-              <select
-                value={gFaltaMin}
-                onChange={e => setGFaltaMin(Number(e.target.value))}
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none bg-white"
-              >
-                <option value={10}>10%</option>
-                <option value={15}>15%</option>
-                <option value={20}>20%</option>
-                <option value={33}>33%</option>
-                <option value={50}>50%</option>
-              </select>
-              <span className="text-xs text-gray-400">(mín. 2 consultas no histórico)</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <SortTh col="name"       label="Paciente"     sortKey={gSortKey} sortDir={gSortDir} onToggle={toggleGSort} />
-                    <SortTh col="pastC"      label="Consultas"    sortKey={gSortKey} sortDir={gSortDir} onToggle={toggleGSort} />
-                    <SortTh col="faltaCount" label="Faltas"       sortKey={gSortKey} sortDir={gSortDir} onToggle={toggleGSort} />
-                    <SortTh col="faltaRate"  label="Taxa"         sortKey={gSortKey} sortDir={gSortDir} onToggle={toggleGSort} />
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Última consulta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedBaixaAdesao.length === 0
-                    ? <EmptyRow cols={5} msg="Nenhum paciente com essa taxa de falta no período." />
-                    : sortedBaixaAdesao.slice((baixaPage-1)*PAGE_SIZE, baixaPage*PAGE_SIZE).map(pd => (
-                      <tr key={pd.patient.id} className="border-b border-gray-50 hover:bg-gray-50/60">
-                        <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{pd.patient.full_name || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-600 text-center">{pd.pastC.length}</td>
-                        <td className="px-4 py-2.5 text-center">
-                          <span className="font-semibold text-red-700">{pd.faltaCount}</span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            pd.faltaRate >= 50 ? 'bg-red-100 text-red-700' :
-                            pd.faltaRate >= 25 ? 'bg-amber-100 text-amber-700' :
-                            'bg-yellow-50 text-yellow-700'
-                          }`}>
-                            {pd.faltaRate}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap text-xs">
-                          {pd.lastRealizada ? fmtDate(pd.lastRealizada.data_hora) : '—'}
-                        </td>
-                      </tr>
-                    ))
-                  }
-                </tbody>
-              </table>
-            </div>
-            <Pagination total={sortedBaixaAdesao.length} page={baixaPage} onPage={setBaixaPage} />
-          </SectionCard>
 
           {/* ── Retorno Vencido ── */}
           <SectionCard
@@ -656,7 +553,6 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <SortTh col="name"        label="Paciente"         sortKey={vSortKey} sortDir={vSortDir} onToggle={toggleVSort} />
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Diagnóstico</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Última realizada</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Retorno previsto</th>
                     <SortTh col="daysOverdue" label="Dias vencido"     sortKey={vSortKey} sortDir={vSortDir} onToggle={toggleVSort} />
@@ -664,13 +560,10 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 </thead>
                 <tbody>
                   {sortedRetorno.length === 0
-                    ? <EmptyRow cols={5} msg="Nenhum paciente com retorno vencido." />
+                    ? <EmptyRow cols={4} msg="Nenhum paciente com retorno vencido." />
                     : sortedRetorno.slice((retornoPage-1)*PAGE_SIZE, retornoPage*PAGE_SIZE).map(pd => (
                       <tr key={pd.patient.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                         <td className="px-4 py-2.5 font-medium text-gray-900 whitespace-nowrap">{pd.patient.full_name || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-500 max-w-[200px]">
-                          <span className="line-clamp-1 block text-xs" title={pd.diagText}>{pd.diagText || '—'}</span>
-                        </td>
                         <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap text-xs">
                           {pd.lastRealizada ? fmtDate(pd.lastRealizada.data_hora) : '—'}
                         </td>
@@ -697,46 +590,8 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
             <Pagination total={sortedRetorno.length} page={retornoPage} onPage={setRetornoPage} />
           </SectionCard>
 
-          {/* ── Alertas Críticos Lab + PA (2-col) ── */}
-          <div className="grid lg:grid-cols-2 gap-4">
-
-            {/* Alertas críticos */}
-            <SectionCard
-              title="Alertas laboratoriais críticos"
-              icon={<FlaskConical className="w-4 h-4" />}
-              count={criticalList.length}
-            >
-              {criticalList.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">Nenhum alerta crítico no momento.</p>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {criticalList.map(pd => (
-                    <div key={pd.patient.id} className="px-4 py-3">
-                      <p className="text-sm font-semibold text-gray-900">{pd.patient.full_name || '—'}</p>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {pd.labAlerts
-                          .filter(a => a.severity === 'critical')
-                          .map(a => (
-                            <span key={a.id} className="text-xs bg-red-50 border border-red-200 text-red-700 px-2 py-0.5 rounded-full">
-                              {a.exam_name}: {a.latestValue}{a.latestUnit ? ` ${a.latestUnit}` : ''} ({a.direction === 'high' ? '↑' : '↓'})
-                            </span>
-                          ))}
-                        {pd.labAlerts
-                          .filter(a => a.severity === 'warning')
-                          .map(a => (
-                            <span key={a.id} className="text-xs bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">
-                              {a.exam_name}: {a.latestValue}{a.latestUnit ? ` ${a.latestUnit}` : ''}
-                            </span>
-                          ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
-
-            {/* Controle pressórico */}
-            <SectionCard
+          {/* ── Controle pressórico ── */}
+          <SectionCard
               title="Controle pressórico — PA elevada na última consulta"
               icon={<Heart className="w-4 h-4" />}
               count={paHighList.length}
@@ -789,7 +644,6 @@ export default function RelatoriosTab({ patients, consultas, labResults }: Relat
                 </div>
               )}
             </SectionCard>
-          </div>
 
         </div>
       )}
