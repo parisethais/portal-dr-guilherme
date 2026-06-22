@@ -25,15 +25,20 @@ const FullCalendarComponent = dynamic(
   }
 )
 
-// ── Cores por tipo de consulta ─────────────────────────────
+// ── Cores por local de consulta ────────────────────────────
 
-// Cores distintas para cada tipo — fáceis de diferenciar na legenda e no calendário
+export const LOCAL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  consultorio:  { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' }, // azul — presencial
+  telemedicina: { bg: '#0f766e', border: '#0d9488', text: '#ffffff' }, // verde — online
+}
+
+// Mantido para compatibilidade com outros componentes
 export const TIPO_COLORS: Record<ConsultaTipo, { bg: string; border: string; text: string }> = {
-  primeira_consulta:          { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' }, // azul escuro
-  nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' }, // verde-azulado
-  retorno:                    { bg: '#475569', border: '#334155', text: '#ffffff' }, // cinza-ardósia
-  primeira_consulta_desconto: { bg: '#b45309', border: '#d97706', text: '#ffffff' }, // âmbar/laranja
-  nova_consulta_desconto:     { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' }, // roxo
+  primeira_consulta:          { bg: '#1e40af', border: '#1d4ed8', text: '#ffffff' },
+  nova_consulta:              { bg: '#0f766e', border: '#0d9488', text: '#ffffff' },
+  retorno:                    { bg: '#475569', border: '#334155', text: '#ffffff' },
+  primeira_consulta_desconto: { bg: '#b45309', border: '#d97706', text: '#ffffff' },
+  nova_consulta_desconto:     { bg: '#6d28d9', border: '#7c3aed', text: '#ffffff' },
 }
 
 // Mantido para compatibilidade com DayViewModal/outros componentes
@@ -134,10 +139,11 @@ interface AgendaTabProps {
   consultas:  Consulta[]
   patients:   Profile[]
   currentRole?: string
+  calendarUrl?: string
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
 }
 
-export default function AgendaTab({ consultas, patients, currentRole, onIniciarAtendimento }: AgendaTabProps) {
+export default function AgendaTab({ consultas, patients, currentRole, calendarUrl, onIniciarAtendimento }: AgendaTabProps) {
   const [createModal, setCreateModal] = useState<{ open: boolean; defaultDateTime: string }>({
     open: false,
     defaultDateTime: '',
@@ -154,7 +160,8 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
 
   // Filtros de categoria
   const [consultorioHidden, setConsultorioHidden] = useState(false)
-  const [hiddenTipos,       setHiddenTipos]       = useState<Set<ConsultaTipo>>(new Set())
+  const [hiddenLocais,      setHiddenLocais]      = useState<Set<string>>(new Set())
+  const [linkCopiado,       setLinkCopiado]       = useState(false)
   const [showCanceladas,    setShowCanceladas]    = useState(false)
 
   // Google Calendar state
@@ -205,11 +212,19 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
     })
   }
 
-  function toggleTipo(tipo: ConsultaTipo) {
-    setHiddenTipos(prev => {
+  function toggleLocal(local: string) {
+    setHiddenLocais(prev => {
       const next = new Set(prev)
-      next.has(tipo) ? next.delete(tipo) : next.add(tipo)
+      next.has(local) ? next.delete(local) : next.add(local)
       return next
+    })
+  }
+
+  function copiarLink() {
+    if (!calendarUrl) return
+    navigator.clipboard.writeText(calendarUrl).then(() => {
+      setLinkCopiado(true)
+      setTimeout(() => setLinkCopiado(false), 2000)
     })
   }
 
@@ -219,28 +234,29 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
     patientMap[p.id] = p.full_name ?? 'Paciente'
   })
 
-  // Transform consultas → FullCalendar events (filtradas por consultorio + tipo + canceladas)
+  // Transform consultas → FullCalendar events (filtradas por local + canceladas)
   const crmEvents: CalendarEvent[] = consultorioHidden ? [] : consultas
-    .filter(c => !hiddenTipos.has(c.tipo))
+    .filter(c => !hiddenLocais.has(c.local))
     .filter(c => showCanceladas || c.status !== 'cancelada')
     .map((c) => {
     const startDate   = new Date(c.data_hora)
     const endDate     = new Date(startDate.getTime() + c.duracao_min * 60_000)
-    const tipoColors  = TIPO_COLORS[c.tipo]
+    const localColors = LOCAL_COLORS[c.local] ?? LOCAL_COLORS.consultorio
     const patientName = c.patient?.full_name ?? patientMap[c.patient_id] ?? 'Paciente'
     const hora        = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     const isPast          = ['realizada', 'falta', 'cancelada'].includes(c.status)
     const isFalta         = c.status === 'falta'
     const isEmAtendimento = c.status === 'em_atendimento'
+    const isDesconto      = c.tipo.includes('desconto')
 
     return {
       id:              c.id,
-      title:           `${isEmAtendimento ? '🟠 ' : c.local === 'telemedicina' ? '📹 ' : ''}${hora} · ${patientName}`,
+      title:           `${isEmAtendimento ? '⬤ ' : ''}${hora} · ${patientName}${isDesconto ? ' %' : ''}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
-      backgroundColor: isEmAtendimento ? '#ea580c' : (isPast ? '#9ca3af' : tipoColors.bg),
-      borderColor:     isEmAtendimento ? '#c2410c' : isFalta ? '#dc2626' : (isPast ? '#6b7280' : tipoColors.border),
-      textColor:       tipoColors.text,
+      backgroundColor: isEmAtendimento ? '#ea580c' : (isPast ? '#9ca3af' : localColors.bg),
+      borderColor:     isEmAtendimento ? '#c2410c' : isFalta ? '#dc2626' : (isPast ? '#6b7280' : localColors.border),
+      textColor:       localColors.text,
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : isEmAtendimento ? ['fc-event-em-atendimento'] : [],
       extendedProps:   { source: 'crm', consulta: c },
     }
@@ -303,7 +319,10 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
     }
   }
 
-  const tipos = Object.keys(TIPO_COLORS) as ConsultaTipo[]
+  const locais: { key: string; label: string }[] = [
+    { key: 'consultorio',  label: 'Presencial' },
+    { key: 'telemedicina', label: 'Online'     },
+  ]
 
   return (
     <div className="space-y-3">
@@ -360,17 +379,17 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
           </button>
         </div>
 
-        {/* Linha 2: subtipos do Consultório + toggle canceladas */}
+        {/* Linha 2: filtro por local + toggle canceladas + link iCal */}
         {!consultorioHidden && (
           <div className="flex flex-wrap items-center gap-1.5 pl-1">
-            <span className="text-[10px] text-gray-300 uppercase tracking-wider mr-0.5">Tipo:</span>
-            {tipos.map(tipo => {
-              const hidden = hiddenTipos.has(tipo)
-              const color  = TIPO_COLORS[tipo].bg
+            <span className="text-[10px] text-gray-300 uppercase tracking-wider mr-0.5">Local:</span>
+            {locais.map(({ key, label }) => {
+              const hidden = hiddenLocais.has(key)
+              const color  = LOCAL_COLORS[key].bg
               return (
                 <button
-                  key={tipo}
-                  onClick={() => toggleTipo(tipo)}
+                  key={key}
+                  onClick={() => toggleLocal(key)}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all"
                   style={{
                     backgroundColor: hidden ? 'transparent' : color + '18',
@@ -379,7 +398,7 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
                   }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hidden ? '#d1d5db' : color }} />
-                  {TIPO_LABEL[tipo]}
+                  {label}
                 </button>
               )
             })}
@@ -395,6 +414,20 @@ export default function AgendaTab({ consultas, patients, currentRole, onIniciarA
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: showCanceladas ? '#9ca3af' : '#e5e7eb' }} />
               Canceladas
             </button>
+            {calendarUrl && (
+              <button
+                onClick={copiarLink}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all ml-auto"
+                style={{
+                  backgroundColor: linkCopiado ? '#f0fdf4' : 'transparent',
+                  borderColor:     linkCopiado ? '#86efac' : '#e5e7eb',
+                  color:           linkCopiado ? '#16a34a' : '#9ca3af',
+                }}
+                title="Copiar link para sincronizar com Google Agenda ou iOS"
+              >
+                {linkCopiado ? '✓ Link copiado' : '🔗 Sincronizar com Google / iOS'}
+              </button>
+            )}
           </div>
         )}
       </div>

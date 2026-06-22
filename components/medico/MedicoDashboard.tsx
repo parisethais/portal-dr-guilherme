@@ -32,6 +32,7 @@ interface MedicoDashboardProps {
   doctorName?:      string | null
   doctorCrm?:       string | null
   doctorSpecialty?: string | null
+  calendarUrl?:     string | null
   patients: Profile[]
   documents: Document[]
   consultas: Consulta[]
@@ -70,6 +71,7 @@ export default function MedicoDashboard({
   doctorName,
   doctorCrm,
   doctorSpecialty,
+  calendarUrl,
   patients,
   documents,
   consultas,
@@ -183,6 +185,7 @@ export default function MedicoDashboard({
             consultas={consultas}
             patients={patients}
             currentRole={currentRole}
+            calendarUrl={calendarUrl ?? undefined}
             onIniciarAtendimento={handleIniciarAtendimento}
           />
         )}

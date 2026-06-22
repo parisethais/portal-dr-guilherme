@@ -267,6 +267,7 @@ export default async function MedicoPage({
           doctorName={(currentRole === 'secretaria' ? medicoProfile?.full_name : currentProfile?.full_name) ?? null}
           doctorCrm={(currentRole === 'secretaria' ? medicoProfile?.crm : currentProfile?.crm) ?? null}
           doctorSpecialty={(currentRole === 'secretaria' ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null}
+          calendarUrl={tenantId ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}` : null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
