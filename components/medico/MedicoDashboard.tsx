@@ -29,8 +29,9 @@ const PanoramaTab = dynamic(() => import('./PanoramaTab'), {
 interface MedicoDashboardProps {
   currentRole: string
   doctorId: string
-  doctorName?: string | null
-  doctorCrm?:  string | null
+  doctorName?:      string | null
+  doctorCrm?:       string | null
+  doctorSpecialty?: string | null
   patients: Profile[]
   documents: Document[]
   consultas: Consulta[]
@@ -68,6 +69,7 @@ export default function MedicoDashboard({
   doctorId,
   doctorName,
   doctorCrm,
+  doctorSpecialty,
   patients,
   documents,
   consultas,
@@ -165,7 +167,7 @@ export default function MedicoDashboard({
       {/* Content */}
       <div className="p-3 pt-3 sm:p-6 sm:pt-4">
         {activeTab === 'panorama' && (
-          <PanoramaTab patients={patients} consultas={consultas} />
+          <PanoramaTab patients={patients} consultas={consultas} doctorName={doctorName} doctorCrm={doctorCrm} doctorSpecialty={doctorSpecialty} />
         )}
         {activeTab === 'pacientes' && (
           <PatientList

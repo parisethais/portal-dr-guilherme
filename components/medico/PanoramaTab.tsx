@@ -554,9 +554,12 @@ function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo, getAlerta }: 
 interface PanoramaTabProps {
   patients: Profile[]
   consultas: Consulta[]
+  doctorName?:      string | null
+  doctorCrm?:       string | null
+  doctorSpecialty?: string | null
 }
 
-export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas, doctorName, doctorCrm, doctorSpecialty }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -701,7 +704,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       const pa = getAlertRetorno(a) === 'atrasado' ? 0 : 1
       const pb = getAlertRetorno(b) === 'atrasado' ? 0 : 1
       if (pa !== pb) return pa - pb
-      return (a.retorno_previsto ?? '').localeCompare(b.retorno_previsto ?? '')
+      return (b.retorno_previsto ?? '').localeCompare(a.retorno_previsto ?? '') // mais recente primeiro
     })
 
     return {
@@ -740,6 +743,36 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+
+      {/* ── Card identidade da clínica ── */}
+      <div
+        className="flex items-center gap-4 px-5 py-4 rounded-2xl"
+        style={{ backgroundColor: '#062149' }}
+      >
+        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logogui.svg" alt="Logo da clínica" className="w-9 h-9" style={{ filter: 'invert(1)' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-semibold text-sm leading-snug truncate">
+            {doctorName ? `Dr. ${doctorName}` : 'Clínica Dr. Guilherme'}
+          </p>
+          <p className="text-white/50 text-xs mt-0.5">
+            {doctorSpecialty ?? 'Medicina'}{doctorCrm ? ` · CRM-SP ${doctorCrm}` : ''}
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-6 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-white text-xl font-bold leading-none">{totais.ativo}</p>
+            <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">pacientes ativos</p>
+          </div>
+          <div className="w-px h-8 bg-white/10" />
+          <div className="text-right">
+            <p className="text-white text-xl font-bold leading-none">{totais.consultasMes}</p>
+            <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">consultas este mês</p>
+          </div>
+        </div>
+      </div>
 
       {/* ── 1. Stats band — desktop ── */}
       <div className="hidden sm:flex gap-3">
@@ -901,28 +934,39 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
           {proximasConsultas.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta nos próximos 7 dias</p>
           ) : (
-            <div className="space-y-2">
-              {proximasConsultas.map(c => {
+            <div className="space-y-1">
+              {proximasConsultas.map((c, i) => {
                 const d = new Date(c.data_hora)
-                const dataStr = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
-                const hora    = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                const dayKey  = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                const prevDay = i > 0 ? new Date(proximasConsultas[i - 1].data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null
+                const isNewDay = dayKey !== prevDay
+                const diaLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+                const hora     = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
                 return (
-                  <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
-                    <div className="text-center min-w-[54px]">
-                      <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
-                      <p className="text-[11px] text-gray-400 capitalize">{dataStr}</p>
+                  <div key={c.id}>
+                    {isNewDay && (
+                      <div className={`flex items-center gap-2 ${i > 0 ? 'mt-3 mb-1' : 'mb-1'}`}>
+                        <div className="h-px flex-1 bg-gray-200" />
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide capitalize">{diaLabel}</span>
+                        <div className="h-px flex-1 bg-gray-200" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
+                      <div className="text-center min-w-[36px]">
+                        <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate">
+                          {c.patient?.full_name ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                        c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">
-                        {c.patient?.full_name ?? '—'}
-                      </p>
-                      <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                      c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
-                    </span>
                   </div>
                 )
               })}

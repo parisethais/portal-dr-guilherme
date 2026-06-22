@@ -175,12 +175,12 @@ export default async function MedicoPage({
       return q
     })(),
     // Perfil do usuário logado (para saudação personalizada e dados do médico)
-    db.from('profiles').select('full_name, sexo, crm').eq('id', userId).single(),
+    db.from('profiles').select('full_name, sexo, crm, especialidade').eq('id', userId).single(),
     // Notificações para a secretaria
     tenantId ? getNotificacoes(tenantId) : Promise.resolve([]),
     // Perfil do médico da clínica (usado pela secretaria na nota fiscal)
     currentRole === 'secretaria' && tenantId
-      ? adminDb.from('profiles').select('full_name, crm').eq('role', 'medico').eq('tenant_id', tenantId).limit(1).single()
+      ? adminDb.from('profiles').select('full_name, crm, especialidade').eq('role', 'medico').eq('tenant_id', tenantId).limit(1).single()
       : Promise.resolve({ data: null }),
   ])
 
@@ -266,6 +266,7 @@ export default async function MedicoPage({
           doctorId={userId}
           doctorName={(currentRole === 'secretaria' ? medicoProfile?.full_name : currentProfile?.full_name) ?? null}
           doctorCrm={(currentRole === 'secretaria' ? medicoProfile?.crm : currentProfile?.crm) ?? null}
+          doctorSpecialty={(currentRole === 'secretaria' ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
