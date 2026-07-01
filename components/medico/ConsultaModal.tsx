@@ -6,7 +6,7 @@ import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
-import { createConsulta, updateConsulta, updateConsultaStatus, deleteConsulta } from '@/app/actions/consultas'
+import { createConsulta, updateConsulta, updateConsultaStatus, deleteConsulta, gerarLinksLembrete } from '@/app/actions/consultas'
 import { createPlaceholderPatient } from '@/app/actions/patients'
 import { getConsultationTypes } from '@/app/actions/consultation-types'
 import type { ConsultationTypeDB } from '@/app/actions/consultation-types'
@@ -214,6 +214,7 @@ interface ConsultaModalProps {
   currentRole?: string
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
   onNavigateToPatient?: (patientId: string) => void
+  doctorName?: string | null
 }
 
 export default function ConsultaModal({
@@ -226,6 +227,7 @@ export default function ConsultaModal({
   currentRole,
   onIniciarAtendimento,
   onNavigateToPatient,
+  doctorName,
 }: ConsultaModalProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -470,6 +472,34 @@ export default function ConsultaModal({
               {error}
             </p>
           )}
+
+          {/* Lembrete WhatsApp */}
+          {(() => {
+            const patient = patients.find(p => p.id === consulta.patient_id)
+            if (!patient?.phone || consulta.status === 'cancelada' || consulta.status === 'realizada') return null
+            return (
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await gerarLinksLembrete(consulta.id)
+                  if (!res.success || !res.data) return
+                  const dataHora = new Date(consulta.data_hora)
+                  const diaSemana = dataHora.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' })
+                  const data = dataHora.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' })
+                  const hora = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+                  const medico = doctorName ? `Dr. ${doctorName.split(' ').slice(0, 3).join(' ')}` : 'Dr. Guilherme Santa Catharina'
+                  const msg = `Oi ${patient.full_name}, este é um lembrete que você tem uma consulta com ${medico} para ${diaSemana}, dia ${data}, às ${hora}.\n\nClique neste link para confirmar:\n${res.data.confirmar}\n\nOu neste link para cancelar:\n${res.data.cancelar}`
+                  const phone = (patient.phone ?? '').replace(/\D/g, '')
+                  const phoneIntl = phone.startsWith('55') ? phone : `55${phone}`
+                  window.open(`https://wa.me/${phoneIntl}?text=${encodeURIComponent(msg)}`, '_blank')
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#25D366] text-white hover:bg-[#1ebe5d] transition-colors"
+              >
+                <Phone className="w-4 h-4" />
+                Enviar lembrete por WhatsApp
+              </button>
+            )
+          })()}
 
           {/* Iniciar atendimento — só médico */}
           {(currentRole === 'medico' || currentRole === 'superadmin') && onIniciarAtendimento && (

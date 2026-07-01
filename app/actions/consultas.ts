@@ -191,3 +191,14 @@ export async function deleteConsulta(consultaId: string): Promise<ActionResult> 
   revalidatePath('/paciente')
   return { success: true }
 }
+
+export async function gerarLinksLembrete(
+  consultaId: string
+): Promise<ActionResult<{ confirmar: string; cancelar: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const { gerarLinksLembrete: gerar } = await import('@/lib/consulta-token')
+  return { success: true, data: gerar(consultaId) }
+}
