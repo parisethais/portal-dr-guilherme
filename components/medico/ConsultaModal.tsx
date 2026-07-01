@@ -213,6 +213,7 @@ interface ConsultaModalProps {
   consulta?: Consulta        // for view mode
   currentRole?: string
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
+  onNavigateToPatient?: (patientId: string) => void
 }
 
 export default function ConsultaModal({
@@ -224,6 +225,7 @@ export default function ConsultaModal({
   consulta,
   currentRole,
   onIniciarAtendimento,
+  onNavigateToPatient,
 }: ConsultaModalProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -373,9 +375,19 @@ export default function ConsultaModal({
               <UserRound className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">
-                {consulta.patient?.full_name ?? patients.find((p) => p.id === consulta.patient_id)?.full_name ?? 'Paciente'}
-              </p>
+              {onNavigateToPatient ? (
+                <button
+                  type="button"
+                  onClick={() => { onNavigateToPatient(consulta.patient_id); onClose() }}
+                  className="font-semibold text-primary hover:underline text-left"
+                >
+                  {consulta.patient?.full_name ?? patients.find((p) => p.id === consulta.patient_id)?.full_name ?? 'Paciente'}
+                </button>
+              ) : (
+                <p className="font-semibold text-gray-900">
+                  {consulta.patient?.full_name ?? patients.find((p) => p.id === consulta.patient_id)?.full_name ?? 'Paciente'}
+                </p>
+              )}
               <p className="text-xs text-gray-500 mt-0.5">
                 {TIPO_LABEL[consulta.tipo]}
               </p>

@@ -142,9 +142,10 @@ interface AgendaTabProps {
   currentRole?: string
   calendarUrl?: string
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
+  onNavigateToPatient?: (patientId: string) => void
 }
 
-export default function AgendaTab({ consultas, patients, currentRole, calendarUrl, onIniciarAtendimento }: AgendaTabProps) {
+export default function AgendaTab({ consultas, patients, currentRole, calendarUrl, onIniciarAtendimento, onNavigateToPatient }: AgendaTabProps) {
   const [createModal, setCreateModal] = useState<{ open: boolean; defaultDateTime: string }>({
     open: false,
     defaultDateTime: '',
@@ -468,6 +469,7 @@ export default function AgendaTab({ consultas, patients, currentRole, calendarUr
           consulta={viewModal.consulta}
           currentRole={currentRole}
           onIniciarAtendimento={onIniciarAtendimento}
+          onNavigateToPatient={onNavigateToPatient}
         />
       )}
 

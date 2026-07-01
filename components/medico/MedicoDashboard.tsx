@@ -185,6 +185,7 @@ export default function MedicoDashboard({
             currentRole={currentRole}
             calendarUrl={calendarUrl ?? undefined}
             onIniciarAtendimento={handleIniciarAtendimento}
+            onNavigateToPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
           />
         )}
         {activeTab === 'documentos' && (
