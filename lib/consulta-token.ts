@@ -16,8 +16,8 @@ export function validarToken(consultaId: string, acao: 'confirmar' | 'cancelar',
   return gerarToken(consultaId, acao) === token
 }
 
-export function gerarLinksLembrete(consultaId: string): { confirmar: string; cancelar: string } {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.meden.health'
+export function gerarLinksLembrete(consultaId: string, baseUrl?: string): { confirmar: string; cancelar: string } {
+  const base = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.meden.health'
   return {
     confirmar: `${base}/consulta/resposta?id=${consultaId}&acao=confirmar&token=${gerarToken(consultaId, 'confirmar')}`,
     cancelar:  `${base}/consulta/resposta?id=${consultaId}&acao=cancelar&token=${gerarToken(consultaId, 'cancelar')}`,

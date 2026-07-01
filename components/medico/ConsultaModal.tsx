@@ -481,7 +481,7 @@ export default function ConsultaModal({
               <button
                 type="button"
                 onClick={async () => {
-                  const res = await gerarLinksLembrete(consulta.id)
+                  const res = await gerarLinksLembrete(consulta.id, window.location.origin)
                   if (!res.success || !res.data) return
                   const dataHora = new Date(consulta.data_hora)
                   const diaSemana = dataHora.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' })
