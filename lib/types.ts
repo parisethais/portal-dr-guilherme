@@ -31,6 +31,7 @@ export interface Profile {
   obs_secretaria: string | null
   form_token: string | null
   retorno_previsto: string | null   // date YYYY-MM-DD
+  obs_pessoal:      string | null   // nota do médico sobre o paciente (fora de consulta)
   // Campos do médico
   crm:              string | null
   especialidade:    string | null
@@ -124,6 +125,7 @@ export type ConsultaTipo   =
   | 'retorno'
   | 'primeira_consulta_desconto'
   | 'nova_consulta_desconto'
+  | 'reuniao'
 export type ConsultaLocal  = 'consultorio' | 'telemedicina'
 export type ConsultaStatus = 'agendada' | 'confirmada' | 'em_atendimento' | 'realizada' | 'falta' | 'cancelada'
 
@@ -170,7 +172,7 @@ export interface LabResult {
   created_at:   string
 }
 
-export type ImagingTipo = 'usg_rins' | 'eco' | 'tc_torax' | 'tc_abdomen' | 'ecg' | 'outro'
+export type ImagingTipo = string  // ex: 'usg_rins', 'eco', ou nome livre personalizado
 
 export interface ImagingResult {
   id:             string
@@ -180,6 +182,7 @@ export interface ImagingResult {
   laudo_resumido: string | null
   file_url:       string | null
   file_name:      string | null
+  extra_files:    { url: string; name: string }[] | null
   created_at:     string
 }
 

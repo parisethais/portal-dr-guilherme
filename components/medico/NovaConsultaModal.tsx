@@ -17,9 +17,10 @@ interface Props {
 const TIPOS_FALLBACK: { value: ConsultaTipo; label: string; duracao: number }[] = [
   { value: 'primeira_consulta',          label: 'Primeira Consulta',            duracao: 75 },
   { value: 'nova_consulta',              label: 'Nova Consulta',                duracao: 45 },
-  { value: 'retorno',                    label: 'Retorno',                      duracao: 30 },
+  { value: 'retorno',                    label: 'Retorno',                      duracao: 45 },
   { value: 'primeira_consulta_desconto', label: 'Primeira Consulta (Desconto)', duracao: 75 },
   { value: 'nova_consulta_desconto',     label: 'Nova Consulta (Desconto)',     duracao: 45 },
+  { value: 'reuniao',                    label: 'Reunião',                      duracao: 45 },
 ]
 
 const LOCAIS: { value: ConsultaLocal; label: string }[] = [
@@ -65,7 +66,7 @@ export default function NovaConsultaModal({ patientId, patientName, onClose }: P
     tipo:        'retorno'     as ConsultaTipo,
     local:       'consultorio' as ConsultaLocal,
     data_hora:   defaultDateTime(),
-    duracao_min: '30',
+    duracao_min: '45',
     observacoes: '',
   })
 

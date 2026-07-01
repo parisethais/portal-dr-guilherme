@@ -25,14 +25,16 @@ export const TIPO_LABEL: Record<ConsultaTipo, string> = {
   retorno:                    'Retorno',
   primeira_consulta_desconto: 'Primeira Consulta (Desconto)',
   nova_consulta_desconto:     'Nova Consulta (Desconto)',
+  reuniao:                    'Reunião',
 }
 
 export const TIPO_INFO: Record<ConsultaTipo, { duracao: number; preco: string }> = {
   primeira_consulta:          { duracao: 75, preco: 'R$1.000' },
   nova_consulta:              { duracao: 45, preco: 'R$1.000' },
-  retorno:                    { duracao: 30, preco: 'Gratuito' },
+  retorno:                    { duracao: 45, preco: 'Gratuito' },
   primeira_consulta_desconto: { duracao: 75, preco: 'R$500'   },
   nova_consulta_desconto:     { duracao: 45, preco: 'R$500'   },
+  reuniao:                    { duracao: 45, preco: 'Gratuito' },
 }
 
 // ── Helpers ───────────────────────────────────────────────
@@ -248,9 +250,15 @@ export default function ConsultaModal({
   const [duracao, setDuracao]   = useState(30)
   const [obs, setObs]           = useState('')
 
-  // Reset on open
+  // Reset on open — only fires when the modal transitions from closed → open,
+  // not when props like `patients` update while it's already open (avoids
+  // clearing the WhatsApp success screen when revalidatePath re-renders the page)
+  const wasOpenRef = useRef(false)
   useEffect(() => {
-    if (!open) return
+    const justOpened = open && !wasOpenRef.current
+    wasOpenRef.current = open
+    if (!justOpened) return
+
     setError('')
     setIsEditing(false)
     setPlaceholderPhone('')

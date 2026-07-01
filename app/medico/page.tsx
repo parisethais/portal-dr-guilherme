@@ -42,6 +42,17 @@ function getDisplayName(fullName: string | null, sexo: string | null, role: stri
   return first
 }
 
+function stripTitle(name: string | null): string | null {
+  if (!name) return null
+  return name.replace(/^Dr[a]?\.\s*/i, '').trim()
+}
+
+function formatCrm(crm: string | null): string | null {
+  if (!crm) return null
+  const m = crm.trim().match(/^([A-Z]{2})[- ]?(\d+)$/i)
+  return m ? `CRM-${m[1].toUpperCase()} ${m[2]}` : crm
+}
+
 export default async function MedicoPage({
   searchParams,
 }: {
@@ -93,14 +104,16 @@ export default async function MedicoPage({
   //   - Superadmin por host → resolve pelo domínio da clínica (clinic_settings key=dominio)
   //   - Superadmin sem pista → null = vê tudo (acesso irrestrito no painel /admin)
   let tenantId: string | null = null
+  let clinicName: string | null = null
   if (currentRole !== 'superadmin') {
     const { data: membership } = await adminDb
       .from('clinic_members')
-      .select('clinic_id, clinics!clinic_id(tenant_id)')
+      .select('clinic_id, clinics!clinic_id(tenant_id, name)')
       .eq('user_id', userId)
       .limit(1)
       .single()
-    tenantId = (membership?.clinics as any)?.tenant_id ?? 'dr_guilherme'
+    tenantId  = (membership?.clinics as any)?.tenant_id ?? 'dr_guilherme'
+    clinicName = (membership?.clinics as any)?.name ?? null
   } else if (params.tenant) {
     // Superadmin abrindo CRM de uma clínica específica via ?tenant=xxx
     tenantId = params.tenant
@@ -218,6 +231,35 @@ export default async function MedicoPage({
 
   const displayName = getDisplayName(currentProfile?.full_name ?? null, currentProfile?.sexo ?? null, currentRole)
 
+  // Dados do médico para o card de identidade da clínica
+  const rawDoctorName    = (currentRole === 'secretaria' ? medicoProfile?.full_name    : currentProfile?.full_name)    ?? null
+  const rawDoctorCrm     = (currentRole === 'secretaria' ? medicoProfile?.crm          : currentProfile?.crm)          ?? null
+  const rawDoctorSpecialty = (currentRole === 'secretaria' ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null
+
+  const cardName      = stripTitle(rawDoctorName)
+  const cardCrm       = formatCrm(rawDoctorCrm)
+  const cardSpecialty = rawDoctorSpecialty
+
+  // Contadores para o card (versão leve — PanoramaTab faz a versão completa)
+  const cutoffDate = new Date(nowBR)
+  cutoffDate.setMonth(cutoffDate.getMonth() - 24)
+  const cutoffISO = cutoffDate.toISOString()
+  const mesAtual  = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, '0')}`
+
+  const lastConsultaByPatient = new Map<string, string>()
+  for (const c of consultas ?? []) {
+    if (c.status === 'realizada') {
+      const cur = lastConsultaByPatient.get(c.patient_id)
+      if (!cur || c.data_hora > cur) lastConsultaByPatient.set(c.patient_id, c.data_hora)
+    }
+  }
+  const ativosCount       = (patients ?? []).filter(p =>
+    p.status_paciente !== 'obito' && (lastConsultaByPatient.get(p.id) ?? '') >= cutoffISO
+  ).length
+  const consultasMesCount = (consultas ?? []).filter(c =>
+    c.status === 'realizada' && c.data_hora.startsWith(mesAtual)
+  ).length
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero — saudação personalizada */}
@@ -258,15 +300,44 @@ export default async function MedicoPage({
             )}
           </div>
         </div>
+
+        {/* Card identidade da clínica */}
+        <div
+          className="flex items-center gap-4 mt-5 px-5 py-4 rounded-2xl"
+          style={{ backgroundColor: '#062149' }}
+        >
+          <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logogui.svg" alt="Logo da clínica" className="w-8 h-8" style={{ filter: 'invert(1)' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm leading-snug truncate">
+              {clinicName ?? (cardName ? `Consultório Dr. ${cardName}` : 'Clínica')}
+            </p>
+            <p className="text-white/50 text-xs mt-0.5 truncate">
+              {cardSpecialty ?? 'Medicina'}{cardCrm ? ` · ${cardCrm}` : ''}
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-6 flex-shrink-0">
+            <div className="text-right">
+              <p className="text-white text-xl font-bold leading-none">{ativosCount}</p>
+              <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">pacientes ativos</p>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-right">
+              <p className="text-white text-xl font-bold leading-none">{consultasMesCount}</p>
+              <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">consultas este mês</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
         <MedicoDashboard
           currentRole={currentRole}
           doctorId={userId}
-          doctorName={(currentRole === 'secretaria' ? medicoProfile?.full_name : currentProfile?.full_name) ?? null}
-          doctorCrm={(currentRole === 'secretaria' ? medicoProfile?.crm : currentProfile?.crm) ?? null}
-          doctorSpecialty={(currentRole === 'secretaria' ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null}
+          doctorName={rawDoctorName}
+          doctorCrm={rawDoctorCrm}
           calendarUrl={tenantId ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}` : null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}

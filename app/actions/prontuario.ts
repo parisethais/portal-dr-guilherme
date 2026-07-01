@@ -229,6 +229,7 @@ export async function upsertImagingResult(data: {
   laudo_resumido?: string | null
   file_url?:       string | null
   file_name?:      string | null
+  extra_files?:    { url: string; name: string }[] | null
 }): Promise<ActionResult<{ id: string }>> {
   // Auth check via cookie client
   const supabase = await createClient()

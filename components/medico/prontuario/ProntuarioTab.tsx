@@ -8,7 +8,6 @@ import EvolucaoPanel from './EvolucaoPanel'
 import LabResultsPanel from './LabResultsPanel'
 import ImagingPanel from './ImagingPanel'
 import SumarioPanel from './SumarioPanel'
-import MemedPrescricao from './MemedPrescricao'
 import PrescricoesPanel from './PrescricoesPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
@@ -393,14 +392,6 @@ export default function ProntuarioTab({
           ))}
         </div>
 
-        <MemedPrescricao
-          patientId={patientId}
-          consultaId={selectedId || null}
-          patientName={patientName}
-          patientPhone={patientPhone}
-          patientBirthday={patientBirthday}
-          patientGender={patientGender}
-        />
       </div>
 
       {/* Banner de prontuário finalizado */}
@@ -428,8 +419,6 @@ export default function ProntuarioTab({
             consulta={selectedConsulta}
             consultas={realizadas}
             isFinalized={isFinalized}
-            patientId={patientId}
-            retornoPrevisto={patientRetorno}
             onDirtyChange={setHasDirty}
             onRefresh={onRefresh}
           />
@@ -439,6 +428,8 @@ export default function ProntuarioTab({
             consulta={selectedConsulta}
             consultas={realizadas}
             isFinalized={isFinalized}
+            patientId={patientId}
+            retornoPrevisto={patientRetorno}
             onDirtyChange={setHasDirty}
             onRefresh={onRefresh}
           />
@@ -461,10 +452,12 @@ export default function ProntuarioTab({
                   <div key={c.id} className="rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 space-y-2.5 text-xs">
                     <div className="flex items-center gap-2 text-gray-500 font-semibold">
                       <span>{data}</span>
-                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-primary text-[10px]">{tipo}</span>
+                      {activeTab !== 'diagnosticos' && (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-primary text-[10px]">{tipo}</span>
+                      )}
                       {c.prontuario_finalizado && <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] flex items-center gap-0.5"><Lock className="w-2.5 h-2.5" />Finalizado</span>}
                     </div>
-                    {(c.pas != null || c.pad != null || c.fc != null) && (
+                    {activeTab !== 'evolucao' && (c.pas != null || c.pad != null || c.fc != null) && (
                       <div className="flex gap-4 text-gray-600">
                         {c.pas != null && <span>PA: <strong>{c.pas}/{c.pad ?? '—'}</strong> mmHg</span>}
                         {c.fc  != null && <span>FC: <strong>{c.fc}</strong> bpm</span>}
@@ -480,6 +473,14 @@ export default function ProntuarioTab({
                         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Conduta</p>
                         <div className="line-clamp-3 overflow-hidden">
                           <RichText value={c.conduta} className="!text-gray-600" />
+                        </div>
+                      </div>
+                    )}
+                    {activeTab === 'evolucao' && c.impressao && (
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Impressão</p>
+                        <div className="line-clamp-2 overflow-hidden">
+                          <RichText value={c.impressao} className="!text-gray-600 !italic" />
                         </div>
                       </div>
                     )}

@@ -23,6 +23,7 @@ export async function submitCadastro(
   const nome_mae      = (formData.get('nome_mae')        as string)?.trim()
   const profissao     = (formData.get('profissao')       as string)?.trim()
   const cns           = (formData.get('cns')             as string)?.trim() || null
+  const tenant_id     = (formData.get('tenant_id')       as string)?.trim() || 'dr_guilherme'
   const aceitouTermos = formData.get('aceita_termos') === 'true'
   const aceitouComms  = formData.get('aceita_comms')  === 'true'
 
@@ -79,6 +80,7 @@ export async function submitCadastro(
     perfil_completo:  true,
     lgpd_accepted:    true,
     lgpd_accepted_at: LGPD_ACCEPTED_AT(),
+    tenant_id,
   }, { onConflict: 'id' })
 
   if (profileError) {

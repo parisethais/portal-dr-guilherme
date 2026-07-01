@@ -554,12 +554,10 @@ function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo, getAlerta }: 
 interface PanoramaTabProps {
   patients: Profile[]
   consultas: Consulta[]
-  doctorName?:      string | null
-  doctorCrm?:       string | null
-  doctorSpecialty?: string | null
+
 }
 
-export default function PanoramaTab({ patients, consultas, doctorName, doctorCrm, doctorSpecialty }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -743,36 +741,6 @@ export default function PanoramaTab({ patients, consultas, doctorName, doctorCrm
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-
-      {/* ── Card identidade da clínica ── */}
-      <div
-        className="flex items-center gap-4 px-5 py-4 rounded-2xl"
-        style={{ backgroundColor: '#062149' }}
-      >
-        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logogui.svg" alt="Logo da clínica" className="w-9 h-9" style={{ filter: 'invert(1)' }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold text-sm leading-snug truncate">
-            {doctorName ? `Dr. ${doctorName}` : 'Clínica Dr. Guilherme'}
-          </p>
-          <p className="text-white/50 text-xs mt-0.5">
-            {doctorSpecialty ?? 'Medicina'}{doctorCrm ? ` · CRM-SP ${doctorCrm}` : ''}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-6 flex-shrink-0">
-          <div className="text-right">
-            <p className="text-white text-xl font-bold leading-none">{totais.ativo}</p>
-            <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">pacientes ativos</p>
-          </div>
-          <div className="w-px h-8 bg-white/10" />
-          <div className="text-right">
-            <p className="text-white text-xl font-bold leading-none">{totais.consultasMes}</p>
-            <p className="text-white/45 text-[11px] mt-1 uppercase tracking-wide">consultas este mês</p>
-          </div>
-        </div>
-      </div>
 
       {/* ── 1. Stats band — desktop ── */}
       <div className="hidden sm:flex gap-3">

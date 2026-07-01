@@ -26,6 +26,8 @@ const NAME_TO_SLUG: Record<string, string> = {
   'Primeira Consulta Desconto':   'primeira_consulta_desconto',
   'Nova Consulta (Desconto)':     'nova_consulta_desconto',
   'Nova Consulta Desconto':       'nova_consulta_desconto',
+  'Reunião':                      'reuniao',
+  'Reuniao':                      'reuniao',
 }
 
 /**

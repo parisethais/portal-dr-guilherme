@@ -10,6 +10,7 @@ import DoctorProfileSettings         from '@/components/medico/configuracoes/Doc
 import GoogleCalendarSettings        from '@/components/medico/configuracoes/GoogleCalendarSettings'
 import AssinaturaDigitalSettings     from '@/components/medico/configuracoes/AssinaturaDigitalSettings'
 import ExamCatalogSettings           from '@/components/medico/configuracoes/ExamCatalogSettings'
+import DocumentTemplatesSettings     from '@/components/medico/configuracoes/DocumentTemplatesSettings'
 
 export default async function ConfiguracoesPage() {
   const supabase      = await createClient()
@@ -111,6 +112,12 @@ export default async function ConfiguracoesPage() {
         <div className="space-y-3">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Catálogo de Exames</h2>
           <ExamCatalogSettings initialExams={exams} />
+        </div>
+
+        {/* ── Modelos de Documentos ────────────────── */}
+        <div className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Documentos</h2>
+          <DocumentTemplatesSettings />
         </div>
 
       </div>

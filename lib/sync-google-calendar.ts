@@ -13,6 +13,7 @@ const TIPO_LABEL: Record<ConsultaTipo, string> = {
   retorno:                    'Retorno',
   primeira_consulta_desconto: 'Primeira Consulta (Desconto)',
   nova_consulta_desconto:     'Nova Consulta (Desconto)',
+  reuniao:                    'Reunião',
 }
 
 const TZ = 'America/Sao_Paulo'

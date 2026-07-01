@@ -96,6 +96,7 @@ export async function updatePatientFull(
     diagnostico?: string | null
     status_paciente?: StatusPaciente
     obs_secretaria?: string | null
+    obs_pessoal?: string | null
     perfil_completo?: boolean
   }
 ): Promise<ActionResult> {

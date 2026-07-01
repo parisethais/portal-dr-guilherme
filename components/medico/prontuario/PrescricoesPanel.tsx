@@ -1,11 +1,50 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import type { Prescricao } from '@/lib/types'
 import { createPrescricao, inativarPrescricao } from '@/app/actions/prescricoes'
 import {
   Pill, Plus, X, ChevronDown, Loader2, AlertCircle, CalendarX,
 } from 'lucide-react'
+
+const DRUG_LIST = [
+  // Anti-hipertensivos
+  'Losartana', 'Valsartana', 'Olmesartana', 'Irbesartana', 'Telmisartana', 'Candesartana',
+  'Enalapril', 'Lisinopril', 'Ramipril', 'Captopril', 'Perindopril', 'Benazepril',
+  'Anlodipino', 'Nifedipino', 'Verapamil', 'Diltiazem',
+  'Atenolol', 'Carvedilol', 'Metoprolol', 'Bisoprolol', 'Propranolol', 'Nebivolol',
+  'Hidroclorotiazida', 'Clortalidona', 'Furosemida', 'Espironolactona', 'Eplerenona', 'Indapamida',
+  'Alfametildopa', 'Clonidina', 'Doxazosina', 'Prazosina', 'Hidralazina', 'Minoxidil',
+  'Sacubitril/Valsartana',
+  // Diuréticos
+  'Acetazolamida', 'Amilorida', 'Triamtereno', 'Tolvaptana',
+  // Metabolismo ósseo / mineral
+  'Carbonato de cálcio', 'Acetato de cálcio', 'Sevelâmer', 'Carbonato de lantânio',
+  'Colecalciferol', 'Calcitriol', 'Paricalcitol', 'Alfacalcidol',
+  'Cinacalcete',
+  // Anemia
+  'Eritropoetina', 'Darbepoetina alfa', 'Ferro sacarato IV', 'Sulfato ferroso', 'Ferro polimaltosado',
+  // Uremia / diálise
+  'Bicarbonato de sódio',
+  // Hipopotassemia/Hiperpotassemia
+  'Cloreto de potássio', 'Patirômer', 'Zirconium ciclossilicato de sódio',
+  // Ácido úrico
+  'Alopurinol', 'Febuxostato', 'Benzbromarona',
+  // Diabetes
+  'Metformina', 'Empagliflozina', 'Dapagliflozina', 'Canagliflozina',
+  'Semaglutida', 'Liraglutida', 'Dulaglutida', 'Sitagliptina', 'Saxagliptina',
+  'Glibenclamida', 'Glimepirida', 'Insulina NPH', 'Insulina Regular', 'Insulina Glargina', 'Insulina Degludeca',
+  // Dislipidemia
+  'Atorvastatina', 'Rosuvastatina', 'Sinvastatina', 'Pravastatina', 'Ezetimiba', 'Bezafibrato', 'Fenofibrato',
+  // Imunossupressores (transplante)
+  'Tacrolimus', 'Ciclosporina', 'Micofenolato mofetil', 'Azatioprina', 'Prednisona', 'Metilprednisolona',
+  'Sirolimus', 'Everolimus', 'Belatacept',
+  // Anticoagulantes
+  'Warfarina', 'Rivaroxabana', 'Apixabana', 'Heparina', 'Enoxaparina',
+  // Outros
+  'Ácido fólico', 'Vitamina B12', 'Hidróxido de magnésio', 'Omeprazol', 'Pantoprazol',
+  'Amoxicilina', 'Nitrofurantoína', 'Ciprofloxacino', 'Cotrimoxazol',
+]
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {
@@ -35,6 +74,24 @@ export default function PrescricoesPanel({ patientId, initialPrescricoes }: Prop
   const [isPending,   startTransition] = useTransition()
   const [error,       setError]       = useState('')
   const [inativaOpen, setInativaOpen] = useState(false)
+  const [showDrugDropdown, setShowDrugDropdown] = useState(false)
+  const medicamentoRef  = useRef<HTMLInputElement>(null)
+  const drugDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (!drugDropdownRef.current?.contains(e.target as Node) &&
+          !medicamentoRef.current?.contains(e.target as Node))
+        setShowDrugDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const drugQ = form.medicamento.trim().toLowerCase()
+  const drugSuggestions = drugQ.length >= 2
+    ? DRUG_LIST.filter(d => d.toLowerCase().includes(drugQ)).slice(0, 8)
+    : []
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -130,14 +187,40 @@ export default function PrescricoesPanel({ patientId, initialPrescricoes }: Prop
             <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
               Medicamento <span className="text-red-400">*</span>
             </label>
-            <input
-              type="text"
-              name="medicamento"
-              value={form.medicamento}
-              onChange={handleChange}
-              placeholder="Ex: Losartana"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div className="relative">
+              <input
+                ref={medicamentoRef}
+                type="text"
+                name="medicamento"
+                value={form.medicamento}
+                onChange={e => { handleChange(e); setShowDrugDropdown(true) }}
+                onFocus={() => drugQ.length >= 2 && setShowDrugDropdown(true)}
+                placeholder="Ex: Losartana"
+                autoComplete="off"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {showDrugDropdown && drugSuggestions.length > 0 && (
+                <div ref={drugDropdownRef} className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                  <ul className="max-h-48 overflow-y-auto py-1">
+                    {drugSuggestions.map(drug => (
+                      <li key={drug}>
+                        <button
+                          type="button"
+                          onMouseDown={e => {
+                            e.preventDefault()
+                            setForm(prev => ({ ...prev, medicamento: drug }))
+                            setShowDrugDropdown(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-blue-50 hover:text-primary transition-colors"
+                        >
+                          {drug}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* dose + posologia */}

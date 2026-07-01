@@ -5,8 +5,7 @@ import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { setProntuarioDirty } from '@/lib/prontuario-dirty'
-import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, CalendarClock } from 'lucide-react'
-import { updateRetornoPrevisto } from '@/app/actions/profile'
+import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, GripVertical, Pencil } from 'lucide-react'
 
 // ── Lista de diagnósticos de nefrologia ───────────────────────
 const PRESET_DIAGNOSES = [
@@ -80,51 +79,27 @@ export function parseDiagnosticos(raw: string | null): DiagnosisEntry[] {
   return []
 }
 
-// ── Opções de retorno previsto ────────────────────────────────
-const RETORNO_OPCOES = [
-  { label: 'Não definido', value: '' },
-  { label: '30 dias',      value: '30d' },
-  { label: '45 dias',      value: '45d' },
-  { label: '3 meses',      value: '3m' },
-  { label: '6 meses',      value: '6m' },
-  { label: 'Outro...',     value: 'outro' },
-]
-
-function calcRetornoDate(opcao: string, outroValor?: number, outroUnidade?: 'dias' | 'meses'): string | null {
-  if (!opcao) return null
-  const d = new Date()
-  if (opcao === '30d') d.setDate(d.getDate() + 30)
-  else if (opcao === '45d') d.setDate(d.getDate() + 45)
-  else if (opcao === '3m')  d.setMonth(d.getMonth() + 3)
-  else if (opcao === '6m')  d.setMonth(d.getMonth() + 6)
-  else if (opcao === 'outro' && outroValor && outroValor > 0) {
-    if (outroUnidade === 'meses') d.setMonth(d.getMonth() + outroValor)
-    else d.setDate(d.getDate() + outroValor)
-  } else return null
-  return d.toISOString().slice(0, 10)
-}
-
 // ── Props ─────────────────────────────────────────────────────
 interface Props {
   consulta:           Consulta
   consultas:          Consulta[]
   isFinalized:        boolean
-  patientId:          string
-  retornoPrevisto?:   string | null
   onDirtyChange?:     (dirty: boolean) => void
   onRefresh?:         () => void
 }
 
-export default function DiagnosticosPanel({ consulta, consultas, isFinalized, patientId, retornoPrevisto, onDirtyChange, onRefresh }: Props) {
+export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
   const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
   const [isDirty, setIsDirty]           = useState(false)
   const [saved, setSaved]               = useState(false)
   const [error, setError]               = useState('')
   const [isPending, startTransition]    = useTransition()
-  const [retornoOpcao, setRetornoOpcao]   = useState('')
-  const [outroValor, setOutroValor]       = useState('')
-  const [outroUnidade, setOutroUnidade]   = useState<'dias' | 'meses'>('dias')
+
+  // Inline editing state for nome
+  const [editingNomeIdx, setEditingNomeIdx] = useState<number | null>(null)
+  const [editingNomeVal, setEditingNomeVal] = useState('')
+  const nomeInputRef = useRef<HTMLInputElement>(null)
 
   useUnsavedWarning(isDirty && !isFinalized)
 
@@ -132,6 +107,14 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
     setProntuarioDirty(isDirty && !isFinalized)
     onDirtyChange?.(isDirty && !isFinalized)
   }, [isDirty, isFinalized]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Focus the nome input when entering edit mode
+  useEffect(() => {
+    if (editingNomeIdx !== null) {
+      nomeInputRef.current?.focus()
+      nomeInputRef.current?.select()
+    }
+  }, [editingNomeIdx])
 
   // Autocomplete
   const [searchText, setSearchText]     = useState('')
@@ -160,6 +143,7 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
     setError('')
     setSearchText('')
     setShowDropdown(false)
+    setEditingNomeIdx(null)
     // Limpa refs antigas ao trocar de consulta
     textareaRefs.current = []
   }, [consulta.id])
@@ -217,6 +201,46 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
     markDirty()
   }
 
+  function startEditingNome(idx: number) {
+    setEditingNomeIdx(idx)
+    setEditingNomeVal(entries[idx].nome)
+  }
+
+  function commitNomeEdit() {
+    if (editingNomeIdx === null) return
+    const val = editingNomeVal.trim()
+    if (val && val !== entries[editingNomeIdx].nome) {
+      setEntries(prev => prev.map((e, i) => i === editingNomeIdx ? { ...e, nome: val } : e))
+      markDirty()
+    }
+    setEditingNomeIdx(null)
+  }
+
+  // ── Drag-and-drop reordering ──────────────────────────────
+  const dragIndexRef = useRef<number | null>(null)
+
+  function handleDragStart(idx: number) {
+    dragIndexRef.current = idx
+  }
+
+  function handleDragOver(e: React.DragEvent, idx: number) {
+    e.preventDefault()
+    const from = dragIndexRef.current
+    if (from === null || from === idx) return
+    setEntries(prev => {
+      const next = [...prev]
+      const [item] = next.splice(from, 1)
+      next.splice(idx, 0, item)
+      return next
+    })
+    dragIndexRef.current = idx
+    markDirty()
+  }
+
+  function handleDragEnd() {
+    dragIndexRef.current = null
+  }
+
   function handleCarryForward() {
     if (!carrySource) return
     setEntries(parseDiagnosticos(carrySource.diagnosticos ?? null))
@@ -231,15 +255,6 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
         diagnosticos: entries.length > 0 ? JSON.stringify(entries) : null,
       })
       if (!res.success) { setError(res.error); return }
-
-      // Salva retorno previsto + notifica secretaria
-      if (retornoOpcao) {
-        const novaData = calcRetornoDate(retornoOpcao, Number(outroValor) || undefined, outroUnidade)
-        updateRetornoPrevisto(patientId, novaData, {
-          consultaId: consulta.id,
-          notificar: true,
-        }).catch(console.error)
-      }
 
       setIsDirty(false)
       onDirtyChange?.(false)
@@ -283,17 +298,11 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center pt-1">
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Lock className="w-3 h-3" />
             {entries.length} diagnóstico{entries.length !== 1 ? 's' : ''} · prontuário finalizado
           </div>
-          {retornoPrevisto && (
-            <div className="flex items-center gap-1.5 text-xs text-primary bg-blue-50 border border-primary/20 rounded-lg px-2.5 py-1">
-              <CalendarClock className="w-3 h-3" />
-              Retorno: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
-            </div>
-          )}
         </div>
       </div>
     )
@@ -401,10 +410,42 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
           {entries.map((entry, idx) => (
             <div
               key={idx}
-              className="border border-primary/20 bg-blue-50/30 rounded-xl p-3 space-y-2"
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={e => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              className="group border border-primary/20 bg-blue-50/30 rounded-xl p-3 space-y-2 cursor-grab active:cursor-grabbing active:opacity-60 active:shadow-lg transition-opacity"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-gray-900 leading-snug">{entry.nome}</span>
+                <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                  <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+                  {editingNomeIdx === idx ? (
+                    <input
+                      ref={nomeInputRef}
+                      type="text"
+                      value={editingNomeVal}
+                      onChange={e => setEditingNomeVal(e.target.value)}
+                      onBlur={commitNomeEdit}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); commitNomeEdit() }
+                        if (e.key === 'Escape') { setEditingNomeIdx(null) }
+                      }}
+                      className="flex-1 text-sm font-semibold text-gray-900 leading-snug border border-primary/40 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary bg-white"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 leading-snug">{entry.nome}</span>
+                      <button
+                        type="button"
+                        onClick={() => startEditingNome(idx)}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-primary transition-all flex-shrink-0"
+                        title="Editar nome"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => removeDiagnosis(idx)}
@@ -436,53 +477,6 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, pa
       {error && (
         <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
-
-      {/* ── Retorno previsto ── */}
-      <div className="space-y-2 px-3 py-2.5 bg-blue-50/60 border border-primary/15 rounded-xl">
-        <div className="flex items-center gap-3">
-          <CalendarClock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Retorno em:</span>
-          <select
-            value={retornoOpcao}
-            onChange={e => { setRetornoOpcao(e.target.value); setOutroValor('') }}
-            className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {RETORNO_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          {retornoPrevisto && !retornoOpcao && (
-            <span className="text-[11px] text-gray-400 whitespace-nowrap">
-              Atual: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
-            </span>
-          )}
-        </div>
-
-        {retornoOpcao === 'outro' && (
-          <div className="flex items-center gap-2 pl-6">
-            <input
-              type="number"
-              min={1}
-              value={outroValor}
-              onChange={e => setOutroValor(e.target.value)}
-              placeholder="Ex: 60"
-              className="w-20 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="button"
-              onClick={() => setOutroUnidade('dias')}
-              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'dias' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}
-            >
-              dias
-            </button>
-            <button
-              type="button"
-              onClick={() => setOutroUnidade('meses')}
-              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'meses' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}
-            >
-              meses
-            </button>
-          </div>
-        )}
-      </div>
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-400">

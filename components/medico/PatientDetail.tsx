@@ -15,6 +15,7 @@ import ProntuarioTab from './prontuario/ProntuarioTab'
 import PatientCadastroTab from './PatientCadastroTab'
 import MonitoramentoTab from './prontuario/MonitoramentoTab'
 import MemedPrescricao from './prontuario/MemedPrescricao'
+import DocumentosTab from './prontuario/DocumentosTab'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 
 function FileIcon({ fileType }: { fileType: string | null }) {
@@ -22,6 +23,16 @@ function FileIcon({ fileType }: { fileType: string | null }) {
   if (fileType?.includes('image')) return <Image className="w-4 h-4 text-blue-500" />
   if (fileType?.includes('video')) return <Video className="w-4 h-4 text-violet-500" />
   return <File className="w-4 h-4 text-gray-500" />
+}
+
+function calcAge(dataNascimento: string | null): number | null {
+  if (!dataNascimento) return null
+  const birth = new Date(dataNascimento)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
 }
 
 function formatSize(bytes: number | null): string {
@@ -35,7 +46,7 @@ function actionLabel(fileType: string | null): string {
   return 'Baixar'
 }
 
-type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento' | 'prescricao'
+type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento' | 'prescricao' | 'documentos'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -52,7 +63,7 @@ interface PatientDetailProps {
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento', 'prescricao']
+const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento', 'prescricao', 'documentos']
 
 export default function PatientDetail({
   currentRole,
@@ -85,10 +96,11 @@ export default function PatientDetail({
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [
     ...(canSeeProntuario ? [{ id: 'prontuario' as DetailTab, label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> }] : []),
     { id: 'monitoramento', label: 'Monitoramento', icon: <Activity      className="w-4 h-4" /> },
-    { id: 'exames',        label: 'Exames',        icon: <ClipboardList className="w-4 h-4" /> },
+    { id: 'exames',        label: 'Arquivos',      icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'faturas',       label: 'Faturas',       icon: <Receipt       className="w-4 h-4" /> },
     { id: 'cadastro',      label: 'Cadastro',      icon: <Contact       className="w-4 h-4" /> },
     ...(canSeeProntuario ? [{ id: 'prescricao' as DetailTab, label: 'Prescrição', icon: <Pill className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'documentos' as DetailTab, label: 'Documentos', icon: <FileText className="w-4 h-4" /> }] : []),
   ]
 
   return (
@@ -107,9 +119,21 @@ export default function PatientDetail({
           <UserRound className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-gray-900">{patient.full_name || 'Nome não informado'}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-gray-900">{patient.full_name || 'Nome não informado'}</h3>
+            {calcAge(patient.data_nascimento) !== null && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/8 text-primary/80">
+                {calcAge(patient.data_nascimento)} anos
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             {patient.cpf && <span className="text-xs text-gray-500">CPF: {patient.cpf}</span>}
+            {patient.data_nascimento && (
+              <span className="text-xs text-gray-400">
+                {new Date(patient.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+              </span>
+            )}
             <span className="text-xs text-gray-400">Desde {formatDate(patient.created_at)}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               patient.lgpd_accepted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -120,18 +144,25 @@ export default function PatientDetail({
         </div>
       </div>
 
-      {/* Main tab bar — fundo primary no ativo, claramente diferente dos sub-tabs */}
-      <div className="flex flex-wrap gap-1.5">
+      {patient.obs_pessoal && (
+        <div className="flex items-start gap-2 px-1 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+          <span className="font-semibold whitespace-nowrap">Obs.:</span>
+          <span className="leading-relaxed whitespace-pre-wrap">{patient.obs_pessoal}</span>
+        </div>
+      )}
+
+      {/* Main tab bar */}
+      <div className="-mx-1 px-1 pb-3 border-b-2 border-gray-100 flex flex-wrap gap-1.5">
         {detailTabs.map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => guardNavigation(() => setActiveDetailTab(tab.id))}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all',
+              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all',
               activeDetailTab === tab.id
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                ? 'bg-primary text-white shadow-md ring-1 ring-primary/20'
+                : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-gray-700 hover:bg-gray-50'
             )}
           >
             {tab.icon}
@@ -214,7 +245,7 @@ export default function PatientDetail({
 
       {/* ── Tab: Cadastro ── */}
       {activeDetailTab === 'cadastro' && (
-        <PatientCadastroTab patient={patient} onDeleted={onBack} />
+        <PatientCadastroTab patient={patient} currentRole={currentRole} onDeleted={onBack} />
       )}
 
       {/* ── Tab: Prescrição ── */}
@@ -223,9 +254,18 @@ export default function PatientDetail({
           patientId={patient.id}
           consultaId={null}
           patientName={patient.full_name ?? 'Paciente'}
+          patientCpf={patient.cpf}
           patientPhone={patient.phone}
           patientBirthday={patient.data_nascimento}
           patientGender={patient.sexo}
+        />
+      )}
+
+      {/* ── Tab: Documentos ── */}
+      {activeDetailTab === 'documentos' && canSeeProntuario && (
+        <DocumentosTab
+          patientId={patient.id}
+          patientName={patient.full_name ?? 'Paciente'}
         />
       )}
 

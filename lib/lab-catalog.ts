@@ -188,7 +188,16 @@ export function classifyValue(
   if (def.qualitative) {
     const v = value.toLowerCase().trim()
     if (!def.normalAnswer) return null
-    const isNormal = v.startsWith(def.normalAnswer)
+    // Aliases para variações laboratoriais de resultados negativos/normais
+    const NORMAL_ALIASES: Record<string, string[]> = {
+      'neg':     ['neg', 'negativo', 'negative', 'não detectado', 'nao detectado',
+                  'ausente', 'normal', 'não reagente', 'nao reagente', 'nao reag', 'não reag',
+                  'sem alteração', 'sem alteracao'],
+      'n.react': ['n.react', 'não reagente', 'nao reagente', 'nao reag', 'não reag',
+                  'não reativo', 'nao reativo', 'negativo', 'neg', 'nr'],
+    }
+    const aliases = NORMAL_ALIASES[def.normalAnswer] ?? [def.normalAnswer]
+    const isNormal = aliases.some(a => v.startsWith(a))
     return isNormal ? 'normal' : 'crit'
   }
 

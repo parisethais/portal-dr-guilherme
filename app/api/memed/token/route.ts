@@ -22,12 +22,16 @@ import { createAdminClient } from '@/lib/supabase/admin-client'
 const MEMED_API_URL    = process.env.MEMED_API_URL    ?? 'https://integrations.api.memed.com.br/v1'
 const MEMED_API_KEY    = process.env.MEMED_API_KEY
 const MEMED_SECRET_KEY = process.env.MEMED_SECRET_KEY
-const TOKEN_TTL_HOURS  = 8
+const TOKEN_TTL_HOURS  = 0 // sem cache — Memed exige token fresco a cada sessão
 
 const MEMED_HEADERS = {
   'Accept':        'application/vnd.api+json',
   'Content-Type':  'application/json',
   'Cache-Control': 'no-cache',
+}
+
+function memedUrl(path: string): string {
+  return `${MEMED_API_URL}${path}?api-key=${MEMED_API_KEY}&secret-key=${MEMED_SECRET_KEY}`
 }
 
 // Converte CRM "SP-123456" ou "SP 123456" → { board_state: "SP", board_number: "123456" }
@@ -40,8 +44,7 @@ function parseCrm(crm: string): { board_state: string; board_number: string } | 
 // GET prescritor pelo CPF → devolve token ou null
 async function fetchTokenByCpf(cpf: string): Promise<string | null> {
   const cpfDigits = cpf.replace(/\D/g, '')
-  const url = `${MEMED_API_URL}/sinapse-prescricao/usuarios/${cpfDigits}?api-key=${MEMED_API_KEY}&secret-key=${MEMED_SECRET_KEY}`
-  const res = await fetch(url, { headers: MEMED_HEADERS })
+  const res = await fetch(memedUrl(`/sinapse-prescricao/usuarios/${cpfDigits}`), { headers: MEMED_HEADERS })
   if (!res.ok) return null
   const json = await res.json()
   return (json?.data?.attributes?.token as string | undefined) ?? null
@@ -69,8 +72,7 @@ async function registerPrescritor(profile: {
   const nome      = nameParts[0]
   const sobrenome = nameParts.slice(1).join(' ') || nome
 
-  const url = `${MEMED_API_URL}/sinapse-prescricao/usuarios?api-key=${MEMED_API_KEY}&secret-key=${MEMED_SECRET_KEY}`
-  const res = await fetch(url, {
+  const res = await fetch(memedUrl('/sinapse-prescricao/usuarios'), {
     method:  'POST',
     headers: MEMED_HEADERS,
     body: JSON.stringify({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import type { ImagingResult, ImagingTipo } from '@/lib/types'
+import type { ImagingResult } from '@/lib/types'
 import { upsertImagingResult, deleteImagingResult } from '@/app/actions/prontuario'
 import { uploadImagingFile, analyzeImagingFile } from '@/app/actions/imaging'
 import {
@@ -10,7 +10,9 @@ import {
 } from 'lucide-react'
 
 // ── Labels ────────────────────────────────────────────────────
-const TIPO_LABELS: Record<ImagingTipo, string> = {
+const PERSONALIZADO_KEY = '__personalizado__'
+
+const TIPO_LABELS: Record<string, string> = {
   usg_rins:   'USG Rins e Vias Urinárias',
   eco:        'Ecocardiograma',
   tc_torax:   'TC Tórax',
@@ -19,7 +21,11 @@ const TIPO_LABELS: Record<ImagingTipo, string> = {
   outro:      'Outro',
 }
 
-const TIPOS: ImagingTipo[] = ['usg_rins', 'eco', 'tc_torax', 'tc_abdomen', 'ecg', 'outro']
+const TIPOS: string[] = ['usg_rins', 'eco', 'tc_torax', 'tc_abdomen', 'ecg', 'outro']
+
+function getTipoLabel(tipo: string): string {
+  return TIPO_LABELS[tipo] ?? tipo
+}
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {
@@ -33,21 +39,24 @@ interface Props {
 }
 
 interface FormState {
-  tipo:           ImagingTipo
+  tipo:           string
+  tipo_custom:    string
   data_realizado: string
   laudo_resumido: string
   file_url:       string | null
   file_name:      string | null
+  extra_files:    { url: string; name: string }[]
 }
 
 export default function ImagingPanel({ imagingResults: initial, patientId }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef      = useRef<HTMLInputElement>(null)
+  const extraFileInputRef = useRef<HTMLInputElement>(null)
 
   const [results, setResults]        = useState<ImagingResult[]>(initial)
   const [showForm, setShowForm]      = useState(false)
   const [form, setForm]              = useState<FormState>({
-    tipo: 'usg_rins', data_realizado: '', laudo_resumido: '',
-    file_url: null, file_name: null,
+    tipo: 'usg_rins', tipo_custom: '', data_realizado: '', laudo_resumido: '',
+    file_url: null, file_name: null, extra_files: [],
   })
   const [editingId, setEditingId]    = useState<string | null>(null)
   const [formError, setFormError]    = useState('')
@@ -58,32 +67,36 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Most recent per tipo
-  const latestByTipo: Partial<Record<ImagingTipo, ImagingResult>> = {}
+  const latestByTipo: Record<string, ImagingResult> = {}
   for (const r of [...results].sort((a, b) => b.data_realizado.localeCompare(a.data_realizado))) {
     if (!latestByTipo[r.tipo]) latestByTipo[r.tipo] = r
   }
-  const displayTipos = TIPOS.filter(t => latestByTipo[t])
+  const displayTipos = Object.keys(latestByTipo)
 
   function resetForm() {
     setShowForm(false); setEditingId(null); setAiNote('')
-    setForm({ tipo: 'usg_rins', data_realizado: '', laudo_resumido: '', file_url: null, file_name: null })
+    setForm({ tipo: 'usg_rins', tipo_custom: '', data_realizado: '', laudo_resumido: '', file_url: null, file_name: null, extra_files: [] })
     setFormError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (extraFileInputRef.current) extraFileInputRef.current.value = ''
   }
 
   function openEdit(r: ImagingResult) {
     setEditingId(r.id)
+    const isPreset = TIPOS.includes(r.tipo)
     setForm({
-      tipo: r.tipo,
+      tipo:           isPreset ? r.tipo : PERSONALIZADO_KEY,
+      tipo_custom:    isPreset ? '' : r.tipo,
       data_realizado: r.data_realizado,
       laudo_resumido: r.laudo_resumido ?? '',
-      file_url: r.file_url ?? null,
-      file_name: r.file_name ?? null,
+      file_url:       r.file_url ?? null,
+      file_name:      r.file_name ?? null,
+      extra_files:    r.extra_files ?? [],
     })
     setShowForm(true); setFormError(''); setAiNote('')
   }
 
-  // ── Upload de arquivo ────────────────────────────────────────
+  // ── Upload de arquivo (principal) ────────────────────────────
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -97,6 +110,19 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
     setForm(f => ({ ...f, file_url: res.data!.url, file_name: res.data!.fileName }))
   }
 
+  // ── Upload de arquivo extra ──────────────────────────────────
+  async function handleExtraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadImagingFile(patientId, fd)
+    setIsUploading(false)
+    if (!res.success) { setFormError(res.error); return }
+    setForm(f => ({ ...f, extra_files: [...f.extra_files, { url: res.data!.url, name: res.data!.fileName }] }))
+  }
+
   // ── Análise com IA ───────────────────────────────────────────
   async function handleAnalyze() {
     if (!form.file_url) return
@@ -105,9 +131,11 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
     setIsAnalyzing(false)
     if (!res.success) { setFormError(res.error); return }
     const { tipo_sugerido, data_realizado, laudo_extraido } = res.data!
+    const isPreset = TIPOS.includes(tipo_sugerido)
     setForm(f => ({
       ...f,
-      tipo:           tipo_sugerido,
+      tipo:           isPreset ? tipo_sugerido : PERSONALIZADO_KEY,
+      tipo_custom:    isPreset ? '' : tipo_sugerido,
       data_realizado: data_realizado ?? f.data_realizado,
       laudo_resumido: laudo_extraido,
     }))
@@ -116,17 +144,20 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
 
   // ── Salvar ───────────────────────────────────────────────────
   function handleSave() {
+    const tipoFinal = form.tipo === PERSONALIZADO_KEY ? form.tipo_custom.trim() : form.tipo
+    if (!tipoFinal) { setFormError('Informe o nome do exame.'); return }
     if (!form.data_realizado) { setFormError('Informe a data de realização.'); return }
     setFormError('')
     startTransition(async () => {
       const payload = {
         ...(editingId ? { id: editingId } : {}),
         patient_id:     patientId,
-        tipo:           form.tipo,
+        tipo:           tipoFinal,
         data_realizado: form.data_realizado,
         laudo_resumido: form.laudo_resumido.trim() || null,
         file_url:       form.file_url,
         file_name:      form.file_name,
+        extra_files:    form.extra_files.length > 0 ? form.extra_files : null,
       }
       const res = await upsertImagingResult(payload)
       if (!res.success) { setFormError(res.error); return }
@@ -137,11 +168,12 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
         return [...without, {
           id:             newId,
           patient_id:     patientId,
-          tipo:           form.tipo,
+          tipo:           tipoFinal,
           data_realizado: form.data_realizado,
           laudo_resumido: form.laudo_resumido.trim() || null,
           file_url:       form.file_url,
           file_name:      form.file_name,
+          extra_files:    form.extra_files.length > 0 ? form.extra_files : null,
           created_at:     new Date().toISOString(),
         }]
       })
@@ -197,11 +229,21 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
               <label className="text-xs font-medium text-gray-600">Tipo de exame</label>
               <select
                 value={form.tipo}
-                onChange={e => setForm(f => ({ ...f, tipo: e.target.value as ImagingTipo }))}
+                onChange={e => setForm(f => ({ ...f, tipo: e.target.value, tipo_custom: '' }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
               >
                 {TIPOS.map(t => <option key={t} value={t}>{TIPO_LABELS[t]}</option>)}
+                <option value={PERSONALIZADO_KEY}>Personalizado...</option>
               </select>
+              {form.tipo === PERSONALIZADO_KEY && (
+                <input
+                  type="text"
+                  value={form.tipo_custom}
+                  onChange={e => setForm(f => ({ ...f, tipo_custom: e.target.value }))}
+                  placeholder="Nome do exame..."
+                  className="mt-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-600">Data de realização</label>
@@ -274,6 +316,41 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
               className="hidden"
               onChange={handleFileChange}
             />
+
+            {/* Arquivos extras */}
+            {form.file_url && (
+              <div className="space-y-1.5 pt-1">
+                {form.extra_files.map((ef, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                    <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span className="truncate flex-1">{ef.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, extra_files: f.extra_files.filter((_, j) => j !== i) }))}
+                      className="text-gray-300 hover:text-red-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => extraFileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-1.5 text-xs text-primary hover:text-primary-light font-medium transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Adicionar outro arquivo
+                </button>
+                <input
+                  ref={extraFileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={handleExtraFileChange}
+                  className="hidden"
+                />
+              </div>
+            )}
           </div>
 
           {/* Nota IA */}
@@ -332,7 +409,7 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
                 <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
                   <div className="flex items-center gap-2">
                     <ScanLine className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-sm font-semibold text-gray-800">{TIPO_LABELS[tipo]}</span>
+                    <span className="text-sm font-semibold text-gray-800">{getTipoLabel(tipo)}</span>
                     <span className="text-xs text-gray-400 font-normal">· mais recente: {fmtDate(r.data_realizado)}</span>
                   </div>
                   <button
@@ -346,7 +423,7 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
 
                 {/* Arquivo anexado */}
                 {r.file_url && (
-                  <div className="px-4 pt-3 pb-1">
+                  <div className="px-4 pt-3 pb-1 space-y-1.5">
                     <a
                       href={r.file_url}
                       target="_blank"
@@ -357,6 +434,18 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
                       {r.file_name ?? 'Ver arquivo'}
                       <Download className="w-3 h-3 ml-0.5" />
                     </a>
+                    {r.extra_files?.map((ef, i) => (
+                      <a
+                        key={i}
+                        href={ef.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                      >
+                        <FileText className="w-3 h-3" />
+                        {ef.name}
+                      </a>
+                    ))}
                   </div>
                 )}
 
@@ -385,6 +474,18 @@ export default function ImagingPanel({ imagingResults: initial, patientId }: Pro
                               {h.file_name ?? 'Arquivo'}
                             </a>
                           )}
+                          {h.extra_files?.map((ef, i) => (
+                            <a
+                              key={i}
+                              href={ef.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:underline mb-0.5"
+                            >
+                              <FileText className="w-3 h-3" />
+                              {ef.name}
+                            </a>
+                          ))}
                           <p className="text-xs text-gray-600">{h.laudo_resumido ?? '—'}</p>
                         </div>
                         <button

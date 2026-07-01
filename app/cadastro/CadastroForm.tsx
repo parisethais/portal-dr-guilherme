@@ -173,7 +173,7 @@ function formatPhone(v: string) {
   return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`
 }
 
-export default function CadastroForm() {
+export default function CadastroForm({ tenantId }: { tenantId: string }) {
   const [step, setStep]              = useState(0)
   const [error, setError]            = useState('')
   const [isPending, startTransition] = useTransition()
@@ -409,6 +409,7 @@ export default function CadastroForm() {
       {/* Conteúdo */}
       <div className="px-4 pt-6 pb-32 flex justify-center">
         <form ref={formRef} id="cadastro-form" onSubmit={handleSubmit} className="w-full max-w-sm">
+          <input type="hidden" name="tenant_id" value={tenantId} />
 
           {/* ── Etapa 0: Quem é você? ── */}
           <div data-step="0" className={step === 0 ? 'space-y-5' : 'hidden'}>

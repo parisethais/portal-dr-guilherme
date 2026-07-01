@@ -52,14 +52,18 @@ export default function PatientList({
       .catch(() => {})
   }
 
+  function normalize(s: string) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  }
+
   // Índice de busca — apenas nome, CPF, email e diagnóstico do perfil
   const searchIndex = useMemo(() => {
     return new Map(patients.map(p => {
       const parts: string[] = []
-      if (p.full_name)   parts.push(p.full_name.toLowerCase())
+      if (p.full_name)   parts.push(normalize(p.full_name))
       if (p.cpf)         parts.push(p.cpf.replace(/\D/g, ''))
-      if (p.diagnostico) parts.push(p.diagnostico.toLowerCase())
-      if (p.email)       parts.push(p.email.toLowerCase())
+      if (p.diagnostico) parts.push(normalize(p.diagnostico))
+      if (p.email)       parts.push(normalize(p.email))
       return [p.id, parts.join(' ')]
     }))
   }, [patients])
@@ -67,9 +71,12 @@ export default function PatientList({
   const deferredSearch = useDeferredValue(search)
 
   const filtered = useMemo(() => {
-    const q = deferredSearch.toLowerCase().trim()
-    if (!q) return patients
-    return patients.filter(p => searchIndex.get(p.id)?.includes(q) ?? false)
+    const words = normalize(deferredSearch.trim()).split(/\s+/).filter(Boolean)
+    if (!words.length) return patients
+    return patients.filter(p => {
+      const idx = searchIndex.get(p.id) ?? ''
+      return words.every(w => idx.includes(w))
+    })
   }, [deferredSearch, patients, searchIndex])
 
   // ── Paciente selecionado ──────────────────────────────────────

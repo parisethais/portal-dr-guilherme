@@ -5,14 +5,46 @@ import type { Consulta } from '@/lib/types'
 import { salvarConsultaFields } from '@/app/actions/prontuario'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { setProntuarioDirty } from '@/lib/prontuario-dirty'
-import { Save, CheckCircle, Loader2, Lock, Activity, MessageSquare } from 'lucide-react'
+import { Save, CheckCircle, Loader2, Lock, Activity, MessageSquare, Video, CalendarClock, ClipboardCopy } from 'lucide-react'
+import { updateRetornoPrevisto } from '@/app/actions/profile'
+
+const TELECONSULTA_TEXT = 'Teleconsulta a pedido do paciente. Exame físico não realizado.'
+
+const RETORNO_OPCOES = [
+  { label: 'Não definido', value: '' },
+  { label: '30 dias',      value: '30d' },
+  { label: '45 dias',      value: '45d' },
+  { label: '3 meses',      value: '3m' },
+  { label: '6 meses',      value: '6m' },
+  { label: 'Outro...',     value: 'outro' },
+]
+
+function calcRetornoDate(opcao: string, outroValor?: number, outroUnidade?: 'dias' | 'meses'): string | null {
+  if (!opcao) return null
+  const d = new Date()
+  if (opcao === '30d') d.setDate(d.getDate() + 30)
+  else if (opcao === '45d') d.setDate(d.getDate() + 45)
+  else if (opcao === '3m')  d.setMonth(d.getMonth() + 3)
+  else if (opcao === '6m')  d.setMonth(d.getMonth() + 6)
+  else if (opcao === 'outro' && outroValor && outroValor > 0) {
+    if (outroUnidade === 'meses') d.setMonth(d.getMonth() + outroValor)
+    else d.setDate(d.getDate() + outroValor)
+  } else return null
+  return d.toISOString().slice(0, 10)
+}
+
+function isTeleconsultaText(v: string) {
+  return v.trim() === TELECONSULTA_TEXT
+}
 
 interface Props {
-  consulta:       Consulta
-  consultas:      Consulta[]
-  isFinalized:    boolean
-  onDirtyChange?: (dirty: boolean) => void
-  onRefresh?:     () => void
+  consulta:          Consulta
+  consultas:         Consulta[]
+  isFinalized:       boolean
+  patientId:         string
+  retornoPrevisto?:  string | null
+  onDirtyChange?:    (dirty: boolean) => void
+  onRefresh?:        () => void
 }
 
 function fmt(v: number | null | undefined) {
@@ -97,7 +129,7 @@ function sanitizeForEdit(value: string | null | undefined): string {
   return isHtml(value) ? stripHtml(value) : value
 }
 
-export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
+export default function EvolucaoPanel({ consulta, consultas, isFinalized, patientId, retornoPrevisto, onDirtyChange, onRefresh }: Props) {
   const [evolucao,    setEvolucao]    = useState(sanitizeForEdit(consulta.evolucao))
   const [exameFisico, setExameFisico] = useState(sanitizeForEdit(consulta.exame_fisico))
   const [pas,         setPas]         = useState(fmt(consulta.pas))
@@ -105,6 +137,10 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
   const [fc,          setFc]          = useState(fmt(consulta.fc))
   const [impressao,   setImpressao]   = useState(sanitizeForEdit(consulta.impressao))
   const [conduta,     setConduta]     = useState(sanitizeForEdit(consulta.conduta))
+  const [teleconsulta, setTeleconsulta] = useState(() => isTeleconsultaText(sanitizeForEdit(consulta.exame_fisico)))
+  const [retornoOpcao, setRetornoOpcao]   = useState('')
+  const [outroValor, setOutroValor]       = useState('')
+  const [outroUnidade, setOutroUnidade]   = useState<'dias' | 'meses'>('dias')
   const [saved,       setSaved]       = useState(false)
   const [error,       setError]       = useState('')
   const [isPending,   startTransition] = useTransition()
@@ -135,8 +171,12 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
     setFc(fmt(consulta.fc))
     setImpressao(sanitizeForEdit(consulta.impressao))
     setConduta(sanitizeForEdit(consulta.conduta))
+    const ef = sanitizeForEdit(consulta.exame_fisico)
+    setTeleconsulta(isTeleconsultaText(ef))
     setSaved(false)
     setError('')
+    setRetornoOpcao('')
+    setOutroValor('')
   }, [consulta.id])
 
   function handleSave() {
@@ -156,10 +196,38 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
       onDirtyChange?.(false)
       onRefresh?.()
       setTimeout(() => setSaved(false), 3000)
+      if (retornoOpcao) {
+        const novaData = calcRetornoDate(retornoOpcao, Number(outroValor) || undefined, outroUnidade)
+        updateRetornoPrevisto(patientId, novaData, {
+          consultaId: consulta.id,
+          notificar: true,
+        }).catch(console.error)
+      }
     })
   }
 
   const changed = () => setSaved(false)
+
+  function toggleTeleconsulta() {
+    if (teleconsulta) {
+      setTeleconsulta(false)
+      setExameFisico('')
+      setPas(''); setPad(''); setFc('')
+    } else {
+      setTeleconsulta(true)
+      setExameFisico(TELECONSULTA_TEXT)
+      setPas(''); setPad(''); setFc('')
+    }
+    changed()
+  }
+
+  const carryImpressao = (() => {
+    if (isFinalized) return null
+    const currentImpressao = sanitizeForEdit(consulta.impressao)
+    if (currentImpressao.trim()) return null
+    const idx = consultas.findIndex(c => c.id === consulta.id)
+    return consultas.slice(idx + 1).find(c => c.impressao?.trim()) ?? null
+  })()
 
   // ── Modo leitura (finalizado) ─────────────────────────────
   if (isFinalized) {
@@ -172,15 +240,26 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5" /> Exame físico
+            {teleconsulta && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full text-[10px] font-semibold normal-case tracking-normal">
+                <Video className="w-2.5 h-2.5" /> Teleconsulta
+              </span>
+            )}
           </p>
-          {(consulta.pas != null || consulta.pad != null || consulta.fc != null) && (
-            <div className="flex gap-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
-              <Vital label="PAS" value={consulta.pas} unit="mmHg" />
-              <Vital label="PAD" value={consulta.pad} unit="mmHg" />
-              <Vital label="FC"  value={consulta.fc}  unit="bpm"  />
-            </div>
+          {teleconsulta ? (
+            <p className="text-xs text-violet-600 italic">{exameFisico}</p>
+          ) : (
+            <>
+              {(consulta.pas != null || consulta.pad != null || consulta.fc != null) && (
+                <div className="flex gap-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
+                  <Vital label="PAS" value={consulta.pas} unit="mmHg" />
+                  <Vital label="PAD" value={consulta.pad} unit="mmHg" />
+                  <Vital label="FC"  value={consulta.fc}  unit="bpm"  />
+                </div>
+              )}
+              <ReadField label="" value={exameFisico} />
+            </>
           )}
-          <ReadField label="" value={exameFisico} />
           <VitaisHistorico consultas={consultas} currentId={consulta.id} />
         </div>
 
@@ -190,6 +269,13 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
           labelExtra={<span className="text-[10px] text-gray-400 normal-case">(nota privada)</span>}
         />
         <ReadField label="Conduta" value={conduta} />
+
+        {retornoPrevisto && (
+          <div className="flex items-center gap-1.5 text-xs text-primary bg-blue-50 border border-primary/20 rounded-lg px-2.5 py-1.5">
+            <CalendarClock className="w-3 h-3" />
+            Retorno previsto: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Lock className="w-3 h-3" />
@@ -218,26 +304,49 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
       </div>
 
       {/* Exame físico */}
-      <div className="space-y-2 border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5" /> Exame físico
-        </p>
-
-        {/* Sinais vitais */}
-        <div className="flex items-end gap-3">
-          <VitalInput label="PAS" unit="mmHg" value={pas} onChange={v => { setPas(v); changed() }} disabled={false} />
-          <VitalInput label="PAD" unit="mmHg" value={pad} onChange={v => { setPad(v); changed() }} disabled={false} />
-          <VitalInput label="FC"  unit="bpm"  value={fc}  onChange={v => { setFc(v);  changed() }} disabled={false} />
+      <div className={`space-y-2 border rounded-xl p-4 transition-colors ${teleconsulta ? 'border-violet-200 bg-violet-50/40' : 'border-gray-100 bg-gray-50/50'}`}>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5" /> Exame físico
+          </p>
+          <button
+            type="button"
+            onClick={toggleTeleconsulta}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+              teleconsulta
+                ? 'bg-violet-600 text-white border-violet-600'
+                : 'bg-white text-violet-600 border-violet-300 hover:bg-violet-50'
+            }`}
+          >
+            <Video className="w-3 h-3" />
+            Teleconsulta
+          </button>
         </div>
 
-        {/* Alterações físicas */}
-        <textarea
-          value={exameFisico}
-          onChange={e => { setExameFisico(e.target.value); changed() }}
-          rows={3}
-          placeholder="Alterações físicas ao exame..."
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-        />
+        {teleconsulta ? (
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-violet-100 border border-violet-200 rounded-xl text-xs text-violet-700 font-medium">
+            <Video className="w-3.5 h-3.5 flex-shrink-0" />
+            Teleconsulta a pedido do paciente — exame físico não realizado
+          </div>
+        ) : (
+          <>
+            {/* Sinais vitais */}
+            <div className="flex items-end gap-3">
+              <VitalInput label="PAS" unit="mmHg" value={pas} onChange={v => { setPas(v); changed() }} disabled={false} />
+              <VitalInput label="PAD" unit="mmHg" value={pad} onChange={v => { setPad(v); changed() }} disabled={false} />
+              <VitalInput label="FC"  unit="bpm"  value={fc}  onChange={v => { setFc(v);  changed() }} disabled={false} />
+            </div>
+
+            {/* Alterações físicas */}
+            <textarea
+              value={exameFisico}
+              onChange={e => { setExameFisico(e.target.value); changed() }}
+              rows={3}
+              placeholder="Alterações físicas ao exame..."
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+            />
+          </>
+        )}
 
         {/* Histórico comparativo */}
         <VitaisHistorico consultas={consultas} currentId={consulta.id} />
@@ -250,6 +359,17 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
           Impressão
           <span className="text-[10px] text-gray-400 normal-case font-normal">— nota privada do médico</span>
         </label>
+        {carryImpressao && (
+          <button
+            type="button"
+            onClick={() => { setImpressao(sanitizeForEdit(carryImpressao.impressao)); changed() }}
+            className="flex items-center gap-2 w-full px-3 py-1.5 border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+          >
+            <ClipboardCopy className="w-3.5 h-3.5 flex-shrink-0" />
+            Copiar impressão de {new Date(carryImpressao.data_hora).toLocaleDateString('pt-BR')}
+            <span className="ml-auto text-gray-400 font-normal">carry-forward</span>
+          </button>
+        )}
         <textarea
           value={impressao}
           onChange={e => { setImpressao(e.target.value); changed() }}
@@ -271,6 +391,41 @@ export default function EvolucaoPanel({ consulta, consultas, isFinalized, onDirt
           placeholder={`1. Manter losartana 50mg 1x/dia\n2. Solicitar creatinina, ureia e potássio\n3. Retorno em 3 meses`}
           className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary"
         />
+      </div>
+
+      {/* ── Retorno previsto ── */}
+      <div className="space-y-2 px-3 py-2.5 bg-blue-50/60 border border-primary/15 rounded-xl">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Retorno em:</span>
+          <select
+            value={retornoOpcao}
+            onChange={e => { setRetornoOpcao(e.target.value); setOutroValor('') }}
+            className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {RETORNO_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {retornoPrevisto && !retornoOpcao && (
+            <span className="text-[11px] text-gray-400 whitespace-nowrap">
+              Atual: {new Date(retornoPrevisto + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </span>
+          )}
+        </div>
+
+        {retornoOpcao === 'outro' && (
+          <div className="flex items-center gap-2 pl-6">
+            <input
+              type="number"
+              min={1}
+              value={outroValor}
+              onChange={e => setOutroValor(e.target.value)}
+              placeholder="Ex: 60"
+              className="w-20 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button type="button" onClick={() => setOutroUnidade('dias')} className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'dias' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>dias</button>
+            <button type="button" onClick={() => setOutroUnidade('meses')} className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${outroUnidade === 'meses' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>meses</button>
+          </div>
+        )}
       </div>
 
       {error && (

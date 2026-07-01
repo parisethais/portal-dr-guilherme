@@ -85,11 +85,54 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ── Componente principal ─────────────────────────────────────
 interface Props {
-  patient: Profile
-  onDeleted?: () => void
+  patient:      Profile
+  currentRole?: string
+  onDeleted?:   () => void
 }
 
-export default function PatientCadastroTab({ patient, onDeleted }: Props) {
+const INDICACAO_OPCOES = [
+  { value: '',          label: 'Selecione...' },
+  { value: 'medico',    label: 'Indicação médica' },
+  { value: 'paciente',  label: 'Indicação de paciente da clínica' },
+  { value: 'convenio',  label: 'Convênio / plano de saúde' },
+  { value: 'google',    label: 'Google / internet' },
+  { value: 'instagram', label: 'Redes sociais (Instagram/Facebook)' },
+  { value: 'amigo',     label: 'Familiar ou amigo' },
+  { value: 'outro',     label: 'Outro...' },
+]
+
+const INDICACAO_LABELS: Record<string, string> = {
+  medico:    'Indicação médica',
+  paciente:  'Indicação de paciente da clínica',
+  convenio:  'Convênio / plano de saúde',
+  google:    'Google / internet',
+  instagram: 'Redes sociais (Instagram/Facebook)',
+  amigo:     'Familiar ou amigo',
+  outro:     'Outro',
+}
+
+function parseComoConheceu(raw: string): { select: string; detail: string } {
+  if (!raw) return { select: '', detail: '' }
+  const directKeys = Object.keys(INDICACAO_LABELS)
+  if (directKeys.includes(raw)) return { select: raw, detail: '' }
+  // Try to match label prefix
+  for (const [key, label] of Object.entries(INDICACAO_LABELS)) {
+    if (raw.startsWith(label)) {
+      const detail = raw.slice(label.length).replace(/^[\s:—–-]+/, '').trim()
+      return { select: key, detail }
+    }
+  }
+  return { select: 'outro', detail: raw }
+}
+
+function buildComoConheceu(select: string, detail: string): string {
+  if (!select) return ''
+  const label = INDICACAO_LABELS[select] ?? select
+  if (detail && (select === 'medico' || select === 'outro')) return `${label}: ${detail}`
+  return label
+}
+
+export default function PatientCadastroTab({ patient, currentRole, onDeleted }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setSaveError]        = useState('')
   const [saved, setSaved]            = useState(false)
@@ -105,23 +148,27 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
   const [copiedPwd, setCopiedPwd]     = useState(false)
   const [isPwdPending, startPwdTransition] = useTransition()
 
+  const parsedIndicacao = parseComoConheceu(patient.como_conheceu ?? '')
+
   const [form, setForm] = useState({
-    full_name:       patient.full_name       ?? '',
-    email:           patient.email           ?? '',
-    cpf:             patient.cpf             ?? '',
-    phone:           patient.phone           ?? '',
-    data_nascimento: patient.data_nascimento ?? '',
-    sexo:            patient.sexo            ?? '',
-    nome_mae:        patient.nome_mae        ?? '',
-    profissao:       patient.profissao       ?? '',
-    cns:             patient.cns             ?? '',
-    como_conheceu:   patient.como_conheceu   ?? '',
-    cep:             patient.cep             ?? '',
-    endereco:        patient.endereco        ?? '',
-    cidade_estado:   patient.cidade_estado   ?? '',
-    diagnostico:     patient.diagnostico     ?? '',
-    status_paciente: patient.status_paciente ?? 'ativo',
-    obs_secretaria:  patient.obs_secretaria  ?? '',
+    full_name:            patient.full_name       ?? '',
+    email:                patient.email           ?? '',
+    cpf:                  patient.cpf             ?? '',
+    phone:                patient.phone           ?? '',
+    data_nascimento:      patient.data_nascimento ?? '',
+    sexo:                 patient.sexo            ?? '',
+    nome_mae:             patient.nome_mae        ?? '',
+    profissao:            patient.profissao       ?? '',
+    cns:                  patient.cns             ?? '',
+    como_conheceu_select: parsedIndicacao.select,
+    como_conheceu_detail: parsedIndicacao.detail,
+    cep:                  patient.cep             ?? '',
+    endereco:             patient.endereco        ?? '',
+    cidade_estado:        patient.cidade_estado   ?? '',
+    diagnostico:          patient.diagnostico     ?? '',
+    status_paciente:      patient.status_paciente ?? 'ativo',
+    obs_secretaria:       patient.obs_secretaria  ?? '',
+    obs_pessoal:          patient.obs_pessoal     ?? '',
   })
 
   const set = (k: keyof typeof form) => (v: string) =>
@@ -157,13 +204,14 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
         nome_mae:        form.nome_mae        || undefined,
         profissao:       form.profissao       || undefined,
         cns:             form.cns             || null,
-        como_conheceu:   form.como_conheceu   || undefined,
+        como_conheceu:   buildComoConheceu(form.como_conheceu_select, form.como_conheceu_detail) || undefined,
         cep:             form.cep             || undefined,
         endereco:        form.endereco        || undefined,
         cidade_estado:   form.cidade_estado   || undefined,
         diagnostico:     form.diagnostico     || null,
         status_paciente: form.status_paciente as StatusPaciente,
         obs_secretaria:  form.obs_secretaria  || null,
+        obs_pessoal:     form.obs_pessoal     || null,
         perfil_completo: true,
       })
       if (!res.success) { setSaveError(res.error); return }
@@ -249,14 +297,36 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
       </Section>
 
       {/* ── Como conheceu ── */}
-      <Section title="Como conheceu o Dr. Guilherme">
-        <textarea
-          value={form.como_conheceu}
-          onChange={e => set('como_conheceu')(e.target.value)}
-          rows={2}
-          placeholder="Ex: Indicação, Google, amigo..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none text-gray-900"
-        />
+      <Section title="Indicação — como conheceu o Dr. Guilherme">
+        <div className="space-y-3">
+          <select
+            value={form.como_conheceu_select}
+            onChange={e => set('como_conheceu_select')(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
+          >
+            {INDICACAO_OPCOES.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          {form.como_conheceu_select === 'medico' && (
+            <input
+              type="text"
+              value={form.como_conheceu_detail}
+              onChange={e => set('como_conheceu_detail')(e.target.value)}
+              placeholder="Nome do médico que indicou (opcional)"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
+            />
+          )}
+          {form.como_conheceu_select === 'outro' && (
+            <input
+              type="text"
+              value={form.como_conheceu_detail}
+              onChange={e => set('como_conheceu_detail')(e.target.value)}
+              placeholder="Especifique..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
+            />
+          )}
+        </div>
       </Section>
 
       {/* ── Acompanhamento ── */}
@@ -284,6 +354,18 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
             rows={2}
             placeholder="Anotações da secretaria..."
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none text-gray-900"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Obs. pessoal do médico
+          </label>
+          <textarea
+            value={form.obs_pessoal}
+            onChange={e => set('obs_pessoal')(e.target.value)}
+            placeholder="Notas pessoais do médico sobre o paciente..."
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary resize-none leading-relaxed"
           />
         </div>
       </Section>
@@ -358,8 +440,8 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
         )}
       </div>
 
-      {/* ── Zona de perigo ── */}
-      <div className="border-t border-red-100 pt-6 space-y-3">
+      {/* ── Zona de perigo — apenas médico ── */}
+      {currentRole === 'medico' && <div className="border-t border-red-100 pt-6 space-y-3">
         <h3 className="text-[11px] font-bold text-red-400 uppercase tracking-widest">Zona de perigo</h3>
 
         {!showDeleteConfirm ? (
@@ -417,7 +499,7 @@ export default function PatientCadastroTab({ patient, onDeleted }: Props) {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
     </div>
   )
