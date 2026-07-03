@@ -448,6 +448,7 @@ export default function AgendaTab({ consultas, patients, currentRole, calendarUr
           events={events}
           onDateClick={handleDateClick}
           onEventClick={handleEventClick}
+          onNavigateToPatient={onNavigateToPatient}
         />
       </div>
 

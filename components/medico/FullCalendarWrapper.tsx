@@ -13,12 +13,13 @@ import type { Consulta } from '@/lib/types'
 import type { GoogleEvent } from '@/lib/google-calendar'
 
 interface Props {
-  events:         CalendarEvent[]
-  onDateClick:    (dateStr: string, allDay: boolean) => void
-  onEventClick:   (ev: { source: 'crm' | 'google'; consulta?: Consulta; googleEvent?: GoogleEvent }) => void
+  events:                 CalendarEvent[]
+  onDateClick:            (dateStr: string, allDay: boolean) => void
+  onEventClick:           (ev: { source: 'crm' | 'google'; consulta?: Consulta; googleEvent?: GoogleEvent }) => void
+  onNavigateToPatient?:   (patientId: string) => void
 }
 
-export default function FullCalendarWrapper({ events, onDateClick, onEventClick }: Props) {
+export default function FullCalendarWrapper({ events, onDateClick, onEventClick, onNavigateToPatient }: Props) {
   function handleDateClick(info: DateClickArg) {
     onDateClick(info.dateStr, info.allDay)
   }
@@ -55,8 +56,43 @@ export default function FullCalendarWrapper({ events, onDateClick, onEventClick 
       nowIndicator={true}
       expandRows={true}
       eventDisplay="block"
-      displayEventTime={true}
+      displayEventTime={false}
       dayMaxEvents={3}
+      eventContent={(info) => {
+        const props = info.event.extendedProps as CalendarEvent['extendedProps']
+        const title = info.event.title
+
+        const dotIndex = title.indexOf(' · ')
+
+        if (props.source !== 'crm' || !props.consulta || !onNavigateToPatient || dotIndex === -1) {
+          return (
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight px-0.5">
+              {title}
+            </div>
+          )
+        }
+
+        const timePart = title.slice(0, dotIndex + 3)
+        const namePart = title.slice(dotIndex + 3)
+        const patientId = props.consulta.patient_id
+
+        return (
+          <div className="overflow-hidden whitespace-nowrap text-[11px] leading-tight px-0.5">
+            <span className="opacity-90">{timePart}</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNavigateToPatient(patientId)
+              }}
+              className="font-semibold hover:underline"
+              title="Ver prontuário"
+            >
+              {namePart}
+            </button>
+          </div>
+        )
+      }}
     />
   )
 }
