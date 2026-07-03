@@ -84,9 +84,38 @@ export async function submitCadastro(
   }, { onConflict: 'id' })
 
   if (profileError) {
-    // Usuário foi criado mas o perfil falhou — loga e retorna erro
     console.error('[cadastro] upsert profile error:', profileError.message)
     return { success: false, error: `Usuário criado mas erro ao salvar dados: ${profileError.message}` }
+  }
+
+  // Mescla automaticamente qualquer perfil placeholder com o mesmo nome
+  // (criado quando Gi agendou o paciente antes do cadastro)
+  const newId = data.user!.id
+  const { data: placeholders } = await admin
+    .from('profiles')
+    .select('id')
+    .ilike('full_name', full_name)
+    .like('email', 'provisorio-%@interno.portal')
+    .eq('tenant_id', tenant_id)
+    .neq('id', newId)
+
+  if (placeholders && placeholders.length > 0) {
+    const TABELAS = [
+      'consultas', 'patient_exams', 'care_plans', 'care_plan_attachments',
+      'invoices', 'lab_results', 'imaging_results', 'financial_entries',
+      'patient_goals', 'patient_checkins', 'patient_mrpa_sessions',
+      'patient_mrpa_readings', 'patient_documents', 'prescricoes',
+    ] as const
+
+    for (const placeholder of placeholders) {
+      const oldId = placeholder.id
+      for (const tabela of TABELAS) {
+        await admin.from(tabela).update({ patient_id: newId } as never).eq('patient_id', oldId)
+      }
+      await admin.from('profiles').delete().eq('id', oldId)
+      await admin.auth.admin.deleteUser(oldId)
+      console.log(`[cadastro] placeholder ${oldId} mesclado em ${newId} (${full_name})`)
+    }
   }
 
   return { success: true, data: { email, password: tempPassword } }
