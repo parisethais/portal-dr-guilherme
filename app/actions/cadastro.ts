@@ -95,7 +95,7 @@ export async function submitCadastro(
     .from('profiles')
     .select('id')
     .ilike('full_name', full_name)
-    .like('email', 'provisorio-%@interno.portal')
+    .eq('status_paciente', 'lead')
     .eq('tenant_id', tenant_id)
     .neq('id', newId)
 
