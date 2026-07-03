@@ -91,11 +91,14 @@ export async function submitCadastro(
   // Mescla automaticamente qualquer perfil placeholder com o mesmo nome
   // (criado quando Gi agendou o paciente antes do cadastro)
   const newId = data.user!.id
+  // Normaliza o nome removendo acentos para casar placeholders onde o nome
+  // pode ter sido digitado sem acento (ex: "Jose" vs "José")
+  const normalizedName = full_name.normalize('NFD').replace(/[̀-ͯ]/g, '')
   const { data: placeholders } = await admin
     .from('profiles')
     .select('id')
-    .ilike('full_name', full_name)
-    .eq('status_paciente', 'lead')
+    .ilike('full_name', normalizedName)
+    .is('email', null)
     .eq('tenant_id', tenant_id)
     .neq('id', newId)
 
