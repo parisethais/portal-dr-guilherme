@@ -81,11 +81,25 @@ export default function PatientList({
 
   // ── Paciente selecionado ──────────────────────────────────────
   if (selectedPatient) {
-    if (loadingDetail || !detailData) {
+    if (loadingDetail) {
       return (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <p className="text-sm text-gray-400">Carregando dados do paciente…</p>
+        </div>
+      )
+    }
+    if (!detailData) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <p className="text-sm text-gray-500">Não foi possível carregar os dados deste paciente.</p>
+          <button
+            type="button"
+            onClick={() => onSelectPatient(null)}
+            className="text-xs text-primary underline"
+          >
+            Voltar
+          </button>
         </div>
       )
     }
