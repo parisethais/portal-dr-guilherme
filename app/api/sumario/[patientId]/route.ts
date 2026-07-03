@@ -208,7 +208,7 @@ Omita sections sem conteúdo relevante. Inclua só o JSON, sem texto antes ou de
 
   try {
     const response = await anthropic.messages.create({
-      model:      'claude-opus-4-5',
+      model:      'claude-sonnet-5',
       max_tokens: 1024,
       messages:   [{ role: 'user', content: prompt }],
     })

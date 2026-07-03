@@ -102,7 +102,7 @@ Seja objetivo. Extraia as informações diretamente do documento.`
   try {
     let rawText = ''
 
-    const MODEL = 'claude-opus-4-5'
+    const MODEL = 'claude-haiku-4-5-20251001'
 
     if (isPdf) {
       try {

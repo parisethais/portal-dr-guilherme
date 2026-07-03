@@ -130,7 +130,7 @@ Inclua apenas seções com resultados relevantes. Só o JSON, sem texto antes ou
 
   try {
     const response = await anthropic.messages.create({
-      model:      'claude-opus-4-5',
+      model:      'claude-sonnet-5',
       max_tokens: 1200,
       messages:   [{ role: 'user', content: prompt }],
     })
