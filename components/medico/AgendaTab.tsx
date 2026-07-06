@@ -250,15 +250,18 @@ export default function AgendaTab({ consultas, patients, currentRole, calendarUr
     const isPast          = ['realizada', 'falta', 'cancelada'].includes(c.status)
     const isFalta         = c.status === 'falta'
     const isEmAtendimento = c.status === 'em_atendimento'
+    const isConfirmada    = c.status === 'confirmada'
     const isDesconto      = c.tipo.includes('desconto')
+
+    const prefix = isEmAtendimento ? '⬤ ' : isConfirmada ? '✓ ' : ''
 
     return {
       id:              c.id,
-      title:           `${isEmAtendimento ? '⬤ ' : ''}${hora} · ${patientName}${isDesconto ? ' %' : ''}`,
+      title:           `${prefix}${hora} · ${patientName}${isDesconto ? ' %' : ''}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
-      backgroundColor: isEmAtendimento ? '#ea580c' : (isPast ? '#9ca3af' : localColors.bg),
-      borderColor:     isEmAtendimento ? '#c2410c' : isFalta ? '#dc2626' : (isPast ? '#6b7280' : localColors.border),
+      backgroundColor: isEmAtendimento ? '#ea580c' : isConfirmada ? '#16a34a' : (isPast ? '#9ca3af' : localColors.bg),
+      borderColor:     isEmAtendimento ? '#c2410c' : isConfirmada ? '#15803d' : isFalta ? '#dc2626' : (isPast ? '#6b7280' : localColors.border),
       textColor:       localColors.text,
       classNames:      c.status === 'cancelada' ? ['fc-event-cancelada'] : isEmAtendimento ? ['fc-event-em-atendimento'] : [],
       extendedProps:   { source: 'crm', consulta: c },
