@@ -119,6 +119,7 @@ export default function PatientList({
         consultas={patientConsultas}
         labResults={detailData.labResults}
         imagingResults={detailData.imagingResults}
+        biopsiaResults={detailData.biopsiaResults}
         prescricoes={detailData.prescricoes}
         onBack={() => guardNavigation(() => onSelectPatient(null))}
         onRefresh={refreshDetailData}

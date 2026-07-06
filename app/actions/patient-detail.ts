@@ -2,12 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
-import type { Consulta, LabResult, ImagingResult, Invoice, PatientExam, CarePlan, CarePlanAttachment, Prescricao } from '@/lib/types'
+import type { Consulta, LabResult, ImagingResult, BiopsiaResult, Invoice, PatientExam, CarePlan, CarePlanAttachment, Prescricao } from '@/lib/types'
 
 export interface PatientDetailData {
   consultas:            Consulta[]
   labResults:           LabResult[]
   imagingResults:       ImagingResult[]
+  biopsiaResults:       BiopsiaResult[]
   invoices:             Invoice[]
   patientExams:         PatientExam[]
   carePlans:            CarePlan[]
@@ -33,6 +34,7 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
     { data: consultas },
     { data: labResults },
     { data: imagingResults },
+    { data: biopsiaResults },
     { data: invoices },
     { data: patientExams },
     { data: carePlans },
@@ -49,6 +51,10 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
       .eq('patient_id', patientId)
       .order('collected_at', { ascending: false }),
     db.from('imaging_results')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('data_realizado', { ascending: false }),
+    db.from('biopsia_results')
       .select('*')
       .eq('patient_id', patientId)
       .order('data_realizado', { ascending: false }),
@@ -79,6 +85,7 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
     consultas:           consultas           ?? [],
     labResults:          labResults          ?? [],
     imagingResults:      imagingResults      ?? [],
+    biopsiaResults:      biopsiaResults      ?? [],
     invoices:            invoices            ?? [],
     patientExams:        patientExams        ?? [],
     carePlans:           carePlans           ?? [],

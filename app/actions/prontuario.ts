@@ -284,3 +284,44 @@ export async function deleteImagingResult(id: string): Promise<ActionResult> {
   revalidatePath('/medico')
   return { success: true }
 }
+
+export async function upsertBiopsiaResult(data: {
+  id?:             string
+  patient_id:      string
+  tipo:            string
+  data_realizado:  string
+  laudo_resumido?: string | null
+  file_url?:       string | null
+  file_name?:      string | null
+  extra_files?:    { url: string; name: string }[] | null
+}): Promise<ActionResult<{ id: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
+  const { data: result, error } = await db
+    .from('biopsia_results')
+    .upsert({ ...data, tenant_id: tenantId })
+    .select('id')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true, data: { id: result.id } }
+}
+
+export async function deleteBiopsiaResult(id: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const db = createAdminClient()
+  const { error } = await db.from('biopsia_results').delete().eq('id', id)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}

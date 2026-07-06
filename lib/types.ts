@@ -191,6 +191,19 @@ export interface ImagingResult {
   created_at:     string
 }
 
+export interface BiopsiaResult {
+  id:             string
+  patient_id:     string
+  tenant_id:      string
+  tipo:           string
+  data_realizado: string   // YYYY-MM-DD
+  laudo_resumido: string | null
+  file_url:       string | null
+  file_name:      string | null
+  extra_files:    { url: string; name: string }[] | null
+  created_at:     string
+}
+
 export interface Prescricao {
   id:          string
   patient_id:  string

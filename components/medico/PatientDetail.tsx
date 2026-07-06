@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult, Prescricao } from '@/lib/types'
+import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult, BiopsiaResult, Prescricao } from '@/lib/types'
 import LabResultsPanel from './prontuario/LabResultsPanel'
 import ImagingPanel from './prontuario/ImagingPanel'
+import BiopsiaPanel from './prontuario/BiopsiaPanel'
 import { formatDate } from '@/lib/utils'
 import {
   ArrowLeft, UserRound,
@@ -28,7 +29,7 @@ function calcAge(dataNascimento: string | null): number | null {
   return age
 }
 
-type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'anatomia' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro'
+type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'biopsias' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -38,14 +39,15 @@ interface PatientDetailProps {
   attachments:   CarePlanAttachment[]
   invoices:      Invoice[]
   consultas:     Consulta[]
-  labResults:    LabResult[]
+  labResults:     LabResult[]
   imagingResults: ImagingResult[]
-  prescricoes?:  { ativas: Prescricao[]; inativas: Prescricao[] }
+  biopsiaResults: BiopsiaResult[]
+  prescricoes?:   { ativas: Prescricao[]; inativas: Prescricao[] }
   onBack:        () => void
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'anatomia', 'monitoramento', 'prescricao', 'faturas', 'cadastro']
+const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'biopsias', 'monitoramento', 'prescricao', 'faturas', 'cadastro']
 
 export default function PatientDetail({
   currentRole,
@@ -55,6 +57,7 @@ export default function PatientDetail({
   consultas,
   labResults,
   imagingResults,
+  biopsiaResults,
   prescricoes,
   onBack,
   onRefresh,
@@ -79,7 +82,7 @@ export default function PatientDetail({
     ...(canSeeProntuario ? [{ id: 'consultas'     as DetailTab, label: 'Consultas',          icon: <Stethoscope  className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'laboratoriais' as DetailTab, label: 'Laboratoriais',       icon: <FlaskConical className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'imagem'        as DetailTab, label: 'Imagem',              icon: <ScanLine     className="w-4 h-4" /> }] : []),
-    ...(canSeeProntuario ? [{ id: 'anatomia'      as DetailTab, label: 'Anatomia Pat.',       icon: <Microscope   className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'biopsias'      as DetailTab, label: 'Biópsias',             icon: <Microscope   className="w-4 h-4" /> }] : []),
     { id: 'monitoramento', label: 'Monitoramento', icon: <Activity  className="w-4 h-4" /> },
     ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',          icon: <Pill         className="w-4 h-4" /> }] : []),
     { id: 'faturas',       label: 'NF',            icon: <Receipt   className="w-4 h-4" /> },
@@ -179,12 +182,9 @@ export default function PatientDetail({
         <ImagingPanel imagingResults={imagingResults} patientId={patient.id} />
       )}
 
-      {/* ── Tab: Anatomia Patológica ── */}
-      {activeDetailTab === 'anatomia' && canSeeProntuario && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Microscope className="w-10 h-10 text-gray-200 mb-3" />
-          <p className="text-sm text-gray-400">Nenhum resultado de anatomia patológica registrado.</p>
-        </div>
+      {/* ── Tab: Biópsias ── */}
+      {activeDetailTab === 'biopsias' && canSeeProntuario && (
+        <BiopsiaPanel biopsiaResults={biopsiaResults} patientId={patient.id} />
       )}
 
       {/* ── Tab: Monitoramento ── */}
