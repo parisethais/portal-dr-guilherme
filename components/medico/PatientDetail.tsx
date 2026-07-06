@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult, Prescricao } from '@/lib/types'
+import LabResultsPanel from './prontuario/LabResultsPanel'
+import ImagingPanel from './prontuario/ImagingPanel'
 import { formatDate } from '@/lib/utils'
-import Card from '@/components/ui/Card'
 import {
-  ArrowLeft, UserRound, FileText, Image, File, Video,
-  Download, ClipboardList,
+  ArrowLeft, UserRound,
   Stethoscope, Receipt, Contact, Activity, Pill,
+  FlaskConical, ScanLine, Microscope,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
@@ -15,15 +16,7 @@ import ProntuarioTab from './prontuario/ProntuarioTab'
 import PatientCadastroTab from './PatientCadastroTab'
 import MonitoramentoTab from './prontuario/MonitoramentoTab'
 import MemedPrescricao from './prontuario/MemedPrescricao'
-import DocumentosTab from './prontuario/DocumentosTab'
 import { guardNavigation } from '@/lib/prontuario-dirty'
-
-function FileIcon({ fileType }: { fileType: string | null }) {
-  if (fileType?.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />
-  if (fileType?.includes('image')) return <Image className="w-4 h-4 text-blue-500" />
-  if (fileType?.includes('video')) return <Video className="w-4 h-4 text-violet-500" />
-  return <File className="w-4 h-4 text-gray-500" />
-}
 
 function calcAge(dataNascimento: string | null): number | null {
   if (!dataNascimento) return null
@@ -35,18 +28,7 @@ function calcAge(dataNascimento: string | null): number | null {
   return age
 }
 
-function formatSize(bytes: number | null): string {
-  if (!bytes) return ''
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function actionLabel(fileType: string | null): string {
-  if (fileType?.includes('video')) return 'Assistir'
-  return 'Baixar'
-}
-
-type DetailTab = 'prontuario' | 'exames' | 'faturas' | 'cadastro' | 'monitoramento' | 'prescricao' | 'documentos'
+type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'anatomia' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -63,7 +45,7 @@ interface PatientDetailProps {
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['prontuario', 'exames', 'faturas', 'cadastro', 'monitoramento', 'prescricao', 'documentos']
+const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'anatomia', 'monitoramento', 'prescricao', 'faturas', 'cadastro']
 
 export default function PatientDetail({
   currentRole,
@@ -78,7 +60,7 @@ export default function PatientDetail({
   onRefresh,
 }: PatientDetailProps) {
   const canSeeProntuario = currentRole !== 'secretaria'
-  const defaultTab: DetailTab = canSeeProntuario ? 'prontuario' : 'exames'
+  const defaultTab: DetailTab = canSeeProntuario ? 'consultas' : 'faturas'
 
   const [activeDetailTab, setActiveDetailTabState] = useState<DetailTab>(() => {
     if (typeof window === 'undefined') return defaultTab
@@ -94,13 +76,14 @@ export default function PatientDetail({
   }
 
   const detailTabs: { id: DetailTab; label: string; icon: React.ReactNode }[] = [
-    ...(canSeeProntuario ? [{ id: 'prontuario' as DetailTab, label: 'Prontuário', icon: <Stethoscope   className="w-4 h-4" /> }] : []),
-    { id: 'monitoramento', label: 'Monitoramento', icon: <Activity      className="w-4 h-4" /> },
-    { id: 'exames',        label: 'Arquivos',      icon: <ClipboardList className="w-4 h-4" /> },
-    { id: 'faturas',       label: 'Faturas',       icon: <Receipt       className="w-4 h-4" /> },
-    { id: 'cadastro',      label: 'Cadastro',      icon: <Contact       className="w-4 h-4" /> },
-    ...(canSeeProntuario ? [{ id: 'prescricao' as DetailTab, label: 'Prescrição', icon: <Pill className="w-4 h-4" /> }] : []),
-    ...(canSeeProntuario ? [{ id: 'documentos' as DetailTab, label: 'Documentos', icon: <FileText className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'consultas'     as DetailTab, label: 'Consultas',          icon: <Stethoscope  className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'laboratoriais' as DetailTab, label: 'Laboratoriais',       icon: <FlaskConical className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'imagem'        as DetailTab, label: 'Imagem',              icon: <ScanLine     className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'anatomia'      as DetailTab, label: 'Anatomia Pat.',       icon: <Microscope   className="w-4 h-4" /> }] : []),
+    { id: 'monitoramento', label: 'Monitoramento', icon: <Activity  className="w-4 h-4" /> },
+    ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',          icon: <Pill         className="w-4 h-4" /> }] : []),
+    { id: 'faturas',       label: 'NF',            icon: <Receipt   className="w-4 h-4" /> },
+    { id: 'cadastro',      label: 'Cadastro',      icon: <Contact   className="w-4 h-4" /> },
   ]
 
   return (
@@ -171,20 +154,10 @@ export default function PatientDetail({
         ))}
       </div>
 
-      {/* ── Tab: Monitoramento ── */}
-      {activeDetailTab === 'monitoramento' && (
-        <MonitoramentoTab
-          patientId={patient.id}
-          patientName={patient.full_name ?? 'Paciente'}
-        />
-      )}
-
-      {/* ── Tab: Prontuário ── */}
-      {activeDetailTab === 'prontuario' && canSeeProntuario && (
+      {/* ── Tab: Consultas ── */}
+      {activeDetailTab === 'consultas' && canSeeProntuario && (
         <ProntuarioTab
           consultas={consultas}
-          labResults={labResults}
-          imagingResults={imagingResults}
           patientId={patient.id}
           patientName={patient.full_name ?? 'Paciente'}
           patientPhone={patient.phone}
@@ -196,56 +169,30 @@ export default function PatientDetail({
         />
       )}
 
-      {/* ── Tab: Exames ── */}
-      {activeDetailTab === 'exames' && (
-        <div>
-          {exames.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
-              <File className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Nenhum exame enviado ainda.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {exames.map((exame) => (
-                <Card key={exame.id} padding="sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <FileIcon fileType={exame.file_type} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{exame.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-gray-400">{formatDate(exame.created_at)}</span>
-                        {exame.file_size && (
-                          <span className="text-xs text-gray-400">· {formatSize(exame.file_size)}</span>
-                        )}
-                      </div>
-                    </div>
-                    <a
-                      href={exame.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 text-gray-400 hover:text-primary transition-colors flex-shrink-0"
-                      title="Baixar"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+      {/* ── Tab: Laboratoriais ── */}
+      {activeDetailTab === 'laboratoriais' && canSeeProntuario && (
+        <LabResultsPanel labResults={labResults} patientId={patient.id} />
+      )}
+
+      {/* ── Tab: Imagem ── */}
+      {activeDetailTab === 'imagem' && canSeeProntuario && (
+        <ImagingPanel imagingResults={imagingResults} patientId={patient.id} />
+      )}
+
+      {/* ── Tab: Anatomia Patológica ── */}
+      {activeDetailTab === 'anatomia' && canSeeProntuario && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Microscope className="w-10 h-10 text-gray-200 mb-3" />
+          <p className="text-sm text-gray-400">Nenhum resultado de anatomia patológica registrado.</p>
         </div>
       )}
 
-      {/* ── Tab: Faturas ── */}
-      {activeDetailTab === 'faturas' && (
-        <InvoiceSection patient={patient} invoices={invoices} />
-      )}
-
-      {/* ── Tab: Cadastro ── */}
-      {activeDetailTab === 'cadastro' && (
-        <PatientCadastroTab patient={patient} currentRole={currentRole} onDeleted={onBack} />
+      {/* ── Tab: Monitoramento ── */}
+      {activeDetailTab === 'monitoramento' && (
+        <MonitoramentoTab
+          patientId={patient.id}
+          patientName={patient.full_name ?? 'Paciente'}
+        />
       )}
 
       {/* ── Tab: Prescrição ── */}
@@ -261,12 +208,14 @@ export default function PatientDetail({
         />
       )}
 
-      {/* ── Tab: Documentos ── */}
-      {activeDetailTab === 'documentos' && canSeeProntuario && (
-        <DocumentosTab
-          patientId={patient.id}
-          patientName={patient.full_name ?? 'Paciente'}
-        />
+      {/* ── Tab: NF ── */}
+      {activeDetailTab === 'faturas' && (
+        <InvoiceSection patient={patient} invoices={invoices} />
+      )}
+
+      {/* ── Tab: Cadastro ── */}
+      {activeDetailTab === 'cadastro' && (
+        <PatientCadastroTab patient={patient} currentRole={currentRole} onDeleted={onBack} />
       )}
 
     </div>

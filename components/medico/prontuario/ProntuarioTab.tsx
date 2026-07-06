@@ -2,18 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Consulta, LabResult, ImagingResult, Prescricao } from '@/lib/types'
+import type { Consulta, Prescricao } from '@/lib/types'
 import DiagnosticosPanel from './DiagnosticosPanel'
 import EvolucaoPanel from './EvolucaoPanel'
-import LabResultsPanel from './LabResultsPanel'
-import ImagingPanel from './ImagingPanel'
 import SumarioPanel from './SumarioPanel'
 import PrescricoesPanel from './PrescricoesPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
 import AssinaturaModal, { AssinaturaSuccessModal } from './AssinaturaModal'
 import {
-  ClipboardList, Stethoscope, FlaskConical, ScanLine,
+  ClipboardList, Stethoscope,
   Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
   Activity, Bot, ShieldCheck, Download, Pill,
 } from 'lucide-react'
@@ -21,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 
-type SubTab = 'diagnosticos' | 'evolucao' | 'laboratorial' | 'imagem' | 'historico' | 'sumario' | 'prescricoes'
+type SubTab = 'diagnosticos' | 'evolucao' | 'historico' | 'sumario' | 'prescricoes'
 
 // ── Helpers para conteúdo rico (HTML do Quill / iClinic) ─────
 function isHtml(text: string) {
@@ -202,8 +200,6 @@ function formatConsultaLabel(c: Consulta) {
 
 interface Props {
   consultas:            Consulta[]
-  labResults:           LabResult[]
-  imagingResults:       ImagingResult[]
   patientId:            string
   patientName:          string
   patientPhone?:        string | null
@@ -214,10 +210,10 @@ interface Props {
   onRefresh?:           () => void
 }
 
-const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'laboratorial', 'imagem', 'historico', 'sumario', 'prescricoes']
+const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'historico', 'sumario', 'prescricoes']
 
 export default function ProntuarioTab({
-  consultas, labResults, imagingResults,
+  consultas,
   patientId, patientName,
   patientPhone, patientBirthday, patientGender,
   patientRetorno,
@@ -268,8 +264,6 @@ export default function ProntuarioTab({
   const tabs: { id: SubTab; label: string; icon: React.ReactNode }[] = [
     { id: 'diagnosticos', label: 'Diagnósticos', icon: <ClipboardList className="w-3.5 h-3.5" /> },
     { id: 'evolucao',     label: 'Evolução',      icon: <Stethoscope   className="w-3.5 h-3.5" /> },
-    { id: 'laboratorial', label: 'Laboratorial',  icon: <FlaskConical  className="w-3.5 h-3.5" /> },
-    { id: 'imagem',       label: 'Imagem',        icon: <ScanLine      className="w-3.5 h-3.5" /> },
     { id: 'prescricoes',  label: 'Prescrições',   icon: <Pill          className="w-3.5 h-3.5" /> },
     { id: 'historico',    label: 'Histórico',     icon: <History       className="w-3.5 h-3.5" /> },
     { id: 'sumario',      label: 'Sumário IA',    icon: <Bot           className="w-3.5 h-3.5" /> },
@@ -507,12 +501,6 @@ export default function ProntuarioTab({
           )
         })()}
 
-        {activeTab === 'laboratorial' && (
-          <LabResultsPanel labResults={labResults} patientId={patientId} />
-        )}
-        {activeTab === 'imagem' && (
-          <ImagingPanel imagingResults={imagingResults} patientId={patientId} />
-        )}
         {activeTab === 'prescricoes' && (
           <PrescricoesPanel
             patientId={patientId}
