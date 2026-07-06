@@ -8,7 +8,7 @@ import Card from '@/components/ui/Card'
 import { Receipt, Plus, X, Trash2, Download, Loader2, FileText, Stethoscope, BedDouble } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const LOCAIS_INTERNACAO = ['Einstein', 'VNS', 'Sírio-Libanês']
+const LOCAIS_INTERNACAO = ['Hospital Israelita Albert Einstein', 'Hospital Vila Nova Star', 'Hospital Sírio-Libanês']
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)
