@@ -112,7 +112,12 @@ export interface Invoice {
   file_path: string
   amount: number
   issue_date: string
+  tipo: 'consulta' | 'internacao'
   consulta_date: string | null
+  internacao_inicio: string | null
+  internacao_fim: string | null
+  internacao_dias: number | null
+  internacao_local: string | null
   numero_nota: string | null
   downloaded_at: string | null
   created_at: string

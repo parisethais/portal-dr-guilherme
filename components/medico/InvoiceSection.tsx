@@ -5,26 +5,54 @@ import { useRouter } from 'next/navigation'
 import type { Invoice, Profile } from '@/lib/types'
 import { uploadInvoice, deleteInvoice, getMedicoInvoiceUrl } from '@/app/actions/invoices'
 import Card from '@/components/ui/Card'
-import { Receipt, Plus, X, Trash2, Download, Loader2, FileText } from 'lucide-react'
+import { Receipt, Plus, X, Trash2, Download, Loader2, FileText, Stethoscope, BedDouble } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const LOCAIS_INTERNACAO = ['Einstein', 'VNS', 'Sírio-Libanês']
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)
 }
 
-function formatIssueDate(dateStr: string): string {
+function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-')
   return `${day}/${month}/${year}`
 }
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   })
+}
+
+function InvoiceReferencia({ inv }: { inv: Invoice }) {
+  if (inv.tipo === 'internacao') {
+    const parts: string[] = []
+    if (inv.internacao_local) parts.push(inv.internacao_local)
+    if (inv.internacao_inicio && inv.internacao_fim) {
+      parts.push(`${formatDate(inv.internacao_inicio)} – ${formatDate(inv.internacao_fim)}`)
+    } else if (inv.internacao_inicio) {
+      parts.push(`a partir de ${formatDate(inv.internacao_inicio)}`)
+    }
+    if (inv.internacao_dias) parts.push(`${inv.internacao_dias} dias`)
+    return (
+      <div>
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 mb-0.5">
+          <BedDouble className="w-3 h-3" /> Internação
+        </span>
+        {parts.length > 0 && <p className="text-gray-500 text-[11px] leading-tight">{parts.join(' · ')}</p>}
+      </div>
+    )
+  }
+  return (
+    <div>
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 mb-0.5">
+        <Stethoscope className="w-3 h-3" /> Consulta
+      </span>
+      {inv.consulta_date && <p className="text-gray-500 text-[11px]">{formatDate(inv.consulta_date)}</p>}
+    </div>
+  )
 }
 
 interface InvoiceSectionProps {
@@ -36,24 +64,37 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [showForm, setShowForm] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [amount, setAmount] = useState('')
-  const [issueDate, setIssueDate] = useState('')
-  const [consultaDate, setConsultaDate] = useState('')
-  const [numeroNota, setNumeroNota] = useState('')
-  const [formError, setFormError] = useState('')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [showForm, setShowForm]               = useState(false)
+  const [tipo, setTipo]                       = useState<'consulta' | 'internacao'>('consulta')
+  const [selectedFile, setSelectedFile]       = useState<File | null>(null)
+  const [amount, setAmount]                   = useState('')
+  const [issueDate, setIssueDate]             = useState('')
+  const [numeroNota, setNumeroNota]           = useState('')
+  // consulta
+  const [consultaDate, setConsultaDate]       = useState('')
+  // internação
+  const [internacaoInicio, setInternacaoInicio] = useState('')
+  const [internacaoFim, setInternacaoFim]       = useState('')
+  const [internacaoDias, setInternacaoDias]     = useState('')
+  const [internacaoLocal, setInternacaoLocal]   = useState('')
+
+  const [formError, setFormError]             = useState('')
+  const [deletingId, setDeletingId]           = useState<string | null>(null)
+  const [downloadingId, setDownloadingId]     = useState<string | null>(null)
+  const [isPending, startTransition]          = useTransition()
 
   function cancelForm() {
     setShowForm(false)
+    setTipo('consulta')
     setSelectedFile(null)
     setAmount('')
     setIssueDate('')
-    setConsultaDate('')
     setNumeroNota('')
+    setConsultaDate('')
+    setInternacaoInicio('')
+    setInternacaoFim('')
+    setInternacaoDias('')
+    setInternacaoLocal('')
     setFormError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -73,8 +114,16 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
     formData.append('patient_id', patient.id)
     formData.append('amount', amount.replace(',', '.'))
     formData.append('issue_date', issueDate)
-    formData.append('consulta_date', consultaDate)
+    formData.append('tipo', tipo)
     formData.append('numero_nota', numeroNota)
+    if (tipo === 'consulta') {
+      formData.append('consulta_date', consultaDate)
+    } else {
+      formData.append('internacao_inicio', internacaoInicio)
+      formData.append('internacao_fim', internacaoFim)
+      formData.append('internacao_dias', internacaoDias)
+      formData.append('internacao_local', internacaoLocal)
+    }
 
     startTransition(async () => {
       const result = await uploadInvoice(formData)
@@ -98,11 +147,11 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
     startTransition(async () => {
       const result = await getMedicoInvoiceUrl(id)
       setDownloadingId(null)
-      if (result.success && result.data) {
-        window.open(result.data.url, '_blank')
-      }
+      if (result.success && result.data) window.open(result.data.url, '_blank')
     })
   }
+
+  const inputCls = 'w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent'
 
   return (
     <div>
@@ -138,6 +187,37 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
               </button>
             </div>
 
+            {/* Toggle tipo */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setTipo('consulta')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-1.5 transition-colors',
+                  tipo === 'consulta'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-500 hover:bg-gray-50'
+                )}
+              >
+                <Stethoscope className="w-3.5 h-3.5" />
+                Consulta
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipo('internacao')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 py-1.5 transition-colors border-l border-gray-200',
+                  tipo === 'internacao'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-gray-500 hover:bg-gray-50'
+                )}
+              >
+                <BedDouble className="w-3.5 h-3.5" />
+                Internação
+              </button>
+            </div>
+
+            {/* Campos comuns */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-600 block mb-1">
@@ -150,33 +230,20 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0,00"
                   required
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className={inputCls}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">
-                  Nº da nota fiscal
-                </label>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Nº da nota fiscal</label>
                 <input
                   type="text"
                   value={numeroNota}
                   onChange={(e) => setNumeroNota(e.target.value)}
-                  placeholder="Ex: 000123"
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="000123"
+                  className={inputCls}
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">
-                  Data da consulta
-                </label>
-                <input
-                  type="date"
-                  value={consultaDate}
-                  onChange={(e) => setConsultaDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
+              <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600 block mb-1">
                   Data de emissão <span className="text-red-500">*</span>
                 </label>
@@ -185,10 +252,74 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
                   value={issueDate}
                   onChange={(e) => setIssueDate(e.target.value)}
                   required
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className={inputCls}
                 />
               </div>
             </div>
+
+            {/* Campos específicos — Consulta */}
+            {tipo === 'consulta' && (
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Data da consulta</label>
+                <input
+                  type="date"
+                  value={consultaDate}
+                  onChange={(e) => setConsultaDate(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+            )}
+
+            {/* Campos específicos — Internação */}
+            {tipo === 'internacao' && (
+              <div className="space-y-3 p-3 bg-purple-50/60 border border-purple-100 rounded-lg">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Início da internação</label>
+                    <input
+                      type="date"
+                      value={internacaoInicio}
+                      onChange={(e) => setInternacaoInicio(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Fim da internação</label>
+                    <input
+                      type="date"
+                      value={internacaoFim}
+                      onChange={(e) => setInternacaoFim(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Dias de internação</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={internacaoDias}
+                      onChange={(e) => setInternacaoDias(e.target.value)}
+                      placeholder="Ex: 5"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Local</label>
+                    <input
+                      type="text"
+                      list="locais-internacao"
+                      value={internacaoLocal}
+                      onChange={(e) => setInternacaoLocal(e.target.value)}
+                      placeholder="Ex: Einstein"
+                      className={inputCls}
+                    />
+                    <datalist id="locais-internacao">
+                      {LOCAIS_INTERNACAO.map(l => <option key={l} value={l} />)}
+                    </datalist>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Seletor PDF */}
             <div
@@ -252,7 +383,7 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Nº NF</th>
-                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Consulta</th>
+                <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Tipo / Referência</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Emissão</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-gray-500 uppercase tracking-wide">Status</th>
@@ -263,21 +394,17 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-3 py-2.5 text-gray-500">{inv.numero_nota ?? <span className="text-gray-300">—</span>}</td>
-                  <td className="px-3 py-2.5 text-gray-700">{inv.consulta_date ? formatIssueDate(inv.consulta_date) : <span className="text-gray-300">—</span>}</td>
-                  <td className="px-3 py-2.5 text-gray-700">{formatIssueDate(inv.issue_date)}</td>
+                  <td className="px-3 py-2.5"><InvoiceReferencia inv={inv} /></td>
+                  <td className="px-3 py-2.5 text-gray-700">{formatDate(inv.issue_date)}</td>
                   <td className="px-3 py-2.5 font-medium text-gray-900">{formatCurrency(inv.amount)}</td>
                   <td className="px-3 py-2.5">
                     {inv.downloaded_at ? (
                       <div>
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          Baixada
-                        </span>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Baixada</span>
                         <p className="text-gray-400 mt-0.5">{formatDateTime(inv.downloaded_at)}</p>
                       </div>
                     ) : (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                        Pendente
-                      </span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Pendente</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right">
@@ -288,11 +415,9 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
                         className="p-1 text-gray-400 hover:text-primary disabled:opacity-40 transition-colors"
                         title="Baixar"
                       >
-                        {downloadingId === inv.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
+                        {downloadingId === inv.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Download className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         onClick={() => handleDelete(inv.id)}

@@ -17,8 +17,16 @@ export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
   const patientId = formData.get('patient_id') as string
   const amount = parseFloat(formData.get('amount') as string)
   const issueDate = formData.get('issue_date') as string
-  const consultaDate = (formData.get('consulta_date') as string) || null
+  const tipo = (formData.get('tipo') as string) || 'consulta'
   const numeroNota = (formData.get('numero_nota') as string) || null
+
+  // Campos condicionais por tipo
+  const consultaDate       = tipo === 'consulta'   ? ((formData.get('consulta_date') as string) || null)       : null
+  const internacaoInicio   = tipo === 'internacao' ? ((formData.get('internacao_inicio') as string) || null)   : null
+  const internacaoFim      = tipo === 'internacao' ? ((formData.get('internacao_fim') as string) || null)      : null
+  const internacaoDiasRaw  = tipo === 'internacao' ? (formData.get('internacao_dias') as string)               : null
+  const internacaoDias     = internacaoDiasRaw ? parseInt(internacaoDiasRaw, 10) : null
+  const internacaoLocal    = tipo === 'internacao' ? ((formData.get('internacao_local') as string) || null)    : null
 
   if (!file || file.size === 0) return { success: false, error: 'Selecione um arquivo PDF.' }
   if (!file.type.includes('pdf')) return { success: false, error: 'Apenas arquivos PDF são aceitos.' }
@@ -39,13 +47,18 @@ export async function uploadInvoice(formData: FormData): Promise<ActionResult> {
   const tenantId = await getCallerTenantId(user.id)
 
   const { error: dbError } = await supabase.from('invoices').insert({
-    patient_id:    patientId,
-    file_path:     filePath,
+    patient_id:        patientId,
+    file_path:         filePath,
     amount,
-    issue_date:    issueDate,
-    consulta_date: consultaDate,
-    numero_nota:   numeroNota,
-    tenant_id:     tenantId,
+    issue_date:        issueDate,
+    tipo,
+    numero_nota:       numeroNota,
+    consulta_date:     consultaDate,
+    internacao_inicio: internacaoInicio,
+    internacao_fim:    internacaoFim,
+    internacao_dias:   internacaoDias,
+    internacao_local:  internacaoLocal,
+    tenant_id:         tenantId,
   })
 
   if (dbError) {
