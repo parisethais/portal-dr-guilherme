@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
-import { syncConsultaCreate, syncConsultaUpdate, syncConsultaCancel } from '@/lib/sync-google-calendar'
+import { syncConsultaCreate, syncConsultaUpdate, syncConsultaCancel, syncConsultaDelete } from '@/lib/sync-google-calendar'
 
 async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
@@ -184,8 +184,22 @@ export async function deleteConsulta(consultaId: string): Promise<ActionResult> 
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const db = createAdminClient()
+
+  // Busca o google_calendar_event_id antes de deletar (depois da exclusão não tem mais como)
+  const { data: row } = await db
+    .from('consultas')
+    .select('google_calendar_event_id')
+    .eq('id', consultaId)
+    .single()
+
   const { error } = await db.from('consultas').delete().eq('id', consultaId)
   if (error) return { success: false, error: error.message }
+
+  // Remove do Google Calendar (fire-and-forget)
+  if (row?.google_calendar_event_id) {
+    const tenantId = await getCallerTenantId(user.id)
+    syncConsultaDelete(tenantId, row.google_calendar_event_id)
+  }
 
   revalidatePath('/medico')
   revalidatePath('/paciente')

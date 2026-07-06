@@ -199,3 +199,17 @@ export async function syncConsultaCancel(
     // fire-and-forget
   }
 }
+
+export async function syncConsultaDelete(
+  tenantId:      string,
+  googleEventId: string,
+): Promise<void> {
+  try {
+    const token = await getTokenForTenant(tenantId)
+    if (!token) return
+
+    await deleteGoogleEvent(token.accessToken, token.calendarId, googleEventId)
+  } catch {
+    // fire-and-forget
+  }
+}
