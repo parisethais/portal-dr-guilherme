@@ -179,9 +179,9 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
     const file = fileInputRef.current?.files?.[0]
     if (!file) { setOcrError('Selecione um arquivo PDF ou imagem antes de analisar.'); return }
 
-    // Limite de 20 MB
-    if (file.size > 20 * 1024 * 1024) {
-      setOcrError('Arquivo muito grande. Use arquivos de até 20 MB.')
+    // Limite de 30 MB
+    if (file.size > 30 * 1024 * 1024) {
+      setOcrError('Arquivo muito grande. Use arquivos de até 30 MB.')
       return
     }
 
@@ -430,7 +430,7 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
               ? <p className="text-sm font-medium text-gray-700">{selectedFileName}</p>
               : <p className="text-sm text-gray-400">Clique para selecionar PDF ou imagem do laudo</p>
             }
-            <p className="text-[11px] text-gray-300">PDF, JPG, PNG — até 20 MB</p>
+            <p className="text-[11px] text-gray-300">PDF, JPG, PNG — até 30 MB</p>
             <input
               ref={fileInputRef}
               type="file"
