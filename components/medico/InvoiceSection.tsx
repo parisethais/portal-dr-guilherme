@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Invoice, Profile } from '@/lib/types'
 import { uploadInvoice, deleteInvoice, getMedicoInvoiceUrl } from '@/app/actions/invoices'
 import Card from '@/components/ui/Card'
-import { Receipt, Plus, X, Trash2, Download, Loader2, FileText, Stethoscope, BedDouble } from 'lucide-react'
+import { Receipt, Plus, X, Trash2, Download, Loader2, FileText, Stethoscope, BedDouble, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LOCAIS_INTERNACAO = ['Hospital Israelita Albert Einstein', 'Hospital Vila Nova Star', 'Hospital Sírio-Libanês']
@@ -55,6 +55,60 @@ function InvoiceReferencia({ inv }: { inv: Invoice }) {
   )
 }
 
+function gerarTextoContador(inv: Invoice, patient: Profile): string {
+  const nome = patient.full_name ?? '—'
+  const cpf  = patient.cpf       ?? '—'
+
+  if (inv.tipo === 'internacao') {
+    const hospital   = inv.internacao_local ?? '[hospital]'
+    const inicio     = inv.internacao_inicio ? formatDate(inv.internacao_inicio) : '—'
+    const fim        = inv.internacao_fim    ? formatDate(inv.internacao_fim)    : '—'
+    const dias       = inv.internacao_dias   ?? 0
+    const valorUnit  = dias > 0 ? inv.amount / dias : inv.amount
+
+    // Lista de datas dia a dia
+    let datasAtendimentos = `${inicio} a ${fim}`
+    if (inv.internacao_inicio && inv.internacao_fim) {
+      const start = new Date(inv.internacao_inicio + 'T12:00:00')
+      const end   = new Date(inv.internacao_fim   + 'T12:00:00')
+      if (start <= end) {
+        const lista: string[] = []
+        const cur = new Date(start)
+        while (cur <= end) {
+          lista.push(cur.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }))
+          cur.setDate(cur.getDate() + 1)
+        }
+        datasAtendimentos = lista.join(', ')
+      }
+    }
+
+    return [
+      'internação hospitalar',
+      '',
+      `Descrição: Honorários médicos referentes a avaliações médicas hospitalares em regime de internação, realizadas no Hospital ${hospital}, entre os dias ${inicio} e ${fim}, pelo Dr. Guilherme Parise Santa Catharina (CRM-SP 170.281  |  Clínica Médica RQE 72444 / Nefrologia RQE 80434)`,
+      '',
+      `Paciente: ${nome}`,
+      `CPF: ${cpf}`,
+      `Datas dos atendimentos: ${datasAtendimentos}`,
+      `Número total de avaliações: ${dias}`,
+      `Valor unitário por avaliação: ${formatCurrency(valorUnit)}`,
+      `Valor total: ${formatCurrency(inv.amount)}`,
+    ].join('\n')
+  }
+
+  // consulta
+  const dataConsulta = inv.consulta_date ? formatDate(inv.consulta_date) : '—'
+  return [
+    'consulta médica',
+    '',
+    `Descrição: Consulta médica ambulatorial realizada pelo Dr. Guilherme Parise Santa Catharina (CRM-SP 170.281  |  Clínica Médica RQE 72444 / Nefrologia RQE 80434)`,
+    '',
+    `Paciente: ${nome}`,
+    `CPF: ${cpf}`,
+    `Data da consulta: ${dataConsulta}`,
+  ].join('\n')
+}
+
 interface InvoiceSectionProps {
   patient: Profile
   invoices: Invoice[]
@@ -81,7 +135,16 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
   const [formError, setFormError]             = useState('')
   const [deletingId, setDeletingId]           = useState<string | null>(null)
   const [downloadingId, setDownloadingId]     = useState<string | null>(null)
+  const [copiedId, setCopiedId]               = useState<string | null>(null)
   const [isPending, startTransition]          = useTransition()
+
+  function handleCopiarTexto(inv: Invoice) {
+    const texto = gerarTextoContador(inv, patient)
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiedId(inv.id)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
 
   function cancelForm() {
     setShowForm(false)
@@ -410,10 +473,20 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
+                        onClick={() => handleCopiarTexto(inv)}
+                        className="p-1 transition-colors"
+                        title="Copiar texto para o contador"
+                        style={{ color: copiedId === inv.id ? '#16a34a' : '#9ca3af' }}
+                      >
+                        {copiedId === inv.id
+                          ? <Check className="w-3.5 h-3.5" />
+                          : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
                         onClick={() => handleDownload(inv.id)}
                         disabled={downloadingId === inv.id || isPending}
                         className="p-1 text-gray-400 hover:text-primary disabled:opacity-40 transition-colors"
-                        title="Baixar"
+                        title="Baixar PDF"
                       >
                         {downloadingId === inv.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
