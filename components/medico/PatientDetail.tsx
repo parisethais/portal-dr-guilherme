@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import type { Profile, PatientExam, CarePlan, CarePlanAttachment, Invoice, Consulta, LabResult, ImagingResult, BiopsiaResult, Prescricao } from '@/lib/types'
 import LabResultsPanel from './prontuario/LabResultsPanel'
 import ImagingPanel from './prontuario/ImagingPanel'
@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils'
 import {
   ArrowLeft, UserRound,
   Stethoscope, Receipt, Contact, Activity, Pill,
-  FlaskConical, ScanLine, Microscope,
+  FlaskConical, ScanLine, Microscope, Pencil, X, Check, Loader2, Link2,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,8 @@ import PatientCadastroTab from './PatientCadastroTab'
 import MonitoramentoTab from './prontuario/MonitoramentoTab'
 import MemedPrescricao from './prontuario/MemedPrescricao'
 import { guardNavigation } from '@/lib/prontuario-dirty'
+import { updateObsPessoal } from '@/app/actions/profile'
+import { getOrCreateExameToken } from '@/app/actions/exame-upload'
 
 function calcAge(dataNascimento: string | null): number | null {
   if (!dataNascimento) return null
@@ -65,6 +67,39 @@ export default function PatientDetail({
   const canSeeProntuario = currentRole !== 'secretaria'
   const defaultTab: DetailTab = canSeeProntuario ? 'consultas' : 'faturas'
 
+  // ── Obs. do paciente — edição inline ─────────────────────────
+  const [obsLocal,   setObsLocal]   = useState(patient.obs_pessoal ?? '')
+  const [obsEditing, setObsEditing] = useState(false)
+  const [obsPending, startObsTransition] = useTransition()
+  const [obsSaved,   setObsSaved]   = useState(false)
+
+  function handleObsSave() {
+    startObsTransition(async () => {
+      const res = await updateObsPessoal(patient.id, obsLocal.trim() || null)
+      if (res.success) {
+        setObsEditing(false)
+        setObsSaved(true)
+        setTimeout(() => setObsSaved(false), 2000)
+        onRefresh?.()
+      }
+    })
+  }
+
+  // ── Link de exames ────────────────────────────────────────────
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [linkPending, startLinkTransition] = useTransition()
+
+  function handleCopyExameLink() {
+    startLinkTransition(async () => {
+      const res = await getOrCreateExameToken(patient.id)
+      if (!res.success || !res.data) return
+      const url = `${window.location.origin}/p/${res.data.token}/exames`
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2500)
+    })
+  }
+
   const [activeDetailTab, setActiveDetailTabState] = useState<DetailTab>(() => {
     if (typeof window === 'undefined') return defaultTab
     const raw = new URLSearchParams(window.location.search).get('dtab') as DetailTab | null
@@ -100,17 +135,29 @@ export default function PatientDetail({
         Voltar
       </button>
 
-      <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+      <div className="flex items-start gap-3 pb-4 border-b border-gray-100">
+        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
           <UserRound className="w-6 h-6 text-primary" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-gray-900">{patient.full_name || 'Nome não informado'}</h3>
             {calcAge(patient.data_nascimento) !== null && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/8 text-primary/80">
                 {calcAge(patient.data_nascimento)} anos
               </span>
+            )}
+            {canSeeProntuario && (
+              <button
+                type="button"
+                onClick={handleCopyExameLink}
+                disabled={linkPending}
+                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50"
+                title="Copiar link de envio de exames"
+              >
+                {linkPending ? <Loader2 className="w-3 h-3 animate-spin" /> : linkCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
+                {linkCopied ? 'Copiado!' : 'Link exames'}
+              </button>
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
@@ -127,15 +174,66 @@ export default function PatientDetail({
               {patient.lgpd_accepted ? 'LGPD aceita' : 'LGPD pendente'}
             </span>
           </div>
+
+          {/* Obs. do paciente — apenas para médico */}
+          {canSeeProntuario && (
+            <div className="mt-2">
+              {obsEditing ? (
+                <div className="flex items-start gap-2">
+                  <textarea
+                    value={obsLocal}
+                    onChange={e => setObsLocal(e.target.value)}
+                    autoFocus
+                    rows={2}
+                    placeholder="Obs. sobre o paciente..."
+                    className="flex-1 px-2.5 py-1.5 text-xs border border-amber-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-400 bg-amber-50 text-amber-900 placeholder:text-amber-300 resize-none"
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') { setObsLocal(patient.obs_pessoal ?? ''); setObsEditing(false) }
+                    }}
+                  />
+                  <div className="flex flex-col gap-1 mt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleObsSave}
+                      disabled={obsPending}
+                      className="p-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                      title="Salvar"
+                    >
+                      {obsPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setObsLocal(patient.obs_pessoal ?? ''); setObsEditing(false) }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg transition-colors"
+                      title="Cancelar"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="group flex items-start gap-1.5">
+                  {obsLocal ? (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-relaxed whitespace-pre-wrap flex-1">
+                      <span className="font-semibold">Obs.: </span>{obsLocal}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">Sem obs. do paciente</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setObsEditing(true)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-amber-600 transition-all flex-shrink-0 mt-0.5"
+                    title="Editar obs."
+                  >
+                    {obsSaved ? <Check className="w-3 h-3 text-green-500" /> : <Pencil className="w-3 h-3" />}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-
-      {patient.obs_pessoal && (
-        <div className="flex items-start gap-2 px-1 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-          <span className="font-semibold whitespace-nowrap">Obs.:</span>
-          <span className="leading-relaxed whitespace-pre-wrap">{patient.obs_pessoal}</span>
-        </div>
-      )}
 
       {/* Main tab bar */}
       <div className="-mx-1 px-1 pb-3 border-b-2 border-gray-100 flex flex-wrap gap-1.5">
@@ -167,6 +265,8 @@ export default function PatientDetail({
           patientBirthday={patient.data_nascimento}
           patientGender={patient.sexo}
           patientRetorno={patient.retorno_previsto}
+          patientAntCirurgicos={patient.antecedentes_cirurgicos}
+          patientAntFamiliares={patient.antecedentes_familiares}
           initialPrescricoes={prescricoes}
           onRefresh={onRefresh}
         />

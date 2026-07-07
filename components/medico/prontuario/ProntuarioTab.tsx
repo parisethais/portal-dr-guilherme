@@ -199,15 +199,17 @@ function formatConsultaLabel(c: Consulta) {
 }
 
 interface Props {
-  consultas:            Consulta[]
-  patientId:            string
-  patientName:          string
-  patientPhone?:        string | null
-  patientBirthday?:     string | null
-  patientGender?:       'M' | 'F' | null
-  patientRetorno?:      string | null
-  initialPrescricoes?:  { ativas: Prescricao[]; inativas: Prescricao[] }
-  onRefresh?:           () => void
+  consultas:             Consulta[]
+  patientId:             string
+  patientName:           string
+  patientPhone?:         string | null
+  patientBirthday?:      string | null
+  patientGender?:        'M' | 'F' | null
+  patientRetorno?:       string | null
+  patientAntCirurgicos?: string | null
+  patientAntFamiliares?: string | null
+  initialPrescricoes?:   { ativas: Prescricao[]; inativas: Prescricao[] }
+  onRefresh?:            () => void
 }
 
 const VALID_SUBTABS: SubTab[] = ['diagnosticos', 'evolucao', 'historico', 'sumario', 'prescricoes']
@@ -217,6 +219,7 @@ export default function ProntuarioTab({
   patientId, patientName,
   patientPhone, patientBirthday, patientGender,
   patientRetorno,
+  patientAntCirurgicos, patientAntFamiliares,
   initialPrescricoes,
   onRefresh,
 }: Props) {
@@ -413,6 +416,9 @@ export default function ProntuarioTab({
             consulta={selectedConsulta}
             consultas={realizadas}
             isFinalized={isFinalized}
+            patientId={patientId}
+            antCirurgicos={patientAntCirurgicos}
+            antFamiliares={patientAntFamiliares}
             onDirtyChange={setHasDirty}
             onRefresh={onRefresh}
           />

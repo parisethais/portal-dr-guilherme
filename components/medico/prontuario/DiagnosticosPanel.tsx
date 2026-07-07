@@ -2,65 +2,11 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import type { Consulta } from '@/lib/types'
-import { salvarConsultaFields } from '@/app/actions/prontuario'
+import { salvarConsultaFields, getDiagnosisHistory } from '@/app/actions/prontuario'
+import { updateAntecedentes } from '@/app/actions/profile'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { setProntuarioDirty } from '@/lib/prontuario-dirty'
-import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, GripVertical, Pencil } from 'lucide-react'
-
-// ── Lista de diagnósticos de nefrologia ───────────────────────
-const PRESET_DIAGNOSES = [
-  'Hipertensão arterial sistêmica (HAS)',
-  'Doença renal crônica estágio 1',
-  'Doença renal crônica estágio 2',
-  'Doença renal crônica estágio 3a',
-  'Doença renal crônica estágio 3b',
-  'Doença renal crônica estágio 4',
-  'Doença renal crônica estágio 5',
-  'Doença renal crônica estágio 5D (diálise)',
-  'Diabetes mellitus tipo 1',
-  'Diabetes mellitus tipo 2',
-  'Nefropatia diabética',
-  'Síndrome nefrótica',
-  'Síndrome nefrítica',
-  'Glomerulonefrite',
-  'Nefrite lúpica',
-  'Nefropatia por IgA (Berger)',
-  'Poliangiíte microscópica',
-  'Granulomatose com poliangiíte (Wegener)',
-  'Síndrome de Goodpasture',
-  'Rim policístico autossômico dominante (DRPAD)',
-  'Litíase renal (nefrolitíase)',
-  'Infecção do trato urinário (ITU)',
-  'Pielonefrite',
-  'Obstrução urinária',
-  'Hidronefrose',
-  'Insuficiência renal aguda (IRA)',
-  'Necrose tubular aguda (NTA)',
-  'Nefrite intersticial aguda',
-  'Hiperaldosteronismo primário',
-  'Hipertensão renovascular',
-  'Estenose de artéria renal',
-  'Transplante renal',
-  'Rejeição de enxerto renal',
-  'Proteinúria',
-  'Hematúria',
-  'Anemia da doença renal crônica',
-  'Hiperpotassemia',
-  'Hipopotassemia',
-  'Hiperfosfatemia',
-  'Hiperparatireoidismo secundário',
-  'Acidose metabólica',
-  'Edema',
-  'Hiponatremia',
-  'Hipernatremia',
-  'Obesidade',
-  'Dislipidemia',
-  'Hiperuricemia / gota',
-  'Lupus eritematoso sistêmico (LES)',
-  'Vasculite ANCA-associada',
-  'Amiloidose renal',
-  'Mieloma múltiplo',
-]
+import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, GripVertical, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Tipos exportados ──────────────────────────────────────────
 export interface DiagnosisEntry {
@@ -84,11 +30,18 @@ interface Props {
   consulta:           Consulta
   consultas:          Consulta[]
   isFinalized:        boolean
+  patientId:          string
+  antCirurgicos?:     string | null
+  antFamiliares?:     string | null
   onDirtyChange?:     (dirty: boolean) => void
   onRefresh?:         () => void
 }
 
-export default function DiagnosticosPanel({ consulta, consultas, isFinalized, onDirtyChange, onRefresh }: Props) {
+export default function DiagnosticosPanel({
+  consulta, consultas, isFinalized,
+  patientId, antCirurgicos, antFamiliares,
+  onDirtyChange, onRefresh,
+}: Props) {
   const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
   const [entries, setEntries]           = useState<DiagnosisEntry[]>(() => parseDiagnosticos(consulta.diagnosticos))
   const [isDirty, setIsDirty]           = useState(false)
@@ -100,6 +53,34 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   const [editingNomeIdx, setEditingNomeIdx] = useState<number | null>(null)
   const [editingNomeVal, setEditingNomeVal] = useState('')
   const nomeInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Antecedentes ─────────────────────────────────────────────
+  const [antOpen,        setAntOpen]        = useState(!!(antCirurgicos || antFamiliares))
+  const [antCir,         setAntCir]         = useState(antCirurgicos ?? '')
+  const [antFam,         setAntFam]         = useState(antFamiliares ?? '')
+  const [antSaved,       setAntSaved]       = useState(false)
+  const [antError,       setAntError]       = useState('')
+  const [antPending,     startAntTransition] = useTransition()
+
+  function handleAntSave() {
+    setAntError('')
+    startAntTransition(async () => {
+      const res = await updateAntecedentes(patientId, {
+        antecedentes_cirurgicos: antCir.trim() || null,
+        antecedentes_familiares: antFam.trim() || null,
+      })
+      if (!res.success) { setAntError(res.error); return }
+      setAntSaved(true)
+      setTimeout(() => setAntSaved(false), 2500)
+      onRefresh?.()
+    })
+  }
+
+  // ── Autocomplete — histórico próprio ──────────────────────────
+  const [historyDiags, setHistoryDiags] = useState<string[]>([])
+  useEffect(() => {
+    getDiagnosisHistory().then(setHistoryDiags).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useUnsavedWarning(isDirty && !isFinalized)
 
@@ -175,11 +156,11 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   const qLow       = q.toLowerCase()
   const addedNames = new Set(entries.map(e => e.nome.toLowerCase()))
   const suggestions = q
-    ? PRESET_DIAGNOSES.filter(d => d.toLowerCase().includes(qLow) && !addedNames.has(d.toLowerCase()))
+    ? historyDiags.filter(d => d.toLowerCase().includes(qLow) && !addedNames.has(d.toLowerCase()))
     : []
   const showAddFree = q.length > 0
     && !addedNames.has(qLow)
-    && !PRESET_DIAGNOSES.some(d => d.toLowerCase() === qLow)
+    && !historyDiags.some(d => d.toLowerCase() === qLow)
 
   function markDirty() { setIsDirty(true); setSaved(false) }
 
@@ -264,10 +245,65 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
     })
   }
 
+  // ── Bloco de antecedentes (compartilhado entre modos) ────────
+  const antecedentesBlock = (
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setAntOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Antecedentes</span>
+        {antOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+      </button>
+      {antOpen && (
+        <div className="p-4 space-y-3 bg-white">
+          {([['cirúrgicos', antCir, setAntCir], ['familiares', antFam, setAntFam]] as [string, string, (v: string) => void][]).map(([label, val, setVal]) => (
+            <div key={label}>
+              <label className="block text-xs font-medium text-gray-500 mb-1 capitalize">{label}</label>
+              <textarea
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                placeholder={`Antecedentes ${label}...`}
+                rows={2}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-gray-50 text-gray-700 placeholder:text-gray-300 resize-none leading-relaxed"
+                onInput={e => {
+                  const t = e.currentTarget
+                  t.style.height = 'auto'
+                  t.style.height = t.scrollHeight + 'px'
+                }}
+              />
+            </div>
+          ))}
+          {antError && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{antError}</p>
+          )}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleAntSave}
+              disabled={antPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {antPending ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Salvando...</>
+              ) : antSaved ? (
+                <><CheckCircle className="w-3 h-3" /> Salvo!</>
+              ) : (
+                <><Save className="w-3 h-3" /> Salvar antecedentes</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   // ── Modo read-only (finalizado) ───────────────────────────
   if (isFinalized) {
     return (
       <div className="space-y-3">
+        {antecedentesBlock}
         {/* Observação da consulta */}
         {consulta.obs_consulta && (
           <p className="text-xs italic text-gray-400 border-l-2 border-gray-200 pl-3 py-0.5 whitespace-pre-wrap">
@@ -311,6 +347,8 @@ export default function DiagnosticosPanel({ consulta, consultas, isFinalized, on
   // ── Modo edição ───────────────────────────────────────────
   return (
     <div className="space-y-4">
+
+      {antecedentesBlock}
 
       {/* Observação da consulta */}
       <div className="relative">

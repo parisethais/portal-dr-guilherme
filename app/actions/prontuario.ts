@@ -325,3 +325,37 @@ export async function deleteBiopsiaResult(id: string): Promise<ActionResult> {
   revalidatePath('/medico')
   return { success: true }
 }
+
+// ── Retorna lista de diagnósticos únicos já usados pelo médico ─
+export async function getDiagnosisHistory(): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const tenantId = await getCallerTenantId(user.id)
+  if (!tenantId) return []
+
+  const db = createAdminClient()
+  const { data } = await db
+    .from('consultas')
+    .select('diagnosticos')
+    .eq('tenant_id', tenantId)
+    .not('diagnosticos', 'is', null)
+
+  if (!data) return []
+
+  const seen = new Set<string>()
+  for (const row of data) {
+    if (!row.diagnosticos) continue
+    try {
+      const parsed = JSON.parse(row.diagnosticos)
+      if (Array.isArray(parsed)) {
+        for (const entry of parsed) {
+          if (entry?.nome?.trim()) seen.add(entry.nome.trim())
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  return Array.from(seen).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}

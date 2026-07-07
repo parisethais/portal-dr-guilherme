@@ -209,6 +209,51 @@ export async function updateRetornoPrevisto(
   return { success: true }
 }
 
+// ── Médico atualiza obs_pessoal do paciente ───────────────────
+export async function updateObsPessoal(
+  patientId: string,
+  obs_pessoal: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ obs_pessoal, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}
+
+// ── Médico atualiza antecedentes do paciente ──────────────────
+export async function updateAntecedentes(
+  patientId: string,
+  data: {
+    antecedentes_cirurgicos?: string | null
+    antecedentes_familiares?: string | null
+  },
+): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/medico')
+  return { success: true }
+}
+
 // ── Atualiza só o status do paciente (para uso rápido no Panorama) ─
 export async function updatePatientStatus(
   patientId: string,

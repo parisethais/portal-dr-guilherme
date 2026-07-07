@@ -31,7 +31,9 @@ export interface Profile {
   obs_secretaria: string | null
   form_token: string | null
   retorno_previsto: string | null   // date YYYY-MM-DD
-  obs_pessoal:      string | null   // nota do médico sobre o paciente (fora de consulta)
+  obs_pessoal:             string | null   // nota do médico sobre o paciente (fora de consulta)
+  antecedentes_cirurgicos: string | null
+  antecedentes_familiares: string | null
   // Campos do médico
   crm:              string | null
   especialidade:    string | null
