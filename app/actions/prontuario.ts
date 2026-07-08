@@ -344,6 +344,22 @@ export async function getDiagnosisHistory(): Promise<string[]> {
 
   if (!data) return []
 
+  // Remove HTML tags e extrai só o texto da primeira linha
+  function extractNome(raw: string): string {
+    const text = raw
+      .replace(/<[^>]*>/g, ' ')   // remove tags
+      .replace(/&gt;/g, '>')
+      .replace(/&lt;/g, '<')
+      .replace(/&amp;/g, '&')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    // Pega só até o primeiro ponto final ou 120 caracteres
+    const dot = text.indexOf('.')
+    if (dot > 0 && dot <= 120) return text.slice(0, dot + 1).trim()
+    return text.slice(0, 120).trim()
+  }
+
   const seen = new Set<string>()
   for (const row of data) {
     if (!row.diagnosticos) continue
@@ -351,7 +367,10 @@ export async function getDiagnosisHistory(): Promise<string[]> {
       const parsed = JSON.parse(row.diagnosticos)
       if (Array.isArray(parsed)) {
         for (const entry of parsed) {
-          if (entry?.nome?.trim()) seen.add(entry.nome.trim())
+          const nome = entry?.nome?.trim()
+          if (!nome) continue
+          const clean = extractNome(nome)
+          if (clean.length >= 2) seen.add(clean)
         }
       }
     } catch { /* ignore */ }
