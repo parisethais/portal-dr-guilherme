@@ -34,6 +34,7 @@ export interface Profile {
   obs_pessoal:             string | null   // nota do médico sobre o paciente (fora de consulta)
   antecedentes_cirurgicos: string | null
   antecedentes_familiares: string | null
+  habitos:                 string | null
   // Campos do médico
   crm:              string | null
   especialidade:    string | null

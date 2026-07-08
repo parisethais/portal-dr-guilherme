@@ -6,7 +6,7 @@ import { salvarConsultaFields, getDiagnosisHistory } from '@/app/actions/prontua
 import { updateAntecedentes } from '@/app/actions/profile'
 import { useUnsavedWarning } from '@/lib/hooks/useUnsavedWarning'
 import { setProntuarioDirty } from '@/lib/prontuario-dirty'
-import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, GripVertical, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
+import { Save, CheckCircle, Loader2, X, Plus, ClipboardCopy, Search, Lock, GripVertical, Pencil } from 'lucide-react'
 
 // ── Tipos exportados ──────────────────────────────────────────
 export interface DiagnosisEntry {
@@ -33,13 +33,14 @@ interface Props {
   patientId:          string
   antCirurgicos?:     string | null
   antFamiliares?:     string | null
+  habitos?:           string | null
   onDirtyChange?:     (dirty: boolean) => void
   onRefresh?:         () => void
 }
 
 export default function DiagnosticosPanel({
   consulta, consultas, isFinalized,
-  patientId, antCirurgicos, antFamiliares,
+  patientId, antCirurgicos, antFamiliares, habitos,
   onDirtyChange, onRefresh,
 }: Props) {
   const [obsConsulta, setObsConsulta]   = useState(consulta.obs_consulta ?? '')
@@ -55,12 +56,12 @@ export default function DiagnosticosPanel({
   const nomeInputRef = useRef<HTMLInputElement>(null)
 
   // ── Antecedentes ─────────────────────────────────────────────
-  const [antOpen,        setAntOpen]        = useState(!!(antCirurgicos || antFamiliares))
-  const [antCir,         setAntCir]         = useState(antCirurgicos ?? '')
-  const [antFam,         setAntFam]         = useState(antFamiliares ?? '')
-  const [antSaved,       setAntSaved]       = useState(false)
-  const [antError,       setAntError]       = useState('')
-  const [antPending,     startAntTransition] = useTransition()
+  const [antCir,     setAntCir]          = useState(antCirurgicos ?? '')
+  const [antFam,     setAntFam]          = useState(antFamiliares ?? '')
+  const [antHab,     setAntHab]          = useState(habitos ?? '')
+  const [antSaved,   setAntSaved]        = useState(false)
+  const [antError,   setAntError]        = useState('')
+  const [antPending, startAntTransition] = useTransition()
 
   function handleAntSave() {
     setAntError('')
@@ -68,6 +69,7 @@ export default function DiagnosticosPanel({
       const res = await updateAntecedentes(patientId, {
         antecedentes_cirurgicos: antCir.trim() || null,
         antecedentes_familiares: antFam.trim() || null,
+        habitos:                 antHab.trim() || null,
       })
       if (!res.success) { setAntError(res.error); return }
       setAntSaved(true)
@@ -246,35 +248,45 @@ export default function DiagnosticosPanel({
   }
 
   // ── Bloco de antecedentes (compartilhado entre modos) ────────
+  const antFields: [string, string, (v: string) => void, string][] = [
+    ['Antecedentes cirúrgicos', antCir, setAntCir, 'Cirurgias anteriores, procedimentos...'],
+    ['Antecedentes familiares', antFam, setAntFam, 'Histórico familiar relevante...'],
+    ['Hábitos',                 antHab, setAntHab, 'Tabagismo, etilismo, atividade física, alimentação...'],
+  ]
+
   const antecedentesBlock = (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setAntOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-      >
-        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Antecedentes</span>
-        {antOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
-      </button>
-      {antOpen && (
-        <div className="p-4 space-y-3 bg-white">
-          {([['cirúrgicos', antCir, setAntCir], ['familiares', antFam, setAntFam]] as [string, string, (v: string) => void][]).map(([label, val, setVal]) => (
-            <div key={label}>
-              <label className="block text-xs font-medium text-gray-500 mb-1 capitalize">{label}</label>
-              <textarea
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                placeholder={`Antecedentes ${label}...`}
-                rows={2}
-                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-gray-50 text-gray-700 placeholder:text-gray-300 resize-none leading-relaxed"
-                onInput={e => {
-                  const t = e.currentTarget
-                  t.style.height = 'auto'
-                  t.style.height = t.scrollHeight + 'px'
-                }}
-              />
-            </div>
-          ))}
+    <div className="space-y-2">
+      {antFields.map(([label, val, setVal, placeholder]) => (
+        <div
+          key={label}
+          className={`border rounded-xl p-3 space-y-2 ${isFinalized ? 'border-gray-200 bg-gray-50' : 'border-primary/20 bg-blue-50/30'}`}
+        >
+          <p className="text-sm font-semibold text-gray-900">{label}</p>
+          {isFinalized ? (
+            val ? (
+              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{val}</p>
+            ) : (
+              <p className="text-xs text-gray-400 italic">Não informado</p>
+            )
+          ) : (
+            <textarea
+              value={val}
+              onChange={e => setVal(e.target.value)}
+              placeholder={placeholder}
+              rows={1}
+              className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-700 placeholder:text-gray-400 resize-none overflow-hidden leading-relaxed"
+              style={{ minHeight: '2rem' }}
+              onInput={e => {
+                const t = e.currentTarget
+                t.style.height = 'auto'
+                t.style.height = t.scrollHeight + 'px'
+              }}
+            />
+          )}
+        </div>
+      ))}
+      {!isFinalized && (
+        <>
           {antError && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{antError}</p>
           )}
@@ -294,7 +306,7 @@ export default function DiagnosticosPanel({
               )}
             </button>
           </div>
-        </div>
+        </>
       )}
     </div>
   )

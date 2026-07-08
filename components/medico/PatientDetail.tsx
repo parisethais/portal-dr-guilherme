@@ -267,6 +267,7 @@ export default function PatientDetail({
           patientRetorno={patient.retorno_previsto}
           patientAntCirurgicos={patient.antecedentes_cirurgicos}
           patientAntFamiliares={patient.antecedentes_familiares}
+          patientHabitos={patient.habitos}
           initialPrescricoes={prescricoes}
           onRefresh={onRefresh}
         />

@@ -236,6 +236,7 @@ export async function updateAntecedentes(
   data: {
     antecedentes_cirurgicos?: string | null
     antecedentes_familiares?: string | null
+    habitos?: string | null
   },
 ): Promise<ActionResult> {
   const supabase = await createClient()

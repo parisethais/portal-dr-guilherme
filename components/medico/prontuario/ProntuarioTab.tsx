@@ -208,6 +208,7 @@ interface Props {
   patientRetorno?:       string | null
   patientAntCirurgicos?: string | null
   patientAntFamiliares?: string | null
+  patientHabitos?:       string | null
   initialPrescricoes?:   { ativas: Prescricao[]; inativas: Prescricao[] }
   onRefresh?:            () => void
 }
@@ -219,7 +220,7 @@ export default function ProntuarioTab({
   patientId, patientName,
   patientPhone, patientBirthday, patientGender,
   patientRetorno,
-  patientAntCirurgicos, patientAntFamiliares,
+  patientAntCirurgicos, patientAntFamiliares, patientHabitos,
   initialPrescricoes,
   onRefresh,
 }: Props) {
@@ -419,6 +420,7 @@ export default function ProntuarioTab({
             patientId={patientId}
             antCirurgicos={patientAntCirurgicos}
             antFamiliares={patientAntFamiliares}
+            habitos={patientHabitos}
             onDirtyChange={setHasDirty}
             onRefresh={onRefresh}
           />
