@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils'
 import {
   ArrowLeft, UserRound,
   Stethoscope, Receipt, Contact, Activity, Pill,
-  FlaskConical, ScanLine, Microscope, Pencil, X, Check, Loader2, Link2,
+  FlaskConical, ScanLine, Microscope, Pencil, X, Check, Loader2, Link2, Building2,
 } from 'lucide-react'
 import InvoiceSection from './InvoiceSection'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,7 @@ import MemedPrescricao from './prontuario/MemedPrescricao'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 import { updateObsPessoal } from '@/app/actions/profile'
 import { getOrCreateExameToken } from '@/app/actions/exame-upload'
+import InternacaoPanel from './InternacaoPanel'
 
 function calcAge(dataNascimento: string | null): number | null {
   if (!dataNascimento) return null
@@ -31,7 +32,7 @@ function calcAge(dataNascimento: string | null): number | null {
   return age
 }
 
-type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'biopsias' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro'
+type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'biopsias' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro' | 'hospitalar'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -49,7 +50,7 @@ interface PatientDetailProps {
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'biopsias', 'monitoramento', 'prescricao', 'faturas', 'cadastro']
+const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'biopsias', 'monitoramento', 'prescricao', 'faturas', 'cadastro', 'hospitalar']
 
 export default function PatientDetail({
   currentRole,
@@ -122,6 +123,7 @@ export default function PatientDetail({
     ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',          icon: <Pill         className="w-4 h-4" /> }] : []),
     { id: 'faturas',       label: 'NF',            icon: <Receipt   className="w-4 h-4" /> },
     { id: 'cadastro',      label: 'Cadastro',      icon: <Contact   className="w-4 h-4" /> },
+    ...(canSeeProntuario ? [{ id: 'hospitalar' as DetailTab, label: 'Hospitalar', icon: <Building2 className="w-4 h-4" /> }] : []),
   ]
 
   return (
@@ -317,6 +319,10 @@ export default function PatientDetail({
       {/* ── Tab: Cadastro ── */}
       {activeDetailTab === 'cadastro' && (
         <PatientCadastroTab patient={patient} currentRole={currentRole} onDeleted={onBack} />
+      )}
+
+      {activeDetailTab === 'hospitalar' && canSeeProntuario && (
+        <InternacaoPanel patientId={patient.id} />
       )}
 
     </div>

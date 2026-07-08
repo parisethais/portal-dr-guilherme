@@ -7,7 +7,8 @@ import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight, Building2 } from 'lucide-react'
+import InternacaoPanel from './InternacaoPanel'
 import { TIPO_LABEL } from './ConsultaModal'
 import RelatoriosTab from './RelatoriosTab'
 import FinanceiroTab from './FinanceiroTab'
@@ -40,9 +41,9 @@ interface MedicoDashboardProps {
   patientsWithExames?: string[]
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro' | 'hospitais'
 
-const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro']
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro', 'hospitais']
 
 // Lê o tab inicial da URL sem chamar useSearchParams (evita re-render do servidor)
 function getInitialTab(): Tab {
@@ -125,6 +126,7 @@ export default function MedicoDashboard({
     { id: 'documentos',  label: 'Documentos',  icon: <Upload          className="w-4 h-4" /> },
     { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2       className="w-4 h-4" /> },
     { id: 'financeiro',  label: 'Financeiro',  icon: <DollarSign      className="w-4 h-4" /> },
+    { id: 'hospitais',   label: 'Hospitais',   icon: <Building2       className="w-4 h-4" /> },
   ]
 
   const tabHeaders: Record<Tab, { title: string; sub: string }> = {
@@ -134,6 +136,7 @@ export default function MedicoDashboard({
     documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
     relatorios: { title: 'Relatórios',         sub: 'Análise de dados dos seus pacientes. Filtre e cruze informações.' },
     financeiro: { title: 'Financeiro',         sub: 'Controle receitas e despesas da clínica e renda pessoal profissional.' },
+    hospitais:  { title: 'Hospitais',          sub: 'Controle de internações hospitalares: visitas, diálise e resumo financeiro por internação.' },
   }
 
   return (
@@ -274,6 +277,9 @@ export default function MedicoDashboard({
             consultas={consultas}
             patients={patients}
           />
+        )}
+        {activeTab === 'hospitais' && (
+          <InternacaoPanel patients={patients} />
         )}
       </div>
     </div>
