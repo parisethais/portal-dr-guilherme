@@ -218,6 +218,7 @@ export default function MedicoDashboard({
             onSelectPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
             onIniciarAtendimento={handleIniciarAtendimento}
             patientsWithExames={patientsWithExames}
+            currentRole={currentRole}
           />
         )}
         {activeTab === 'pacientes' && (

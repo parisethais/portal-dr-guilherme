@@ -557,9 +557,10 @@ interface PanoramaTabProps {
   onSelectPatient?: (patientId: string) => void
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
   patientsWithExames?: string[]
+  currentRole?: string
 }
 
-export default function PanoramaTab({ patients, consultas, onSelectPatient, onIniciarAtendimento, patientsWithExames = [] }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas, onSelectPatient, onIniciarAtendimento, patientsWithExames = [], currentRole }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -591,6 +592,7 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
     ultimoTipoMap,
     dadosConsultasMes,
     proximasConsultas,
+    todayHasConsultas,
     consultasMesCount,
   } = useMemo(() => {
     const ultimaConsultaMap    = new Map<string, string>()
@@ -632,17 +634,19 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
       }
     })
 
-    // Encontra a próxima data com consultas (após hoje)
-    const nextDateStr = futureConsultas.length > 0
-      ? futureConsultas.reduce((min, c) => {
-          const d = c.data_hora.slice(0, 10)
-          return d < min ? d : min
-        }, futureConsultas[0].data_hora.slice(0, 10))
-      : null
+    // Datas futuras únicas ordenadas
+    const futureDates = [...new Set(futureConsultas.map(c => c.data_hora.slice(0, 10)))].sort()
 
-    const nextDateConsultas = nextDateStr
-      ? futureConsultas.filter(c => c.data_hora.slice(0, 10) === nextDateStr)
-      : []
+    // Lógica: hoje tem consulta → hoje + próxima data; hoje não tem → próximas 2 datas
+    let firstGroup: typeof consultas
+    let secondGroup: typeof consultas
+    if (todayConsultas.length > 0) {
+      firstGroup  = todayConsultas
+      secondGroup = futureDates[0] ? futureConsultas.filter(c => c.data_hora.slice(0, 10) === futureDates[0]) : []
+    } else {
+      firstGroup  = futureDates[0] ? futureConsultas.filter(c => c.data_hora.slice(0, 10) === futureDates[0]) : []
+      secondGroup = futureDates[1] ? futureConsultas.filter(c => c.data_hora.slice(0, 10) === futureDates[1]) : []
+    }
 
     const meses = ultimosMeses(6)
     const dadosConsultasMes = meses.map(({ key, label }) => ({
@@ -650,7 +654,7 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
       total: mesesBuckets[key] ?? 0,
     }))
 
-    const proximasConsultas = [...todayConsultas, ...nextDateConsultas]
+    const proximasConsultas = [...firstGroup, ...secondGroup]
       .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
       .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
 
@@ -661,6 +665,7 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
       ultimoTipoMap,
       dadosConsultasMes,
       proximasConsultas,
+      todayHasConsultas: todayConsultas.length > 0,
       consultasMesCount: mesesBuckets[mesAtual] ?? 0,
     }
   }, [consultas, patients, nowISO, todayDateStr, mesAtual])
@@ -929,8 +934,106 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
         </div>
       </div>
 
-      {/* ── 3. Pendências ── */}
-      {pendencias.length > 0 && (
+      {/* ── 3. Próximas consultas + Sem retorno ── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Próximas consultas */}
+        <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-gray-800">Próximas consultas</h3>
+            <span className="text-xs text-gray-400 ml-auto">
+              {todayHasConsultas ? 'hoje + próxima data' : 'próximas 2 datas'}
+            </span>
+          </div>
+          {proximasConsultas.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta agendada</p>
+          ) : (
+            <div className="space-y-1">
+              {proximasConsultas.map((c, i) => {
+                const d = new Date(c.data_hora)
+                const dayKey  = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                const prevDay = i > 0 ? new Date(proximasConsultas[i - 1].data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null
+                const isNewDay = dayKey !== prevDay
+                const diaLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+                const hora     = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+                const isToday  = c.data_hora.slice(0, 10) === todayDateStr
+                const isOnline = c.local === 'telemedicina'
+                const temExames = examesSet.has(c.patient_id)
+                return (
+                  <div key={c.id}>
+                    {isNewDay && (
+                      <div className={`flex items-center gap-2 ${i > 0 ? 'mt-3 mb-1' : 'mb-1'}`}>
+                        <div className="h-px flex-1 bg-gray-200" />
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide capitalize">{diaLabel}</span>
+                        <div className="h-px flex-1 bg-gray-200" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
+                      <div className="text-center min-w-[36px]">
+                        <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {onSelectPatient && c.patient ? (
+                            <button
+                              type="button"
+                              onClick={() => onSelectPatient(c.patient!.id)}
+                              className="text-xs font-semibold text-gray-800 truncate hover:text-primary transition-colors text-left"
+                            >
+                              {c.patient.full_name ?? '—'}
+                            </button>
+                          ) : (
+                            <p className="text-xs font-semibold text-gray-800 truncate">
+                              {c.patient?.full_name ?? '—'}
+                            </p>
+                          )}
+                          {isOnline && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-semibold flex-shrink-0">Online</span>
+                          )}
+                          {temExames && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold flex-shrink-0">Exames</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
+                      </div>
+                      {isToday && onIniciarAtendimento && c.patient ? (
+                        <button
+                          type="button"
+                          onClick={() => onIniciarAtendimento(c.patient!.id, c.id)}
+                          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-primary text-white font-semibold hover:bg-primary-light transition-colors flex-shrink-0"
+                          title="Iniciar atendimento"
+                        >
+                          <Stethoscope className="w-3 h-3" />
+                          Iniciar
+                        </button>
+                      ) : (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                          c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
+                        }`}>
+                          {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Pacientes ativos sem retorno */}
+        <SemRetornoPanel
+          lista={semRetornoLista}
+          total={semRetornoLista.length}
+          getUltima={getUltima}
+          getUltimoTipo={getUltimoTipo}
+          getAlerta={getAlertRetorno}
+        />
+      </div>
+
+      {/* ── 4. Pendências — somente para secretaria ── */}
+      {currentRole === 'secretaria' && pendencias.length > 0 && (
         <div className="rounded-xl border border-amber-200/70 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-2 mb-4">
             <ClipboardList className="w-4 h-4 text-amber-500" />
@@ -985,93 +1088,7 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
         </div>
       )}
 
-      {/* ── 4. Próximas consultas + Sem retorno ── */}
-      <div className="grid lg:grid-cols-2 gap-4">
-
-        {/* Próximas consultas — hoje + próxima data */}
-        <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <CalendarDays className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-gray-800">Próximas consultas</h3>
-            <span className="text-xs text-gray-400 ml-auto">hoje + próxima data</span>
-          </div>
-          {proximasConsultas.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta agendada</p>
-          ) : (
-            <div className="space-y-1">
-              {proximasConsultas.map((c, i) => {
-                const d = new Date(c.data_hora)
-                const dayKey  = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-                const prevDay = i > 0 ? new Date(proximasConsultas[i - 1].data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null
-                const isNewDay = dayKey !== prevDay
-                const diaLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
-                const hora     = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-                const isToday  = c.data_hora.slice(0, 10) === todayDateStr
-                return (
-                  <div key={c.id}>
-                    {isNewDay && (
-                      <div className={`flex items-center gap-2 ${i > 0 ? 'mt-3 mb-1' : 'mb-1'}`}>
-                        <div className="h-px flex-1 bg-gray-200" />
-                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide capitalize">{diaLabel}</span>
-                        <div className="h-px flex-1 bg-gray-200" />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
-                      <div className="text-center min-w-[36px]">
-                        <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {onSelectPatient && c.patient ? (
-                          <button
-                            type="button"
-                            onClick={() => onSelectPatient(c.patient!.id)}
-                            className="text-xs font-semibold text-gray-800 truncate hover:text-primary transition-colors text-left w-full"
-                          >
-                            {c.patient.full_name ?? '—'}
-                          </button>
-                        ) : (
-                          <p className="text-xs font-semibold text-gray-800 truncate">
-                            {c.patient?.full_name ?? '—'}
-                          </p>
-                        )}
-                        <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
-                      </div>
-                      {isToday && onIniciarAtendimento && c.patient ? (
-                        <button
-                          type="button"
-                          onClick={() => onIniciarAtendimento(c.patient!.id, c.id)}
-                          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-primary text-white font-semibold hover:bg-primary-light transition-colors flex-shrink-0"
-                          title="Iniciar atendimento"
-                        >
-                          <Stethoscope className="w-3 h-3" />
-                          Iniciar
-                        </button>
-                      ) : (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                          c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
-                        }`}>
-                          {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Pacientes ativos sem retorno */}
-        <SemRetornoPanel
-          lista={semRetornoLista}
-          total={semRetornoLista.length}
-          getUltima={getUltima}
-          getUltimoTipo={getUltimoTipo}
-          getAlerta={getAlertRetorno}
-        />
-      </div>
-
-      {/* ── 4. Filtros + Tabela ── */}
+      {/* ── 5. Filtros + Tabela ── */}
       <div className="space-y-3">
         {/* Linha 1: busca + status */}
         <div className="flex gap-2 flex-wrap items-center">
