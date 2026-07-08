@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import {
   getInternacoes, createInternacao, addVisita, deleteVisita,
   finalizarInternacao, deleteInternacao,
-  HOSPITAIS, VISITADORES, DIALISE_OPTIONS, hospitalLabel,
+  HOSPITAIS, VISITADORES, DIALISE_OPTIONS,
   type Internacao, type VisitaHospitalar,
 } from '@/app/actions/internacoes'
 import type { Profile } from '@/lib/types'
@@ -13,6 +13,10 @@ import {
   Stethoscope, CheckCircle, Trash2, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+function hospitalLabel(hospital: string, outro?: string | null) {
+  return HOSPITAIS.find(h => h.value === hospital)?.label ?? outro ?? hospital
+}
 
 // ── Helpers ────────────────────────────────────────────────────
 

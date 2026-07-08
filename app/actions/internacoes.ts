@@ -49,9 +49,6 @@ export interface Internacao {
   patient_name?:          string | null
 }
 
-export function hospitalLabel(hospital: string, outro?: string | null) {
-  return HOSPITAIS.find(h => h.value === hospital)?.label ?? outro ?? hospital
-}
 
 async function getCtx() {
   const supabase = await createClient()
