@@ -327,7 +327,7 @@ export async function deleteBiopsiaResult(id: string): Promise<ActionResult> {
 }
 
 // ── Retorna lista de diagnósticos únicos já usados pelo médico ─
-export async function getDiagnosisHistory(patientId?: string): Promise<string[]> {
+export async function getDiagnosisHistory(): Promise<string[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -336,15 +336,11 @@ export async function getDiagnosisHistory(patientId?: string): Promise<string[]>
   if (!tenantId) return []
 
   const db = createAdminClient()
-  let query = db
+  const { data } = await db
     .from('consultas')
     .select('diagnosticos')
     .eq('tenant_id', tenantId)
     .not('diagnosticos', 'is', null)
-
-  if (patientId) query = query.eq('patient_id', patientId)
-
-  const { data } = await query
 
   if (!data) return []
 

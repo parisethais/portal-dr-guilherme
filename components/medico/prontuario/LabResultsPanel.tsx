@@ -608,7 +608,12 @@ export default function LabResultsPanel({ labResults: initial, patientId }: Prop
           </thead>
           <tbody>
             {EXAM_GROUPS.map(group => {
-              const groupExams = EXAM_CATALOG.filter(e => e.group === group)
+              const allGroupExams = EXAM_CATALOG.filter(e => e.group === group)
+              // Em modo visualização, só mostra exames com ao menos um valor registrado
+              const groupExams = editingDate
+                ? allGroupExams
+                : allGroupExams.filter(e => Object.keys(grid[e.name] ?? {}).length > 0)
+              if (groupExams.length === 0) return null
               return (
                 <>
                   <tr key={`g-${group}`} className="bg-gray-50/80 border-y border-gray-100">
