@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/automacoes",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/fechar-consultas",
+      "schedule": "5 3 * * *"
     }
   ]
 }

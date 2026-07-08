@@ -7,7 +7,8 @@ import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2 } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight } from 'lucide-react'
+import { TIPO_LABEL } from './ConsultaModal'
 import RelatoriosTab from './RelatoriosTab'
 import FinanceiroTab from './FinanceiroTab'
 import dynamic from 'next/dynamic'
@@ -104,6 +105,17 @@ export default function MedicoDashboard({
     pushUrl({ tab: 'pacientes', p: patientId, dtab: 'prontuario', consulta: consultaId, stab: null })
   }
 
+  function handleRetornarConsulta(patientId: string, consultaId: string) {
+    setActiveTabState('pacientes')
+    setSelectedPatientId(patientId)
+    pushUrl({ tab: 'pacientes', p: patientId, dtab: 'prontuario', consulta: consultaId, stab: null })
+  }
+
+  // Consultas atualmente em atendimento (banner verde)
+  const consultasEmAndamento = consultas
+    .filter(c => c.status === 'em_atendimento')
+    .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'panorama',    label: 'Panorama',    icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'pacientes',   label: 'Pacientes',   icon: <Users           className="w-4 h-4" /> },
@@ -163,6 +175,37 @@ export default function MedicoDashboard({
           </div>
         </div>
       </div>
+
+      {/* Banner: consultas em andamento */}
+      {consultasEmAndamento.length > 0 && (
+        <div className="border-b border-green-200 bg-green-50">
+          {consultasEmAndamento.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => handleRetornarConsulta(c.patient_id, c.id)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 sm:px-6 hover:bg-green-100 transition-colors text-left"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+              <Stethoscope className="w-4 h-4 text-green-700 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-green-900">
+                  Consulta em andamento
+                </span>
+                {c.patient && (
+                  <span className="text-sm text-green-700 ml-2">
+                    — {c.patient.full_name}
+                    {c.tipo && <span className="text-green-600 font-normal ml-1 text-xs">({TIPO_LABEL[c.tipo] ?? c.tipo})</span>}
+                  </span>
+                )}
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-green-700 flex-shrink-0">
+                Retornar <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-3 pt-3 sm:p-6 sm:pt-4">
