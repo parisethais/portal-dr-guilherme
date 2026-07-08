@@ -9,11 +9,12 @@ import SumarioPanel from './SumarioPanel'
 import PrescricoesPanel from './PrescricoesPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
+import { deleteConsulta } from '@/app/actions/consultas'
 import AssinaturaModal, { AssinaturaSuccessModal } from './AssinaturaModal'
 import {
   ClipboardList, Stethoscope,
   Lock, AlertTriangle, Loader2, CheckCircle, FileText, CalendarPlus, History,
-  Activity, Bot, ShieldCheck, Download, Pill,
+  Activity, Bot, ShieldCheck, Download, Pill, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
@@ -245,6 +246,21 @@ export default function ProntuarioTab({
   const [hasDirty, setHasDirty]            = useState(false)
   const [showAssinatura, setShowAssinatura] = useState(false)
   const [assinaturaResult, setAssinaturaResult] = useState<{ pdfUrl: string; assinaturaUrl: string } | null>(null)
+
+  const [confirmDelete, setConfirmDelete]   = useState(false)
+  const [deleteError, setDeleteError]       = useState('')
+  const [deletePending, startDeleteTrans]   = useTransition()
+
+  function handleDelete() {
+    if (!selectedConsulta) return
+    setDeleteError('')
+    startDeleteTrans(async () => {
+      const res = await deleteConsulta(selectedConsulta.id)
+      if (!res.success) { setDeleteError(res.error ?? 'Erro ao excluir.'); return }
+      setConfirmDelete(false)
+      onRefresh?.()
+    })
+  }
 
   const selectedConsulta = realizadas.find(c => c.id === selectedId) ?? null
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
@@ -536,11 +552,52 @@ export default function ProntuarioTab({
       {/* ── Seção de finalização (só nas abas clínicas, só se não finalizado) ── */}
       {isClinicTab && !isHistorico && !isFinalized && selectedConsulta && (
         <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-          {!confirmFinalizar ? (
+          {confirmDelete ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <Trash2 className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-900">Excluir esta consulta?</p>
+                  <p className="text-xs text-red-700 mt-0.5 leading-relaxed">
+                    Todos os dados desta consulta serão removidos permanentemente.
+                    <strong className="block mt-1">Esta ação não pode ser desfeita.</strong>
+                  </p>
+                </div>
+              </div>
+              {deleteError && (
+                <p className="text-xs text-red-700 bg-red-100 border border-red-300 rounded-lg px-3 py-2">{deleteError}</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setConfirmDelete(false); setDeleteError('') }}
+                  disabled={deletePending}
+                  className="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deletePending}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {deletePending
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Excluindo...</>
+                    : <><Trash2 className="w-3.5 h-3.5" /> Sim, excluir</>}
+                </button>
+              </div>
+            </div>
+          ) : !confirmFinalizar ? (
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs text-gray-400">
-                Salve o rascunho quantas vezes precisar. Finalize quando o prontuário estiver completo.
-              </p>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Excluir consulta
+              </button>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
