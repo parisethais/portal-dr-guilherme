@@ -81,7 +81,7 @@ export default function DiagnosticosPanel({
   // ── Autocomplete — histórico próprio ──────────────────────────
   const [historyDiags, setHistoryDiags] = useState<string[]>([])
   useEffect(() => {
-    getDiagnosisHistory().then(setHistoryDiags).catch(() => {})
+    getDiagnosisHistory(patientId).then(setHistoryDiags).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useUnsavedWarning(isDirty && !isFinalized)

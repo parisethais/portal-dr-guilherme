@@ -501,19 +501,19 @@ export default function ConsultaModal({
             )
           })()}
 
-          {/* Iniciar atendimento — só médico */}
-          {(currentRole === 'medico' || currentRole === 'superadmin') && onIniciarAtendimento && (
+          {/* Abrir prontuário — só médico */}
+          {(currentRole === 'medico' || currentRole === 'superadmin') && onNavigateToPatient && (
             <button
               type="button"
               onClick={() => {
-                onIniciarAtendimento(consulta.patient_id, consulta.id)
+                onNavigateToPatient(consulta.patient_id)
                 onClose()
               }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
               style={{ backgroundColor: '#2D2B6B' }}
             >
               <Stethoscope className="w-4 h-4" />
-              Iniciar atendimento
+              Abrir prontuário
             </button>
           )}
 
