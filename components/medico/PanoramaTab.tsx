@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { resetPatientPassword, updatePatientStatus } from '@/app/actions/profile'
 import type { Profile, StatusPaciente, Consulta } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock, Users, UserMinus, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, X, Pencil, AlertCircle, KeyRound, Copy, CalendarDays, TrendingUp, UserCheck, AlertTriangle, MessageCircle, Clock, Users, UserMinus, UserPlus, ChevronLeft, ChevronRight, ClipboardList, Stethoscope } from 'lucide-react'
 import PatientEditModal from './PatientEditModal'
 import { updateRetornoPrevisto } from '@/app/actions/profile'
 import { TIPO_LABEL } from './ConsultaModal'
@@ -555,9 +555,11 @@ interface PanoramaTabProps {
   patients: Profile[]
   consultas: Consulta[]
   onSelectPatient?: (patientId: string) => void
+  onIniciarAtendimento?: (patientId: string, consultaId: string) => void
+  patientsWithExames?: string[]
 }
 
-export default function PanoramaTab({ patients, consultas, onSelectPatient }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas, onSelectPatient, onIniciarAtendimento, patientsWithExames = [] }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -688,6 +690,8 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient }: Pa
     (p: Profile) => p.status_paciente !== 'obito' && (ultimaConsultaMap.get(p.id) ?? '') >= cutoffISO
   , [ultimaConsultaMap, cutoffISO])
 
+  const examesSet = useMemo(() => new Set(patientsWithExames), [patientsWithExames])
+
   const { totais, dadosComo, semRetornoLista, totaisAlerta } = useMemo(() => {
     const comoMap: Record<string, number> = {}
     let semRetornoCount = 0
@@ -735,6 +739,20 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient }: Pa
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients, isAtivo, primeiraConsultaMap, mesAtual, consultasMesCount, proximaConsultaMap])
+
+  // ── Pendências: pacientes ativos com cadastro/LGPD/exames incompletos ──
+  const pendencias = useMemo(() =>
+    patients
+      .filter(p => isAtivo(p))
+      .map(p => ({
+        id:         p.id,
+        full_name:  p.full_name,
+        cadastroOk: !!(p.full_name && p.data_nascimento && p.sexo && p.cpf && p.phone),
+        lgpdOk:     p.lgpd_accepted,
+        examesOk:   examesSet.has(p.id),
+      }))
+      .filter(p => !p.cadastroOk || !p.lgpdOk || !p.examesOk)
+  , [patients, isAtivo, examesSet])
 
   // ── Tabela filtrada ────────────────────────────────────────
   const filtered = useMemo(() => patients
@@ -911,7 +929,63 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient }: Pa
         </div>
       </div>
 
-      {/* ── 3. Próximas consultas + Sem retorno ── */}
+      {/* ── 3. Pendências ── */}
+      {pendencias.length > 0 && (
+        <div className="rounded-xl border border-amber-200/70 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-semibold text-gray-800">Pendências</h3>
+            <span className="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold">{pendencias.length}</span>
+            <span className="text-xs text-gray-400 ml-auto">pacientes ativos com dados incompletos</span>
+          </div>
+          <div className="space-y-1.5">
+            {pendencias.slice(0, 15).map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50/80 hover:bg-amber-50/50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  {onSelectPatient ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectPatient(p.id)}
+                      className="text-xs font-semibold text-gray-800 hover:text-primary transition-colors text-left truncate block w-full"
+                    >
+                      {p.full_name ?? '—'}
+                    </button>
+                  ) : (
+                    <p className="text-xs font-semibold text-gray-800 truncate">{p.full_name ?? '—'}</p>
+                  )}
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {!p.cadastroOk && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Cadastro incompleto</span>
+                    )}
+                    {!p.lgpdOk && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Sem LGPD</span>
+                    )}
+                    {!p.examesOk && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Sem exames</span>
+                    )}
+                  </div>
+                </div>
+                {onSelectPatient && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectPatient(p.id)}
+                    className="text-xs text-primary hover:underline flex-shrink-0 font-medium"
+                  >
+                    Abrir →
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {pendencias.length > 15 && (
+            <p className="text-xs text-gray-400 text-center mt-3">
+              + {pendencias.length - 15} outros pacientes com pendências
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── 4. Próximas consultas + Sem retorno ── */}
       <div className="grid lg:grid-cols-2 gap-4">
 
         {/* Próximas consultas — hoje + próxima data */}
@@ -932,6 +1006,7 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient }: Pa
                 const isNewDay = dayKey !== prevDay
                 const diaLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
                 const hora     = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+                const isToday  = c.data_hora.slice(0, 10) === todayDateStr
                 return (
                   <div key={c.id}>
                     {isNewDay && (
@@ -961,11 +1036,23 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient }: Pa
                         )}
                         <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
                       </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                        c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
-                      }`}>
-                        {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
-                      </span>
+                      {isToday && onIniciarAtendimento && c.patient ? (
+                        <button
+                          type="button"
+                          onClick={() => onIniciarAtendimento(c.patient!.id, c.id)}
+                          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-primary text-white font-semibold hover:bg-primary-light transition-colors flex-shrink-0"
+                          title="Iniciar atendimento"
+                        >
+                          <Stethoscope className="w-3 h-3" />
+                          Iniciar
+                        </button>
+                      ) : (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                          c.status === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'
+                        }`}>
+                          {c.status === 'confirmada' ? 'Confirmada' : 'Agendada'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )

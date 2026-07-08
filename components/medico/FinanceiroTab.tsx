@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useTransition, useMemo } from 'react'
+import HonorariosPanel from '@/components/medico/HonorariosPanel'
 import type { FinancialEntry, EntryInput, NotaFiscalStatus } from '@/app/actions/financial'
 import type { Profile, Consulta } from '@/lib/types'
 import { createFinancialEntry, updateFinancialEntry, deleteFinancialEntry, notifyPatientNota, enviarEmailNFContador } from '@/app/actions/financial'
@@ -1060,6 +1061,12 @@ export default function FinanceiroTab({ initialEntries, doctorId, doctorName = n
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* ── Honorários externos / Aulas ── */}
+      <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5"
+        style={{ backgroundColor: 'rgba(255,255,255,0.75)', boxShadow: '0 2px 12px rgba(26,31,46,0.06)' }}>
+        <HonorariosPanel />
       </div>
     </div>
   )

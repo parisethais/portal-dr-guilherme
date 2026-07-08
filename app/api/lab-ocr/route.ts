@@ -67,7 +67,8 @@ Regras:
 - Use a unidade exata do laudo
 - Ignore exames não listados acima
 - Se um exame aparecer com resultado "alterado" ou "referência" sem valor numérico, ignore-o
-- Não inclua exames não encontrados`
+- Não inclua exames não encontrados
+- IMPORTANTE — Neutrófilos e Linfócitos: use SEMPRE o valor absoluto (ex: "4200", unidade "/mm³"). NUNCA use a porcentagem (ex: NÃO use "70" com unidade "%"). Se o laudo mostrar tanto a porcentagem quanto o valor absoluto, use APENAS o valor absoluto`
 
     let responseText = ''
 

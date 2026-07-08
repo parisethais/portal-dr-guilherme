@@ -27,6 +27,11 @@ export const EXAM_CATALOG: ExamDef[] = [
     unitRanges: { 'mg/dL': { refMin: 4.5, refMax: 5.2, warnLow: 4.0, warnHigh: 5.6, critLow: 3.5, critHigh: 6.0 } },
   },
   {
+    group: 'Função Renal', name: 'Cálcio total', unit: 'mg/dL', altUnits: ['mmol/L'],
+    refMin: 8.5, refMax: 10.5, warnLow: 7.5, warnHigh: 11.0, critLow: 7.0, critHigh: 12.0,
+    unitRanges: { 'mmol/L': { refMin: 2.12, refMax: 2.62, warnLow: 1.87, warnHigh: 2.75, critLow: 1.75, critHigh: 3.0 } },
+  },
+  {
     group: 'Função Renal', name: 'Magnésio', unit: 'mg/dL', altUnits: ['mmol/L'],
     refMin: 1.6, refMax: 2.6, warnLow: 1.2, warnHigh: 3.0, critLow: 0.8, critHigh: 4.0,
     unitRanges: { 'mmol/L': { refMin: 0.66, refMax: 1.07, warnLow: 0.49, warnHigh: 1.23, critLow: 0.33, critHigh: 1.65 } },
@@ -36,6 +41,8 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Função Renal', name: 'Cistatina C', unit: 'mg/L', refMin: 0.53, refMax: 0.95, warnHigh: 1.2, critHigh: 2.0 },
   { group: 'Função Renal', name: 'Clearance Creatinina 24h: volume urinário', unit: 'mL/24h', refMin: 600, refMax: 2500, warnLow: 400, warnHigh: 3500, critLow: 200 },
   { group: 'Função Renal', name: 'Clearance Creatinina 24h: clearance', unit: 'mL/min/1,73m²', refMin: 90, warnLow: 60, critLow: 30 },
+  { group: 'Função Renal', name: 'Osmolalidade plasmática', unit: 'mOsm/kg', refMin: 275, refMax: 295, warnLow: 260, warnHigh: 310, critLow: 250, critHigh: 330 },
+  { group: 'Função Renal', name: 'Osmolalidade urinária', unit: 'mOsm/kg', noRef: true },
 
   // ── HEMATOLOGIA ────────────────────────────────────────────────
   { group: 'Hematologia', name: 'Hemoglobina', unit: 'g/dL', refMin: 12.0, refMax: 17.5, warnLow: 10.0, warnHigh: 18.5, critLow: 8.0, critHigh: 20.0 },
@@ -65,8 +72,6 @@ export const EXAM_CATALOG: ExamDef[] = [
   // ── PROTEÍNAS SÉRICAS ─────────────────────────────────────────
   { group: 'Proteínas Séricas', name: 'Albumina', unit: 'g/dL', refMin: 3.5, refMax: 5.0, warnLow: 3.0, critLow: 2.5 },
   { group: 'Proteínas Séricas', name: 'Proteínas totais', unit: 'g/dL', refMin: 6.0, refMax: 8.0, warnLow: 5.0, critLow: 4.0 },
-
-  // ── ELETROFORESE / PROTEÍNAS SÉRICAS ──────────────────────────
   { group: 'Proteínas Séricas', name: 'Eletroforese: pico monoclonal', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
   { group: 'Proteínas Séricas', name: 'Eletroforese: conc. pico monoclonal', unit: 'g/dL', altUnits: ['g/L'], refMax: 0, warnHigh: 1.0, critHigh: 2.0,
     unitRanges: { 'g/L': { refMax: 0, warnHigh: 10, critHigh: 20 } } },
@@ -115,6 +120,13 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Autoimune', name: 'Anti-La/SSB', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
   { group: 'Autoimune', name: 'Complemento C3', unit: 'mg/dL', refMin: 90, refMax: 180, warnLow: 60, critLow: 40 },
   { group: 'Autoimune', name: 'Complemento C4', unit: 'mg/dL', refMin: 16, refMax: 47, warnLow: 8, critLow: 4 },
+  // Vasculite / nefrite glomerular
+  { group: 'Autoimune', name: 'ANCA MPO (p-ANCA)', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
+  { group: 'Autoimune', name: 'ANCA PR3 (c-ANCA)', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
+  { group: 'Autoimune', name: 'Anti-MBG', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
+  { group: 'Autoimune', name: 'Anti-PLA2R', unit: 'U/mL', refMax: 14, warnHigh: 14, critHigh: 50 },
+  { group: 'Autoimune', name: 'Anti-THSD7A', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
+  { group: 'Autoimune', name: 'Crioglobulinas', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
 
   // ── SOROLOGIAS ────────────────────────────────────────────────
   { group: 'Sorologias', name: 'Anti-HCV', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
@@ -122,9 +134,16 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Sorologias', name: 'Anti-HBs', unit: 'mUI/mL', refMin: 10, warnLow: 10, critLow: 0, higherBetter: true },
   { group: 'Sorologias', name: 'Anti-HBc total', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
   { group: 'Sorologias', name: 'Anti-HBc IgM', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
+  { group: 'Sorologias', name: 'HBeAg', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
+  { group: 'Sorologias', name: 'Anti-HBe', unit: 'react/n.react', noRef: true },
+  { group: 'Sorologias', name: 'HBV-DNA', unit: 'UI/mL', noRef: true },
+  { group: 'Sorologias', name: 'HCV-RNA', unit: 'UI/mL', noRef: true },
   { group: 'Sorologias', name: 'HIV 1/2', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
+  { group: 'Sorologias', name: 'HIV carga viral', unit: 'cópias/mL', noRef: true },
+  { group: 'Sorologias', name: 'CD4', unit: 'células/mm³', refMin: 500, warnLow: 350, critLow: 200, higherBetter: true },
   { group: 'Sorologias', name: 'Sífilis: VDRL', unit: 'título', noRef: true },
   { group: 'Sorologias', name: 'Sífilis: teste treponêmico', unit: 'react/n.react', qualitative: true, normalAnswer: 'n.react' },
+  { group: 'Sorologias', name: 'Chagas', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
 
   // ── URINA ─────────────────────────────────────────────────────
   { group: 'Urina', name: 'Urina 1: pH urinário', unit: 'sem unidade', refMin: 4.5, refMax: 8.0 },
@@ -147,6 +166,52 @@ export const EXAM_CATALOG: ExamDef[] = [
     refMax: 150, warnHigh: 500, critHigh: 3500,
     unitRanges: { 'g/24h': { refMax: 0.15, warnHigh: 0.5, critHigh: 3.5 } },
   },
+  { group: 'Urina', name: 'Eletroforese de proteínas urinárias', unit: 'descritivo', noRef: true },
+  { group: 'Urina', name: 'Imunofixação urinária', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
+
+  // ── URINA 24H LITOGÊNICA ──────────────────────────────────────
+  // Volume acima de 2L é meta preventiva para nefrolitíase
+  { group: 'Urina 24h Litogênica', name: 'Volume urinário 24h', unit: 'mL/24h', refMin: 2000, refMax: 3500, warnLow: 1500, critLow: 1000 },
+  // Creatinina urinária valida a coleta completa da urina de 24h
+  {
+    group: 'Urina 24h Litogênica', name: 'Creatinina urinária 24h', unit: 'g/24h', altUnits: ['mg/24h'],
+    refMin: 0.6, refMax: 2.5, warnLow: 0.4, warnHigh: 3.5,
+    unitRanges: { 'mg/24h': { refMin: 600, refMax: 2500, warnLow: 400, warnHigh: 3500 } },
+  },
+  { group: 'Urina 24h Litogênica', name: 'Cálcio urinário 24h', unit: 'mg/24h', refMax: 300, warnHigh: 400, critHigh: 600 },
+  { group: 'Urina 24h Litogênica', name: 'Oxalato urinário 24h', unit: 'mg/24h', refMax: 40, warnHigh: 45, critHigh: 80 },
+  // Citrato é protetor — quanto mais alto, melhor
+  { group: 'Urina 24h Litogênica', name: 'Citrato urinário 24h', unit: 'mg/24h', refMin: 320, warnLow: 200, critLow: 100, higherBetter: true },
+  { group: 'Urina 24h Litogênica', name: 'Ácido úrico urinário 24h', unit: 'mg/24h', refMax: 750, warnHigh: 1000, critHigh: 1500 },
+  { group: 'Urina 24h Litogênica', name: 'Sódio urinário 24h', unit: 'mEq/24h', refMin: 40, refMax: 220, warnHigh: 300 },
+  { group: 'Urina 24h Litogênica', name: 'Fósforo urinário 24h', unit: 'mg/24h', refMin: 400, refMax: 1300 },
+  { group: 'Urina 24h Litogênica', name: 'Magnésio urinário 24h', unit: 'mg/24h', refMin: 50, refMax: 200 },
+  { group: 'Urina 24h Litogênica', name: 'pH urinário 24h', unit: 'sem unidade', refMin: 4.5, refMax: 8.0 },
+  { group: 'Urina 24h Litogênica', name: 'Cistina urinária 24h', unit: 'mg/24h', refMax: 30, warnHigh: 100, critHigh: 250 },
+
+  // ── IMUNOGLOBULINAS E CADEIAS LEVES ──────────────────────────
+  { group: 'Imunoglobulinas', name: 'Imunoglobulina IgG', unit: 'mg/dL', refMin: 700, refMax: 1600, warnLow: 400, critLow: 200 },
+  { group: 'Imunoglobulinas', name: 'Imunoglobulina IgA', unit: 'mg/dL', refMin: 70, refMax: 400, warnLow: 30, critLow: 10 },
+  { group: 'Imunoglobulinas', name: 'Imunoglobulina IgM', unit: 'mg/dL', refMin: 40, refMax: 230, warnLow: 20, critLow: 10 },
+  { group: 'Imunoglobulinas', name: 'Cadeia leve livre Kappa', unit: 'mg/dL', refMin: 0.33, refMax: 1.94, warnHigh: 5.0, critHigh: 20.0 },
+  { group: 'Imunoglobulinas', name: 'Cadeia leve livre Lambda', unit: 'mg/dL', refMin: 0.57, refMax: 2.63, warnHigh: 5.0, critHigh: 20.0 },
+  { group: 'Imunoglobulinas', name: 'Relação Kappa/Lambda', unit: 'sem unidade', refMin: 0.26, refMax: 1.65, warnLow: 0.1, warnHigh: 8.0, critLow: 0.05, critHigh: 15.0 },
+
+  // ── INFLAMAÇÃO E COAGULAÇÃO ───────────────────────────────────
+  {
+    group: 'Inflamação e Coagulação', name: 'PCR', unit: 'mg/dL', altUnits: ['mg/L'],
+    refMax: 1.0, warnHigh: 5.0, critHigh: 20.0,
+    unitRanges: { 'mg/L': { refMax: 10, warnHigh: 50, critHigh: 200 } },
+  },
+  { group: 'Inflamação e Coagulação', name: 'VHS', unit: 'mm/h', refMax: 20, warnHigh: 50, critHigh: 100 },
+  { group: 'Inflamação e Coagulação', name: 'TP', unit: 'segundos', refMin: 11, refMax: 14, warnHigh: 17, critHigh: 25 },
+  { group: 'Inflamação e Coagulação', name: 'INR', unit: 'sem unidade', refMin: 0.8, refMax: 1.2, warnHigh: 1.5, critHigh: 3.0 },
+  { group: 'Inflamação e Coagulação', name: 'TTPa', unit: 'segundos', refMin: 25, refMax: 40, warnHigh: 60, critHigh: 100 },
+
+  // ── CARDIOVASCULAR ────────────────────────────────────────────
+  // NT-pro-BNP: cutoff geral <125 pg/mL (<50 anos: <450, 50-75: <900, >75: <1800)
+  { group: 'Cardiovascular', name: 'NT-pro-BNP', unit: 'pg/mL', refMax: 125, warnHigh: 900, critHigh: 5000 },
+  { group: 'Cardiovascular', name: 'BNP', unit: 'pg/mL', refMax: 100, warnHigh: 400, critHigh: 1000 },
 ]
 
 // Grupo único de exames na ordem definida
@@ -188,6 +253,10 @@ export function classifyValue(
   if (def.qualitative) {
     const v = value.toLowerCase().trim()
     if (!def.normalAnswer) return null
+
+    // Valores "< 0,1", "< 0.05", "<0" são abaixo do limite de detecção → normal para campos neg
+    if (def.normalAnswer === 'neg' && v.startsWith('<')) return 'normal'
+
     // Aliases para variações laboratoriais de resultados negativos/normais
     const NORMAL_ALIASES: Record<string, string[]> = {
       'neg':     ['neg', 'negativo', 'negative', 'não detectado', 'nao detectado',

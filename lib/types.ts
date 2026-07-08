@@ -214,6 +214,7 @@ export interface Prescricao {
   created_by:  string | null
   medicamento: string
   dose:        string | null
+  via:         string | null
   posologia:   string | null
   ativo:       boolean
   data_inicio: string  // YYYY-MM-DD

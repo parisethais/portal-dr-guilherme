@@ -37,6 +37,7 @@ interface MedicoDashboardProps {
   documents: Document[]
   consultas: Consulta[]
   financialEntries: FinancialEntry[]
+  patientsWithExames?: string[]
 }
 
 type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro'
@@ -75,6 +76,7 @@ export default function MedicoDashboard({
   documents,
   consultas,
   financialEntries,
+  patientsWithExames = [],
 }: MedicoDashboardProps) {
   // ── Estado local — sem useRouter/useSearchParams ──────────────
   const [activeTab,        setActiveTabState]   = useState<Tab>(getInitialTab)
@@ -214,6 +216,8 @@ export default function MedicoDashboard({
             patients={patients}
             consultas={consultas}
             onSelectPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
+            onIniciarAtendimento={handleIniciarAtendimento}
+            patientsWithExames={patientsWithExames}
           />
         )}
         {activeTab === 'pacientes' && (

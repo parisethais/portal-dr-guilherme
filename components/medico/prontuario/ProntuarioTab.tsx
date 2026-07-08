@@ -9,7 +9,7 @@ import SumarioPanel from './SumarioPanel'
 import PrescricoesPanel from './PrescricoesPanel'
 import NovaConsultaModal from '@/components/medico/NovaConsultaModal'
 import { finalizarProntuario } from '@/app/actions/prontuario'
-import { deleteConsulta } from '@/app/actions/consultas'
+import { deleteConsulta, updateConsultaStatus } from '@/app/actions/consultas'
 import AssinaturaModal, { AssinaturaSuccessModal } from './AssinaturaModal'
 import {
   ClipboardList, Stethoscope,
@@ -251,6 +251,17 @@ export default function ProntuarioTab({
   const [deleteError, setDeleteError]       = useState('')
   const [deletePending, startDeleteTrans]   = useTransition()
 
+  const [iniciadosSet, setIniciadosSet]     = useState<Set<string>>(new Set())
+  const [iniciarPending, startIniciarTrans] = useTransition()
+
+  function handleIniciarAtendimento() {
+    if (!selectedConsulta) return
+    startIniciarTrans(async () => {
+      await updateConsultaStatus(selectedConsulta.id, 'em_atendimento')
+      setIniciadosSet(prev => new Set(prev).add(selectedConsulta.id))
+    })
+  }
+
   function handleDelete() {
     if (!selectedConsulta) return
     setDeleteError('')
@@ -365,6 +376,22 @@ export default function ProntuarioTab({
             <CalendarPlus className="w-3.5 h-3.5" />
             Nova consulta
           </button>
+
+          {selectedConsulta && !iniciadosSet.has(selectedConsulta.id) &&
+            (selectedConsulta.status === 'agendada' || selectedConsulta.status === 'confirmada') && (
+            <button
+              type="button"
+              onClick={handleIniciarAtendimento}
+              disabled={iniciarPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light transition-colors flex-shrink-0 disabled:opacity-60"
+            >
+              {iniciarPending
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Stethoscope className="w-3.5 h-3.5" />
+              }
+              Iniciar atendimento
+            </button>
+          )}
 
           {isFinalized ? (
             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0">

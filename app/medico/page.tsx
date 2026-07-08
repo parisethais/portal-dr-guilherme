@@ -260,6 +260,20 @@ export default async function MedicoPage({
     c.status === 'realizada' && c.data_hora.startsWith(mesAtual)
   ).length
 
+  // Quais pacientes têm exames registrados (imaging ou biopsia)
+  const patientIds = (patients ?? []).map(p => p.id)
+  let patientsWithExames: string[] = []
+  if (patientIds.length > 0) {
+    const [{ data: imgData }, { data: biopsiaData }] = await Promise.all([
+      adminDb.from('imaging_results').select('patient_id').in('patient_id', patientIds),
+      adminDb.from('biopsia_results').select('patient_id').in('patient_id', patientIds),
+    ])
+    const withExamesSet = new Set<string>()
+    for (const r of imgData ?? []) withExamesSet.add(r.patient_id)
+    for (const r of biopsiaData ?? []) withExamesSet.add(r.patient_id)
+    patientsWithExames = Array.from(withExamesSet)
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Hero — saudação personalizada */}
@@ -343,6 +357,7 @@ export default async function MedicoPage({
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}
           financialEntries={(financialEntries ?? []) as any}
+          patientsWithExames={patientsWithExames}
         />
       </Suspense>
     </div>

@@ -1,0 +1,1 @@
+ALTER TABLE public.prescricoes ADD COLUMN IF NOT EXISTS via TEXT;

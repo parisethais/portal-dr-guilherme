@@ -501,7 +501,7 @@ export default function ConsultaModal({
             )
           })()}
 
-          {/* Abrir prontuário — só médico */}
+          {/* Acessar prontuário — só médico */}
           {(currentRole === 'medico' || currentRole === 'superadmin') && onNavigateToPatient && (
             <button
               type="button"
@@ -513,7 +513,7 @@ export default function ConsultaModal({
               style={{ backgroundColor: '#2D2B6B' }}
             >
               <Stethoscope className="w-4 h-4" />
-              Abrir prontuário
+              Acessar prontuário
             </button>
           )}
 

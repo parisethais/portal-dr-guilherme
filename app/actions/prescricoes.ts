@@ -38,6 +38,7 @@ export async function createPrescricao(
   data: {
     medicamento: string
     dose?:       string
+    via?:        string
     posologia?:  string
     obs?:        string
     data_inicio?: string
@@ -59,6 +60,7 @@ export async function createPrescricao(
         created_by:  user.id,
         medicamento: data.medicamento,
         dose:        data.dose        ?? null,
+        via:         data.via         ?? null,
         posologia:   data.posologia   ?? null,
         obs:         data.obs         ?? null,
         data_inicio: data.data_inicio ?? new Date().toISOString().slice(0, 10),
@@ -73,6 +75,35 @@ export async function createPrescricao(
     return { success: true, data: created as Prescricao }
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'Erro ao criar prescrição.' }
+  }
+}
+
+export async function getMedicamentosHistory(): Promise<string[]> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const tenantId = await getCallerTenantId(user.id)
+    const adminClient = createAdminClient()
+
+    const { data } = await adminClient
+      .from('prescricoes')
+      .select('medicamento')
+      .eq('tenant_id', tenantId)
+      .not('medicamento', 'is', null)
+
+    if (!data) return []
+
+    const seen = new Set<string>()
+    for (const row of data) {
+      const m = row.medicamento?.trim()
+      if (m && m.length >= 2) seen.add(m)
+    }
+
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  } catch {
+    return []
   }
 }
 

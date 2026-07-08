@@ -331,12 +331,6 @@ export default function PatientCadastroTab({ patient, currentRole, onDeleted }: 
 
       {/* ── Acompanhamento ── */}
       <Section title="Acompanhamento (secretaria / médico)">
-        <Field
-          label="Diagnóstico"
-          value={form.diagnostico}
-          readOnly
-          hint="Preenchido automaticamente pelo prontuário (Diagnósticos da consulta mais recente)"
-        />
         <SelectField label="Status do paciente" value={form.status_paciente} onChange={set('status_paciente')}>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
@@ -356,18 +350,20 @@ export default function PatientCadastroTab({ patient, currentRole, onDeleted }: 
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none text-gray-900"
           />
         </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Obs. pessoal do médico
-          </label>
-          <textarea
-            value={form.obs_pessoal}
-            onChange={e => set('obs_pessoal')(e.target.value)}
-            placeholder="Notas pessoais do médico sobre o paciente..."
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary resize-none leading-relaxed"
-          />
-        </div>
+        {currentRole !== 'secretaria' && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Obs. pessoal do médico
+            </label>
+            <textarea
+              value={form.obs_pessoal}
+              onChange={e => set('obs_pessoal')(e.target.value)}
+              placeholder="Notas pessoais do médico sobre o paciente..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary resize-none leading-relaxed"
+            />
+          </div>
+        )}
       </Section>
 
       {/* ── Erro + Salvar ── */}

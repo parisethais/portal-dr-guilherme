@@ -2,13 +2,14 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import type { Prescricao } from '@/lib/types'
-import { createPrescricao, inativarPrescricao } from '@/app/actions/prescricoes'
+import { createPrescricao, inativarPrescricao, getMedicamentosHistory } from '@/app/actions/prescricoes'
 import {
   Pill, Plus, X, ChevronDown, Loader2, AlertCircle, CalendarX,
 } from 'lucide-react'
 
+const VIA_OPTIONS = ['VO', 'SC', 'IV', 'IM', 'Inalatória', 'Sublingual', 'Tópica', 'Retal']
+
 const DRUG_LIST = [
-  // Anti-hipertensivos
   'Losartana', 'Valsartana', 'Olmesartana', 'Irbesartana', 'Telmisartana', 'Candesartana',
   'Enalapril', 'Lisinopril', 'Ramipril', 'Captopril', 'Perindopril', 'Benazepril',
   'Anlodipino', 'Nifedipino', 'Verapamil', 'Diltiazem',
@@ -16,115 +17,93 @@ const DRUG_LIST = [
   'Hidroclorotiazida', 'Clortalidona', 'Furosemida', 'Espironolactona', 'Eplerenona', 'Indapamida',
   'Alfametildopa', 'Clonidina', 'Doxazosina', 'Prazosina', 'Hidralazina', 'Minoxidil',
   'Sacubitril/Valsartana',
-  // Diuréticos
   'Acetazolamida', 'Amilorida', 'Triamtereno', 'Tolvaptana',
-  // Metabolismo ósseo / mineral
   'Carbonato de cálcio', 'Acetato de cálcio', 'Sevelâmer', 'Carbonato de lantânio',
   'Colecalciferol', 'Calcitriol', 'Paricalcitol', 'Alfacalcidol',
   'Cinacalcete',
-  // Anemia
   'Eritropoetina', 'Darbepoetina alfa', 'Ferro sacarato IV', 'Sulfato ferroso', 'Ferro polimaltosado',
-  // Uremia / diálise
   'Bicarbonato de sódio',
-  // Hipopotassemia/Hiperpotassemia
   'Cloreto de potássio', 'Patirômer', 'Zirconium ciclossilicato de sódio',
-  // Ácido úrico
   'Alopurinol', 'Febuxostato', 'Benzbromarona',
-  // Diabetes
   'Metformina', 'Empagliflozina', 'Dapagliflozina', 'Canagliflozina',
   'Semaglutida', 'Liraglutida', 'Dulaglutida', 'Sitagliptina', 'Saxagliptina',
   'Glibenclamida', 'Glimepirida', 'Insulina NPH', 'Insulina Regular', 'Insulina Glargina', 'Insulina Degludeca',
-  // Dislipidemia
   'Atorvastatina', 'Rosuvastatina', 'Sinvastatina', 'Pravastatina', 'Ezetimiba', 'Bezafibrato', 'Fenofibrato',
-  // Imunossupressores (transplante)
   'Tacrolimus', 'Ciclosporina', 'Micofenolato mofetil', 'Azatioprina', 'Prednisona', 'Metilprednisolona',
   'Sirolimus', 'Everolimus', 'Belatacept',
-  // Anticoagulantes
   'Warfarina', 'Rivaroxabana', 'Apixabana', 'Heparina', 'Enoxaparina',
-  // Outros
   'Ácido fólico', 'Vitamina B12', 'Hidróxido de magnésio', 'Omeprazol', 'Pantoprazol',
   'Amoxicilina', 'Nitrofurantoína', 'Ciprofloxacino', 'Cotrimoxazol',
 ]
 
-function fmtDate(d: string) {
+function fmtDate(d: string | null) {
+  if (!d) return ''
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {
-    day:   '2-digit',
-    month: '2-digit',
-    year:  'numeric',
+    day: '2-digit', month: '2-digit', year: 'numeric',
   })
 }
 
-interface Props {
-  patientId:            string
-  initialPrescricoes:   { ativas: Prescricao[]; inativas: Prescricao[] }
-}
+const emptyRow = { medicamento: '', dose: '', via: '', posologia: '' }
 
-const emptyForm = {
-  medicamento: '',
-  dose:        '',
-  posologia:   '',
-  obs:         '',
-  data_inicio: new Date().toISOString().slice(0, 10),
+interface Props {
+  patientId:          string
+  initialPrescricoes: { ativas: Prescricao[]; inativas: Prescricao[] }
 }
 
 export default function PrescricoesPanel({ patientId, initialPrescricoes }: Props) {
   const [prescricoes, setPrescricoes] = useState(initialPrescricoes)
-  const [showForm,    setShowForm]    = useState(false)
-  const [form,        setForm]        = useState(emptyForm)
+  const [adding,      setAdding]      = useState(false)
+  const [newRow,      setNewRow]      = useState(emptyRow)
+  const [showDrop,    setShowDrop]    = useState(false)
+  const [tenantMeds,  setTenantMeds]  = useState<string[]>([])
+  const [inativaOpen, setInativaOpen] = useState(false)
   const [isPending,   startTransition] = useTransition()
   const [error,       setError]       = useState('')
-  const [inativaOpen, setInativaOpen] = useState(false)
-  const [showDrugDropdown, setShowDrugDropdown] = useState(false)
-  const medicamentoRef  = useRef<HTMLInputElement>(null)
-  const drugDropdownRef = useRef<HTMLDivElement>(null)
+  const medRef  = useRef<HTMLInputElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    getMedicamentosHistory().then(setTenantMeds)
+  }, [])
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (!drugDropdownRef.current?.contains(e.target as Node) &&
-          !medicamentoRef.current?.contains(e.target as Node))
-        setShowDrugDropdown(false)
+      if (!dropRef.current?.contains(e.target as Node) &&
+          !medRef.current?.contains(e.target as Node))
+        setShowDrop(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const drugQ = form.medicamento.trim().toLowerCase()
-  const drugSuggestions = drugQ.length >= 2
-    ? DRUG_LIST.filter(d => d.toLowerCase().includes(drugQ)).slice(0, 8)
+  const allDrugs = Array.from(new Set([...tenantMeds, ...DRUG_LIST]))
+  const q = newRow.medicamento.trim().toLowerCase()
+  const suggestions = q.length >= 2
+    ? allDrugs.filter(d => d.toLowerCase().includes(q)).slice(0, 8)
     : []
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
-
   function handleCancel() {
-    setShowForm(false)
-    setForm(emptyForm)
+    setAdding(false)
+    setNewRow(emptyRow)
     setError('')
   }
 
   function handleSalvar() {
-    if (!form.medicamento.trim()) { setError('Medicamento é obrigatório.'); return }
+    if (!newRow.medicamento.trim()) { setError('Medicamento é obrigatório.'); return }
     setError('')
     startTransition(async () => {
       const res = await createPrescricao(patientId, {
-        medicamento: form.medicamento.trim(),
-        dose:        form.dose.trim()        || undefined,
-        posologia:   form.posologia.trim()   || undefined,
-        obs:         form.obs.trim()         || undefined,
-        data_inicio: form.data_inicio        || undefined,
+        medicamento: newRow.medicamento.trim(),
+        dose:        newRow.dose.trim()      || undefined,
+        via:         newRow.via              || undefined,
+        posologia:   newRow.posologia.trim() || undefined,
       })
       if (!res.success) { setError(res.error); return }
       if (res.data) {
-        setPrescricoes(prev => ({
-          ativas:   [res.data!, ...prev.ativas],
-          inativas: prev.inativas,
-        }))
+        setPrescricoes(prev => ({ ...prev, ativas: [res.data!, ...prev.ativas] }))
       }
-      setShowForm(false)
-      setForm(emptyForm)
+      setAdding(false)
+      setNewRow(emptyRow)
     })
   }
 
@@ -135,18 +114,15 @@ export default function PrescricoesPanel({ patientId, initialPrescricoes }: Prop
       setPrescricoes(prev => {
         const target = prev.ativas.find(p => p.id === id)
         if (!target) return prev
-        const suspended: Prescricao = {
-          ...target,
-          ativo:    false,
-          data_fim: new Date().toISOString().slice(0, 10),
-        }
         return {
           ativas:   prev.ativas.filter(p => p.id !== id),
-          inativas: [suspended, ...prev.inativas],
+          inativas: [{ ...target, ativo: false, data_fim: new Date().toISOString().slice(0, 10) }, ...prev.inativas],
         }
       })
     })
   }
+
+  const hasAtivas = prescricoes.ativas.length > 0
 
   return (
     <div className="space-y-4">
@@ -154,251 +130,231 @@ export default function PrescricoesPanel({ patientId, initialPrescricoes }: Prop
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Pill className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-gray-800">Prescrições</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Medicamentos</h3>
+          {hasAtivas && (
+            <span className="text-[11px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
+              {prescricoes.ativas.length} {prescricoes.ativas.length === 1 ? 'ativo' : 'ativos'}
+            </span>
+          )}
         </div>
-        {!showForm && (
+        {!adding && (
           <button
             type="button"
-            onClick={() => { setShowForm(true); setError('') }}
+            onClick={() => { setAdding(true); setError('') }}
             className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-primary/40 text-primary rounded-lg text-xs font-medium hover:bg-primary/5 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            Nova prescrição
+            Adicionar
           </button>
         )}
       </div>
 
-      {/* Formulário */}
-      {showForm && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold text-blue-700">Nova prescrição</p>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* medicamento */}
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Medicamento <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
-              <input
-                ref={medicamentoRef}
-                type="text"
-                name="medicamento"
-                value={form.medicamento}
-                onChange={e => { handleChange(e); setShowDrugDropdown(true) }}
-                onFocus={() => drugQ.length >= 2 && setShowDrugDropdown(true)}
-                placeholder="Ex: Losartana"
-                autoComplete="off"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {showDrugDropdown && drugSuggestions.length > 0 && (
-                <div ref={drugDropdownRef} className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                  <ul className="max-h-48 overflow-y-auto py-1">
-                    {drugSuggestions.map(drug => (
-                      <li key={drug}>
-                        <button
-                          type="button"
-                          onMouseDown={e => {
-                            e.preventDefault()
-                            setForm(prev => ({ ...prev, medicamento: drug }))
-                            setShowDrugDropdown(false)
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-blue-50 hover:text-primary transition-colors"
-                        >
-                          {drug}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* dose + posologia */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Dose
-              </label>
-              <input
-                type="text"
-                name="dose"
-                value={form.dose}
-                onChange={handleChange}
-                placeholder="Ex: 50mg"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Posologia
-              </label>
-              <input
-                type="text"
-                name="posologia"
-                value={form.posologia}
-                onChange={handleChange}
-                placeholder="Ex: 1x ao dia"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          {/* data inicio */}
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Data de início
-            </label>
-            <input
-              type="date"
-              name="data_inicio"
-              value={form.data_inicio}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          {/* obs */}
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Observações
-            </label>
-            <textarea
-              name="obs"
-              value={form.obs}
-              onChange={handleChange}
-              rows={2}
-              placeholder="Observações (opcional)"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-            />
-          </div>
-
-          {/* erro */}
-          {error && (
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs">
-              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-
-          {/* botões */}
-          <div className="flex gap-2 justify-end pt-1">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isPending}
-              className="px-4 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSalvar}
-              disabled={isPending}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {isPending
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando…</>
-                : 'Salvar'
-              }
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Erro global (suspender) */}
-      {!showForm && error && (
+      {/* Erro global (fora do formulário) */}
+      {error && !adding && (
         <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Lista ativas */}
-      {prescricoes.ativas.length === 0 ? (
+      {/* Estado vazio */}
+      {!hasAtivas && !adding ? (
         <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm gap-2">
           <CalendarX className="w-7 h-7 text-gray-300" />
-          Nenhuma prescrição ativa
+          Nenhum medicamento ativo
         </div>
       ) : (
-        <div className="space-y-2">
-          {prescricoes.ativas.map(p => (
-            <div
-              key={p.id}
-              className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{p.medicamento}</p>
-                {(p.dose || p.posologia) && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {[p.dose, p.posologia].filter(Boolean).join(' — ')}
-                  </p>
-                )}
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Início: {fmtDate(p.data_inicio)}
-                </p>
-                {p.obs && (
-                  <p className="text-[11px] text-gray-400 italic mt-0.5">{p.obs}</p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleSuspender(p.id)}
-                disabled={isPending}
-                className="flex-shrink-0 px-2.5 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          {/* Cabeçalho da tabela */}
+          <div
+            className="grid items-center px-3 py-2 bg-gray-50 border-b border-gray-100"
+            style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.8fr auto' }}
+          >
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Medicamento</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Dose</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Via</span>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Posologia</span>
+            <span />
+          </div>
+
+          {/* Linhas ativas */}
+          <div className="divide-y divide-gray-50">
+            {prescricoes.ativas.map(p => (
+              <div
+                key={p.id}
+                className="grid items-center px-3 py-2.5 gap-2 hover:bg-gray-50/50 transition-colors"
+                style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.8fr auto' }}
               >
-                Suspender
-              </button>
+                <span className="text-sm font-medium text-gray-900 truncate">{p.medicamento}</span>
+                <span className="text-sm text-gray-600">{p.dose || <span className="text-gray-300">—</span>}</span>
+                <span className="text-sm text-gray-600">{p.via || <span className="text-gray-300">—</span>}</span>
+                <span className="text-sm text-gray-600">{p.posologia || <span className="text-gray-300">—</span>}</span>
+                <button
+                  type="button"
+                  onClick={() => handleSuspender(p.id)}
+                  disabled={isPending}
+                  className="text-[11px] font-medium text-gray-400 hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 rounded-md px-2 py-1 transition-colors disabled:opacity-40 whitespace-nowrap"
+                >
+                  Suspender
+                </button>
+              </div>
+            ))}
+
+            {/* Linha de adição */}
+            {adding && (
+              <div
+                className="grid items-start px-3 py-2.5 gap-2 bg-blue-50/40 border-t border-blue-100"
+                style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.8fr auto' }}
+              >
+                {/* Medicamento + autocomplete */}
+                <div className="relative">
+                  <input
+                    ref={medRef}
+                    type="text"
+                    value={newRow.medicamento}
+                    onChange={e => {
+                      setNewRow(prev => ({ ...prev, medicamento: e.target.value }))
+                      setShowDrop(true)
+                    }}
+                    onFocus={() => q.length >= 2 && setShowDrop(true)}
+                    placeholder="Ex: Losartana"
+                    autoComplete="off"
+                    autoFocus
+                    className="w-full px-2.5 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  {showDrop && suggestions.length > 0 && (
+                    <div
+                      ref={dropRef}
+                      className="absolute z-30 top-full mt-1 w-full min-w-[200px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                    >
+                      <ul className="max-h-48 overflow-y-auto py-1">
+                        {suggestions.map(drug => (
+                          <li key={drug}>
+                            <button
+                              type="button"
+                              onMouseDown={e => {
+                                e.preventDefault()
+                                setNewRow(prev => ({ ...prev, medicamento: drug }))
+                                setShowDrop(false)
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-sm text-gray-800 hover:bg-blue-50 hover:text-primary transition-colors"
+                            >
+                              {drug}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dose */}
+                <input
+                  type="text"
+                  value={newRow.dose}
+                  onChange={e => setNewRow(prev => ({ ...prev, dose: e.target.value }))}
+                  placeholder="50mg"
+                  className="w-full px-2.5 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+
+                {/* Via */}
+                <select
+                  value={newRow.via}
+                  onChange={e => setNewRow(prev => ({ ...prev, via: e.target.value }))}
+                  className="w-full px-2 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 text-gray-700"
+                >
+                  <option value="">Via</option>
+                  {VIA_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+
+                {/* Posologia */}
+                <input
+                  type="text"
+                  value={newRow.posologia}
+                  onChange={e => setNewRow(prev => ({ ...prev, posologia: e.target.value }))}
+                  placeholder="1x ao dia"
+                  onKeyDown={e => { if (e.key === 'Enter') handleSalvar() }}
+                  className="w-full px-2.5 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+
+                {/* Ações */}
+                <div className="flex items-center gap-1 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={isPending}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSalvar}
+                    disabled={isPending}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Erro dentro do formulário */}
+          {error && adding && (
+            <div className="flex items-center gap-2 text-red-600 bg-red-50 border-t border-red-100 px-3 py-2 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              {error}
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* Seção anteriores (accordion) */}
+      {/* Anteriores (accordion) */}
       {prescricoes.inativas.length > 0 && (
         <div className="border border-gray-100 rounded-xl overflow-hidden">
           <button
             type="button"
             onClick={() => setInativaOpen(prev => !prev)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Anteriores ({prescricoes.inativas.length})
             </span>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${inativaOpen ? 'rotate-180' : ''}`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${inativaOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {inativaOpen && (
-            <div className="divide-y divide-gray-100">
-              {prescricoes.inativas.map(p => (
-                <div
-                  key={p.id}
-                  className="px-4 py-3 opacity-60"
-                >
-                  <p className="text-sm font-medium text-gray-700">{p.medicamento}</p>
-                  {(p.dose || p.posologia) && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {[p.dose, p.posologia].filter(Boolean).join(' — ')}
-                    </p>
-                  )}
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    {fmtDate(p.data_inicio)}
-                    {p.data_fim ? ` → ${fmtDate(p.data_fim)}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <>
+              <div
+                className="grid items-center px-3 py-1.5 bg-gray-50/60 border-t border-gray-100"
+                style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.8fr 1.2fr' }}
+              >
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Medicamento</span>
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Dose</span>
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Via</span>
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Posologia</span>
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Período</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {prescricoes.inativas.map(p => (
+                  <div
+                    key={p.id}
+                    className="grid items-center px-3 py-2 gap-2 opacity-60"
+                    style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.8fr 1.2fr' }}
+                  >
+                    <span className="text-sm text-gray-700 truncate">{p.medicamento}</span>
+                    <span className="text-xs text-gray-500">{p.dose || '—'}</span>
+                    <span className="text-xs text-gray-500">{p.via || '—'}</span>
+                    <span className="text-xs text-gray-500">{p.posologia || '—'}</span>
+                    <span className="text-[11px] text-gray-400 leading-tight">
+                      {fmtDate(p.data_inicio)}
+                      {p.data_fim && <><br />→ {fmtDate(p.data_fim)}</>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
