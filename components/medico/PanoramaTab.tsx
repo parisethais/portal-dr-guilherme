@@ -554,10 +554,10 @@ function SemRetornoPanel({ lista, total, getUltima, getUltimoTipo, getAlerta }: 
 interface PanoramaTabProps {
   patients: Profile[]
   consultas: Consulta[]
-
+  onSelectPatient?: (patientId: string) => void
 }
 
-export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas, onSelectPatient }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -567,16 +567,17 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
   useEffect(() => { setPage(1) }, [search, filterStatus, filterAlerta])
 
   // Datas estáveis — calculadas uma só vez por montagem do componente
-  const { nowISO, em7Dias, mesAtual, cutoffISO } = useMemo(() => {
+  const { nowISO, todayDateStr, mesAtual, cutoffISO } = useMemo(() => {
     const now = new Date()
-    const em7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     const vin  = new Date(now)
     vin.setMonth(vin.getMonth() - 24)
+    // Data de hoje no formato YYYY-MM-DD (local)
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     return {
-      nowISO:    now.toISOString(),
-      em7Dias:   em7.toISOString(),
-      mesAtual:  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-      cutoffISO: vin.toISOString(),
+      nowISO:       now.toISOString(),
+      todayDateStr,
+      mesAtual:     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+      cutoffISO:    vin.toISOString(),
     }
   }, [])
 
@@ -595,7 +596,9 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
     const proximaConsultaMap   = new Map<string, string>()
     const ultimoTipoMap        = new Map<string, string>()
     const mesesBuckets: Record<string, number> = {}
-    const proximas7dias: typeof consultas = []
+    // Hoje inteiro + próxima data com consultas
+    const todayConsultas: typeof consultas = []
+    const futureConsultas: typeof consultas = []  // após hoje
 
     consultas.forEach(c => {
       // Última + primeira consulta realizada
@@ -611,13 +614,33 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
         const key = c.data_hora.slice(0, 7)
         mesesBuckets[key] = (mesesBuckets[key] ?? 0) + 1
       }
-      // Próxima consulta agendada/confirmada
+      // Próxima consulta agendada/confirmada (para o mapa de retorno — mantém >= now)
       if (['agendada', 'confirmada'].includes(c.status) && c.data_hora >= nowISO) {
         const prox = proximaConsultaMap.get(c.patient_id)
         if (!prox || c.data_hora < prox) proximaConsultaMap.set(c.patient_id, c.data_hora)
-        if (c.data_hora <= em7Dias) proximas7dias.push(c)
+      }
+      // Coleta hoje + futuras para o painel
+      if (['agendada', 'confirmada'].includes(c.status)) {
+        const dateStr = c.data_hora.slice(0, 10)
+        if (dateStr === todayDateStr) {
+          todayConsultas.push(c)
+        } else if (dateStr > todayDateStr) {
+          futureConsultas.push(c)
+        }
       }
     })
+
+    // Encontra a próxima data com consultas (após hoje)
+    const nextDateStr = futureConsultas.length > 0
+      ? futureConsultas.reduce((min, c) => {
+          const d = c.data_hora.slice(0, 10)
+          return d < min ? d : min
+        }, futureConsultas[0].data_hora.slice(0, 10))
+      : null
+
+    const nextDateConsultas = nextDateStr
+      ? futureConsultas.filter(c => c.data_hora.slice(0, 10) === nextDateStr)
+      : []
 
     const meses = ultimosMeses(6)
     const dadosConsultasMes = meses.map(({ key, label }) => ({
@@ -625,9 +648,8 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       total: mesesBuckets[key] ?? 0,
     }))
 
-    const proximasConsultas = proximas7dias
+    const proximasConsultas = [...todayConsultas, ...nextDateConsultas]
       .sort((a, b) => a.data_hora.localeCompare(b.data_hora))
-      .slice(0, 8)
       .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
 
     return {
@@ -639,7 +661,7 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       proximasConsultas,
       consultasMesCount: mesesBuckets[mesAtual] ?? 0,
     }
-  }, [consultas, patients, nowISO, em7Dias, mesAtual])
+  }, [consultas, patients, nowISO, todayDateStr, mesAtual])
 
   // ── Helpers O(1) usando os mapas pré-computados ───────────────
   const getUltima     = (id: string) => ultimaConsultaMap.get(id)   ?? null
@@ -892,15 +914,15 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
       {/* ── 3. Próximas consultas + Sem retorno ── */}
       <div className="grid lg:grid-cols-2 gap-4">
 
-        {/* Próximas consultas — 7 dias */}
+        {/* Próximas consultas — hoje + próxima data */}
         <div className="rounded-xl border border-white/60 backdrop-blur-sm p-5" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }}>
           <div className="flex items-center gap-2 mb-4">
             <CalendarDays className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-gray-800">Próximas consultas</h3>
-            <span className="text-xs text-gray-400 ml-auto">próximos 7 dias</span>
+            <span className="text-xs text-gray-400 ml-auto">hoje + próxima data</span>
           </div>
           {proximasConsultas.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta nos próximos 7 dias</p>
+            <p className="text-sm text-gray-400 text-center py-6">Nenhuma consulta agendada</p>
           ) : (
             <div className="space-y-1">
               {proximasConsultas.map((c, i) => {
@@ -924,9 +946,19 @@ export default function PanoramaTab({ patients, consultas }: PanoramaTabProps) {
                         <p className="text-xs font-bold text-primary leading-tight">{hora}</p>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 truncate">
-                          {c.patient?.full_name ?? '—'}
-                        </p>
+                        {onSelectPatient && c.patient ? (
+                          <button
+                            type="button"
+                            onClick={() => onSelectPatient(c.patient!.id)}
+                            className="text-xs font-semibold text-gray-800 truncate hover:text-primary transition-colors text-left w-full"
+                          >
+                            {c.patient.full_name ?? '—'}
+                          </button>
+                        ) : (
+                          <p className="text-xs font-semibold text-gray-800 truncate">
+                            {c.patient?.full_name ?? '—'}
+                          </p>
+                        )}
                         <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${

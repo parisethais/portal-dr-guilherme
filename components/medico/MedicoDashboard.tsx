@@ -167,7 +167,11 @@ export default function MedicoDashboard({
       {/* Content */}
       <div className="p-3 pt-3 sm:p-6 sm:pt-4">
         {activeTab === 'panorama' && (
-          <PanoramaTab patients={patients} consultas={consultas} />
+          <PanoramaTab
+            patients={patients}
+            consultas={consultas}
+            onSelectPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
+          />
         )}
         {activeTab === 'pacientes' && (
           <PatientList
