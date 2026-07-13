@@ -30,3 +30,5 @@ CREATE POLICY "pedidos_exame_tenant" ON public.pedidos_exame
       WHERE cm.user_id = auth.uid()
     )
   );
+
+GRANT ALL ON public.pedidos_exame TO postgres, anon, authenticated, service_role;

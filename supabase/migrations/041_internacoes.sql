@@ -55,3 +55,6 @@ CREATE POLICY "visitas_tenant" ON public.visitas_hospitalares
       WHERE cm.user_id = auth.uid()
     )
   );
+
+GRANT ALL ON public.internacoes         TO postgres, anon, authenticated, service_role;
+GRANT ALL ON public.visitas_hospitalares TO postgres, anon, authenticated, service_role;
