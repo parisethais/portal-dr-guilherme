@@ -237,6 +237,24 @@ function InternacaoCard({
             <p className="text-xs text-gray-500"><span className="font-semibold">Diagnóstico:</span> {internacao.diagnostico_internacao}</p>
           )}
 
+          {/* Excluir internação finalizada */}
+          {internacao.finalizada && (
+            <div className="flex justify-end pt-1">
+              <button type="button" disabled={delPending}
+                onClick={() => startDel(async () => {
+                  if (!confirm('Excluir esta internação e todas as visitas?')) return
+                  await deleteInternacao(internacao.id)
+                  onDeleted(internacao.id)
+                })}
+                className="flex items-center gap-1 text-[10px] text-gray-300 hover:text-red-400 transition-colors"
+                title="Excluir internação"
+              >
+                {delPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                Excluir
+              </button>
+            </div>
+          )}
+
           {err && <p className="text-xs text-red-500">{err}</p>}
 
           {/* Ações: só para internações abertas */}

@@ -351,7 +351,7 @@ export default function PatientDetail({
 
       {/* ── Tab: NF ── */}
       {activeDetailTab === 'faturas' && (
-        <InvoiceSection patient={patient} invoices={invoices} />
+        <InvoiceSection patient={patient} invoices={invoices} onRefresh={onRefresh} />
       )}
 
       {/* ── Tab: Cadastro ── */}

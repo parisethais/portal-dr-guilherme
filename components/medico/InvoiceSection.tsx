@@ -112,9 +112,10 @@ function gerarTextoContador(inv: Invoice, patient: Profile): string {
 interface InvoiceSectionProps {
   patient: Profile
   invoices: Invoice[]
+  onRefresh?: () => void
 }
 
-export default function InvoiceSection({ patient, invoices }: InvoiceSectionProps) {
+export default function InvoiceSection({ patient, invoices, onRefresh }: InvoiceSectionProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -192,7 +193,7 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
       const result = await uploadInvoice(formData)
       if (!result.success) { setFormError(result.error); return }
       cancelForm()
-      router.refresh()
+      onRefresh ? onRefresh() : router.refresh()
     })
   }
 
@@ -201,7 +202,7 @@ export default function InvoiceSection({ patient, invoices }: InvoiceSectionProp
     startTransition(async () => {
       await deleteInvoice(id)
       setDeletingId(null)
-      router.refresh()
+      onRefresh ? onRefresh() : router.refresh()
     })
   }
 
