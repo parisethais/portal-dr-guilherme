@@ -5,7 +5,7 @@ export const HOSPITAIS = [
   { value: 'outro',          label: 'Outro'           },
 ] as const
 
-export const VISITADORES = ['Guilherme', 'Letícia', 'Fernando', 'Geison'] as const
+export const VISITADORES = ['Guilherme', 'Lecticia', 'Fernando', 'Jeison'] as const
 
 export const DIALISE_OPTIONS = [
   { value: 'nao',  label: 'Não'  },

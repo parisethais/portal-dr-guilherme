@@ -26,6 +26,7 @@ export interface Internacao {
   data_alta:              string | null
   diagnostico_internacao: string | null
   valor_visita:           number | null
+  valor_por_visitador:    Record<string, number> | null
   finalizada:             boolean
   created_by:             string | null
   created_at:             string
@@ -138,6 +139,7 @@ export async function finalizarInternacao(id: string, input: {
   data_alta:              string
   diagnostico_internacao?: string
   valor_visita?:           number
+  valor_por_visitador?:    Record<string, number>
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const { admin } = await getCtx()
@@ -148,6 +150,7 @@ export async function finalizarInternacao(id: string, input: {
         data_alta:              input.data_alta,
         diagnostico_internacao: input.diagnostico_internacao ?? null,
         valor_visita:           input.valor_visita ?? null,
+        valor_por_visitador:    input.valor_por_visitador ?? null,
         updated_at:             new Date().toISOString(),
       })
       .eq('id', id)

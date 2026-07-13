@@ -99,6 +99,8 @@ function InternacaoCard({
     data_alta:              todayStr(),
     diagnostico_internacao: '',
     valor_visita:           '',
+    // valor por visita específico por visitador (exceto Guilherme)
+    valor_por_visitador:    {} as Record<string, string>,
   })
   const [err, setErr] = useState('')
 
@@ -122,10 +124,15 @@ function InternacaoCard({
   function handleFinalizar() {
     setErr('')
     startFin(async () => {
+      const valorPorVisitador: Record<string, number> = {}
+      for (const [vis, val] of Object.entries(finForm.valor_por_visitador)) {
+        if (val && parseFloat(val) > 0) valorPorVisitador[vis] = parseFloat(val)
+      }
       const res = await finalizarInternacao(internacao.id, {
         data_alta:              finForm.data_alta,
         diagnostico_internacao: finForm.diagnostico_internacao || undefined,
         valor_visita:           finForm.valor_visita ? parseFloat(finForm.valor_visita) : undefined,
+        valor_por_visitador:    Object.keys(valorPorVisitador).length ? valorPorVisitador : undefined,
       })
       if (!res.success) { setErr(res.error ?? 'Erro ao finalizar'); return }
       setInternacao(prev => ({
@@ -134,6 +141,7 @@ function InternacaoCard({
         data_alta:              finForm.data_alta,
         diagnostico_internacao: finForm.diagnostico_internacao || null,
         valor_visita:           finForm.valor_visita ? parseFloat(finForm.valor_visita) : null,
+        valor_por_visitador:    Object.keys(valorPorVisitador).length ? valorPorVisitador : null,
       }))
       setShowFinalizar(false)
     })
@@ -311,23 +319,85 @@ function InternacaoCard({
                       className="mt-1 w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary bg-white resize-none"
                     />
                   </div>
-                  {/* Preview do resumo financeiro */}
-                  {finForm.valor_visita && parseFloat(finForm.valor_visita) > 0 && internacao.visitas.length > 0 && (
-                    <div className="rounded-lg bg-white border border-gray-200 p-2.5 space-y-1">
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Resumo</p>
-                      {(() => {
-                        const val = parseFloat(finForm.valor_visita)
-                        const counts: Record<string, number> = {}
-                        for (const v of internacao.visitas) counts[v.visitador] = (counts[v.visitador] ?? 0) + 1
-                        return Object.entries(counts).map(([vis, qtd]) => (
-                          <div key={vis} className="flex justify-between text-xs">
-                            <span className="text-gray-600">{vis} ({qtd}x)</span>
-                            <span className="font-semibold">{(qtd * val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                  {/* Valor por visitador + resumo financeiro */}
+                  {internacao.visitas.length > 0 && (() => {
+                    const counts: Record<string, number> = {}
+                    for (const v of internacao.visitas) counts[v.visitador] = (counts[v.visitador] ?? 0) + 1
+                    const visitadoresNaoGui = Object.keys(counts).filter(v => v !== 'Guilherme')
+                    const valorPadrao = finForm.valor_visita ? parseFloat(finForm.valor_visita) : 0
+
+                    // total cobrado da internação (valor_visita × total visitas)
+                    const totalVisitas = internacao.visitas.length
+                    const totalCobrado = valorPadrao * totalVisitas
+
+                    // total a pagar por visitador (valor específico ou padrão)
+                    let totalPagar = 0
+                    const pagamentos = visitadoresNaoGui.map(vis => {
+                      const valorEsp = finForm.valor_por_visitador[vis]
+                      const rate     = valorEsp && parseFloat(valorEsp) > 0 ? parseFloat(valorEsp) : valorPadrao
+                      const subtotal = rate * counts[vis]
+                      totalPagar    += subtotal
+                      return { vis, qtd: counts[vis], rate, subtotal }
+                    })
+
+                    return (
+                      <div className="rounded-lg bg-white border border-gray-200 p-3 space-y-3">
+                        {/* Total da internação */}
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">Resumo da internação</p>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">{totalVisitas} visita{totalVisitas !== 1 ? 's' : ''} × {valorPadrao > 0 ? valorPadrao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}</span>
+                            <span className="font-bold text-gray-900">{totalCobrado > 0 ? totalCobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}</span>
                           </div>
-                        ))
-                      })()}
-                    </div>
-                  )}
+                          {counts['Guilherme'] && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">Guilherme: {counts['Guilherme']} visita{counts['Guilherme'] !== 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+
+                        {/* Valor por visitador (exceto Guilherme) */}
+                        {visitadoresNaoGui.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Pagamento por visitador</p>
+                            {visitadoresNaoGui.map(vis => (
+                              <div key={vis} className="flex items-center gap-2">
+                                <span className="text-xs text-gray-700 w-20 flex-shrink-0">{vis} ({counts[vis]}x)</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="text-xs text-gray-400">R$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={finForm.valor_por_visitador[vis] ?? ''}
+                                    onChange={e => setFinForm(f => ({
+                                      ...f,
+                                      valor_por_visitador: { ...f.valor_por_visitador, [vis]: e.target.value }
+                                    }))}
+                                    placeholder={valorPadrao > 0 ? String(valorPadrao) : '0'}
+                                    className="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary bg-white"
+                                  />
+                                  <span className="text-xs text-gray-400">/visita</span>
+                                </div>
+                                {(() => {
+                                  const p = pagamentos.find(p => p.vis === vis)
+                                  return p && p.subtotal > 0 ? (
+                                    <span className="text-xs font-semibold text-gray-800 w-20 text-right flex-shrink-0">
+                                      {p.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                  ) : null
+                                })()}
+                              </div>
+                            ))}
+                            {totalPagar > 0 && (
+                              <div className="flex justify-between text-xs pt-1 border-t border-gray-100">
+                                <span className="text-gray-500 font-medium">Total a pagar</span>
+                                <span className="font-bold text-primary">{totalPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   <div className="flex gap-2 justify-end">
                     <button type="button" onClick={() => setShowFinalizar(false)}
                       className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
