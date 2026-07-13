@@ -254,8 +254,18 @@ export function classifyValue(
     const v = value.toLowerCase().trim()
     if (!def.normalAnswer) return null
 
-    // Valores "< 0,1", "< 0.05", "<0" são abaixo do limite de detecção → normal para campos neg
-    if (def.normalAnswer === 'neg' && v.startsWith('<')) return 'normal'
+    // Valores abaixo do limite de detecção → normal para campos neg
+    // "< 0,1", "<0.05", "inferior a 0,3", "menor que 0,1"
+    if (def.normalAnswer === 'neg' && (
+      v.startsWith('<') ||
+      v.startsWith('inferior a') ||
+      v.startsWith('menor que') ||
+      v.startsWith('menor do que')
+    )) return 'normal'
+
+    // Resultados com qualificadores quantitativos ambíguos ("cerca de X", "aprox X", "traços")
+    // não podem ser classificados com segurança → não destacar
+    if (/^(cerca de|aproximadamente|aprox\.?|traços?|vestigios?)\s/.test(v)) return null
 
     // Aliases para variações laboratoriais de resultados negativos/normais
     const NORMAL_ALIASES: Record<string, string[]> = {

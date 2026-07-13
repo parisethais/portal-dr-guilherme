@@ -3,14 +3,14 @@
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import {
   getInternacoes, createInternacao, addVisita, deleteVisita,
-  finalizarInternacao, deleteInternacao,
+  finalizarInternacao, deleteInternacao, updateNfStatus,
   type Internacao, type VisitaHospitalar,
 } from '@/app/actions/internacoes'
 import { HOSPITAIS, VISITADORES, DIALISE_OPTIONS, hospitalLabel } from '@/lib/internacao-constants'
 import type { Profile } from '@/lib/types'
 import {
   Building2, Plus, ChevronDown, ChevronUp, Loader2,
-  Stethoscope, CheckCircle, Trash2, X, Users,
+  Stethoscope, CheckCircle, Trash2, X, Users, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -86,12 +86,13 @@ function InternacaoCard({
   onDeleted: (id: string) => void
 }) {
   const [internacao, setInternacao] = useState(init)
-  const [expanded, setExpanded]     = useState(!init.finalizada)
+  const [expanded, setExpanded]     = useState(false)
   const [showAddVisita, setShowAddVisita] = useState(false)
   const [showFinalizar, setShowFinalizar] = useState(false)
   const [addPending, startAdd]       = useTransition()
   const [finPending, startFin]       = useTransition()
   const [delPending, startDel]       = useTransition()
+  const [nfPending,  startNf]        = useTransition()
 
   const [visitaForm, setVisitaForm] = useState<{ data_visita: string; visitador: string; dialise: string }>({
     data_visita: todayStr(),
@@ -109,6 +110,18 @@ function InternacaoCard({
 
   function handleDeleteVisita(visitaId: string) {
     setInternacao(prev => ({ ...prev, visitas: prev.visitas.filter(v => v.id !== visitaId) }))
+  }
+
+  function handleNfCycle() {
+    const next: Record<string | 'null', 'solicitada' | 'emitida' | 'paga' | null> = {
+      null: 'solicitada', solicitada: 'emitida', emitida: 'paga', paga: null,
+    }
+    const cur = internacao.nf_status ?? 'null'
+    const nextStatus = next[cur] ?? null
+    startNf(async () => {
+      await updateNfStatus(internacao.id, nextStatus)
+      setInternacao(prev => ({ ...prev, nf_status: nextStatus }))
+    })
   }
 
   function handleAddVisita() {
@@ -176,13 +189,37 @@ function InternacaoCard({
               {hospitalLabel(internacao.hospital, internacao.hospital_outro)}
             </span>
             {internacao.finalizada ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 font-semibold">Alta {fmtDate(internacao.data_alta)}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 font-semibold">
+                Seguimento encerrado {fmtDate(internacao.data_alta)}
+              </span>
             ) : (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold animate-pulse">Internado</span>
             )}
+            {/* Badge NF clicável */}
+            {internacao.finalizada && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); handleNfCycle() }}
+                disabled={nfPending}
+                title="Clique para avançar status da NF"
+                className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 transition-colors',
+                  internacao.nf_status === 'paga'       && 'bg-emerald-100 text-emerald-700',
+                  internacao.nf_status === 'emitida'    && 'bg-blue-100 text-blue-700',
+                  internacao.nf_status === 'solicitada' && 'bg-amber-100 text-amber-700',
+                  !internacao.nf_status                 && 'bg-gray-100 text-gray-400 hover:bg-amber-50 hover:text-amber-600',
+                )}
+              >
+                <Receipt className="w-2.5 h-2.5" />
+                {internacao.nf_status === 'paga'       ? 'NF paga'
+                  : internacao.nf_status === 'emitida'  ? 'NF emitida'
+                  : internacao.nf_status === 'solicitada' ? 'NF solicitada'
+                  : 'NF pendente'}
+              </button>
+            )}
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            Internação: {fmtDate(internacao.data_internacao)}
+            Início: {fmtDate(internacao.data_internacao)}
             {internacao.motivo_internacao && ` · ${internacao.motivo_internacao}`}
             {' · '}{internacao.visitas.length} {internacao.visitas.length === 1 ? 'visita' : 'visitas'}
           </p>
@@ -314,10 +351,10 @@ function InternacaoCard({
               {/* Finalizar */}
               {showFinalizar ? (
                 <div className="rounded-lg border border-amber-200 p-3 space-y-2.5 bg-amber-50/60">
-                  <p className="text-xs font-semibold text-amber-800">Finalizar internação</p>
+                  <p className="text-xs font-semibold text-amber-800">Encerrar seguimento</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Data de alta</label>
+                      <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Data de encerramento do seguimento</label>
                       <input type="date" value={finForm.data_alta}
                         onChange={e => setFinForm(f => ({ ...f, data_alta: e.target.value }))}
                         className="mt-1 w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary bg-white"
@@ -427,7 +464,7 @@ function InternacaoCard({
                     <button type="button" onClick={handleFinalizar} disabled={finPending || !finForm.data_alta}
                       className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors disabled:opacity-60">
                       {finPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-                      Confirmar alta
+                      Confirmar encerramento
                     </button>
                   </div>
                 </div>
@@ -435,7 +472,7 @@ function InternacaoCard({
                 <div className="flex gap-2 items-center">
                   <button type="button" onClick={() => setShowFinalizar(true)}
                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 font-medium hover:bg-amber-50 transition-colors">
-                    <CheckCircle className="w-3.5 h-3.5" /> Finalizar internação
+                    <CheckCircle className="w-3.5 h-3.5" /> Encerrar seguimento
                   </button>
                   <button type="button" disabled={delPending}
                     onClick={() => startDel(async () => {

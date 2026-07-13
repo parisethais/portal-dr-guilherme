@@ -27,6 +27,7 @@ export interface Internacao {
   diagnostico_internacao: string | null
   valor_visita:           number | null
   valor_por_visitador:    Record<string, number> | null
+  nf_status:              'solicitada' | 'emitida' | 'paga' | null
   finalizada:             boolean
   created_by:             string | null
   created_at:             string
@@ -153,6 +154,23 @@ export async function finalizarInternacao(id: string, input: {
         valor_por_visitador:    input.valor_por_visitador ?? null,
         updated_at:             new Date().toISOString(),
       })
+      .eq('id', id)
+    if (error) throw error
+    return { success: true }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+export async function updateNfStatus(
+  id: string,
+  nf_status: 'solicitada' | 'emitida' | 'paga' | null,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { admin } = await getCtx()
+    const { error } = await admin
+      .from('internacoes')
+      .update({ nf_status, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
     return { success: true }
