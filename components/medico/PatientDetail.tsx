@@ -21,6 +21,7 @@ import { guardNavigation } from '@/lib/prontuario-dirty'
 import { updateObsPessoal } from '@/app/actions/profile'
 import { getOrCreateExameToken } from '@/app/actions/exame-upload'
 import InternacaoPanel from './InternacaoPanel'
+import PedidoExameTab from './prontuario/PedidoExameTab'
 
 function calcAge(dataNascimento: string | null): number | null {
   if (!dataNascimento) return null
@@ -32,7 +33,7 @@ function calcAge(dataNascimento: string | null): number | null {
   return age
 }
 
-type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'biopsias' | 'monitoramento' | 'prescricao' | 'faturas' | 'cadastro' | 'hospitalar'
+type DetailTab = 'consultas' | 'laboratoriais' | 'imagem' | 'biopsias' | 'monitoramento' | 'prescricao' | 'pedidos_exame' | 'faturas' | 'cadastro' | 'hospitalar'
 
 interface PatientDetailProps {
   currentRole:  string
@@ -50,7 +51,7 @@ interface PatientDetailProps {
   onRefresh?:    () => void
 }
 
-const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'biopsias', 'monitoramento', 'prescricao', 'faturas', 'cadastro', 'hospitalar']
+const VALID_DETAIL_TABS: DetailTab[] = ['consultas', 'laboratoriais', 'imagem', 'biopsias', 'monitoramento', 'prescricao', 'pedidos_exame', 'faturas', 'cadastro', 'hospitalar']
 
 export default function PatientDetail({
   currentRole,
@@ -120,7 +121,8 @@ export default function PatientDetail({
     ...(canSeeProntuario ? [{ id: 'imagem'        as DetailTab, label: 'Imagem',              icon: <ScanLine     className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'biopsias'      as DetailTab, label: 'Biópsias',             icon: <Microscope   className="w-4 h-4" /> }] : []),
     { id: 'monitoramento', label: 'Monitoramento', icon: <Activity  className="w-4 h-4" /> },
-    ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',          icon: <Pill         className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',    icon: <Pill         className="w-4 h-4" /> }] : []),
+    ...(canSeeProntuario ? [{ id: 'pedidos_exame' as DetailTab, label: 'Ped. Exame',  icon: <FlaskConical className="w-4 h-4" /> }] : []),
     { id: 'faturas',       label: 'NF',            icon: <Receipt   className="w-4 h-4" /> },
     { id: 'cadastro',      label: 'Cadastro',      icon: <Contact   className="w-4 h-4" /> },
     ...(canSeeProntuario ? [{ id: 'hospitalar' as DetailTab, label: 'Hospitalar', icon: <Building2 className="w-4 h-4" /> }] : []),
@@ -308,6 +310,16 @@ export default function PatientDetail({
           patientPhone={patient.phone}
           patientBirthday={patient.data_nascimento}
           patientGender={patient.sexo}
+        />
+      )}
+
+      {/* ── Tab: Pedidos de Exame ── */}
+      {activeDetailTab === 'pedidos_exame' && canSeeProntuario && (
+        <PedidoExameTab
+          patientId={patient.id}
+          patientName={patient.full_name ?? 'Paciente'}
+          patientPhone={patient.phone}
+          patientEmail={patient.email}
         />
       )}
 

@@ -3,27 +3,29 @@
 import { useState } from 'react'
 import { Loader2, ShieldCheck, X, Smartphone, ExternalLink, Download } from 'lucide-react'
 
-type AssinaturaType = 'prontuario' | 'prescricao'
+export type AssinaturaType = 'prontuario' | 'prescricao' | 'pedido_exame'
 
 interface Props {
-  consultaId?:  string   // prontuário
-  patientId?:   string   // prescrição
-  tipo?:        AssinaturaType
-  onClose:      () => void
-  onSuccess:    (pdfUrl: string, assinaturaUrl: string) => void
+  consultaId?:    string   // prontuário
+  patientId?:     string   // prescrição
+  pedidoExameId?: string   // pedido de exame
+  tipo?:          AssinaturaType
+  onClose:        () => void
+  onSuccess:      (pdfUrl: string, assinaturaUrl: string) => void
 }
 
-export default function AssinaturaModal({ consultaId, patientId, tipo = 'prontuario', onClose, onSuccess }: Props) {
+export default function AssinaturaModal({ consultaId, patientId, pedidoExameId, tipo = 'prontuario', onClose, onSuccess }: Props) {
   const [otp,      setOtp]      = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
-  const isPrescricao = tipo === 'prescricao'
-  const titulo       = isPrescricao ? 'Assinar prescrição' : 'Assinar prontuário'
-  const endpoint     = isPrescricao ? '/api/prescricao/assinar' : '/api/prontuario/assinar'
-  const bodyPayload  = isPrescricao
+  const titulo      = tipo === 'prescricao' ? 'Assinar prescrição' : tipo === 'pedido_exame' ? 'Assinar pedido de exame' : 'Assinar prontuário'
+  const endpoint    = tipo === 'prescricao' ? '/api/prescricao/assinar' : tipo === 'pedido_exame' ? '/api/pedido-exame/assinar' : '/api/prontuario/assinar'
+  const bodyPayload = tipo === 'prescricao'
     ? { patientId, otp: otp.trim() }
-    : { consultaId, otp: otp.trim() }
+    : tipo === 'pedido_exame'
+      ? { pedidoId: pedidoExameId, otp: otp.trim() }
+      : { consultaId, otp: otp.trim() }
 
   async function handleAssinar() {
     if (!otp.trim()) { setError('Digite o código OTP do app BirdID ou VaultID.'); return }
@@ -141,7 +143,8 @@ interface SuccessProps {
 }
 
 export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, tipo = 'prontuario', onClose }: SuccessProps) {
-  const isPrescricao = tipo === 'prescricao'
+  const label = tipo === 'prescricao' ? 'prescrição' : tipo === 'pedido_exame' ? 'pedido de exame' : 'prontuário'
+  const titulo = tipo === 'prescricao' ? 'Prescrição assinada!' : tipo === 'pedido_exame' ? 'Pedido assinado!' : 'Prontuário assinado!'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
@@ -150,7 +153,7 @@ export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, tipo = 'prontuar
           <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
             <ShieldCheck className="w-7 h-7 text-emerald-600" />
           </div>
-          <h2 className="text-base font-bold text-gray-900">{isPrescricao ? 'Prescrição assinada!' : 'Prontuário assinado!'}</h2>
+          <h2 className="text-base font-bold text-gray-900">{titulo}</h2>
           <p className="text-xs text-gray-500">
             Assinatura digital ICP-Brasil aplicada com sucesso.
             Valide em{' '}
@@ -168,7 +171,7 @@ export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, tipo = 'prontuar
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
           >
-            <Download className="w-4 h-4" /> {isPrescricao ? 'Baixar PDF da prescrição' : 'Baixar PDF do prontuário'}
+            <Download className="w-4 h-4" /> Baixar PDF da {label}
           </a>
           <a
             href={assinaturaUrl}
