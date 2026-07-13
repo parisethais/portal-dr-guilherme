@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useRef } from 'react'
 import {
   getPedidosExame, createPedidoExame, deletePedidoExame, enviarDocumentoViaCopilot,
-  type PedidoExame, type TipoExame, type Urgencia,
+  getCatalogExamOptions,
+  type PedidoExame, type TipoExame, type Urgencia, type CatalogExamOption,
 } from '@/app/actions/pedidos-exame'
 import {
   Plus, FlaskConical, ScanLine, FileText, Trash2, Loader2,
@@ -263,6 +264,107 @@ function PedidoCard({
   )
 }
 
+// ── Autocomplete de exames ───────────────────────────────────────
+function ExameAutocomplete({
+  value, onChange,
+  catalog,
+}: {
+  value: string
+  onChange: (v: string) => void
+  catalog: CatalogExamOption[]
+}) {
+  const [query,       setQuery]       = useState('')
+  const [suggestions, setSuggestions] = useState<CatalogExamOption[]>([])
+  const [open,        setOpen]        = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function handleQueryChange(q: string) {
+    setQuery(q)
+    if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
+    const lower = q.toLowerCase()
+    const hits = catalog.filter(e => e.name.toLowerCase().includes(lower)).slice(0, 8)
+    setSuggestions(hits)
+    setOpen(hits.length > 0)
+  }
+
+  function addExam(name: string) {
+    const lines = value ? value.split('\n').filter(Boolean) : []
+    if (!lines.includes(name)) {
+      onChange(lines.concat(name).join('\n'))
+    }
+    setQuery('')
+    setSuggestions([])
+    setOpen(false)
+  }
+
+  const lines = value.split('\n').filter(Boolean)
+
+  return (
+    <div ref={wrapRef} className="space-y-2">
+      {/* Chips dos exames já adicionados */}
+      {lines.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {lines.map((ex, i) => (
+            <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/8 text-primary font-medium">
+              {ex}
+              <button
+                type="button"
+                onClick={() => onChange(lines.filter((_, j) => j !== i).join('\n'))}
+                className="text-primary/50 hover:text-red-500 leading-none ml-0.5"
+              >×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Campo de busca */}
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={e => handleQueryChange(e.target.value)}
+          onFocus={() => query.trim().length >= 2 && setOpen(suggestions.length > 0)}
+          placeholder="Buscar exame do catálogo ou digitar manualmente..."
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {open && (
+          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseDown={() => addExam(s.name)}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-primary/5 text-left"
+              >
+                <span className="font-medium text-gray-800">{s.name}</span>
+                <span className="text-xs text-gray-400 ml-2">{s.group}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Textarea para digitação livre (exames que não estão no catálogo) */}
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        rows={3}
+        placeholder={"Ou escreva exames adicionais aqui (um por linha)…"}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+      />
+      <p className="text-[10px] text-gray-400">Busque no catálogo ou escreva livremente. Um exame por linha.</p>
+    </div>
+  )
+}
+
 // ── Componente principal ─────────────────────────────────────────
 export default function PedidoExameTab({ patientId, patientName, patientPhone, patientEmail }: Props) {
   const [pedidos,    setPedidos]    = useState<PedidoExame[]>([])
@@ -270,6 +372,7 @@ export default function PedidoExameTab({ patientId, patientName, patientPhone, p
   const [showNovo,   setShowNovo]   = useState(false)
   const [saving,     startSave]     = useTransition()
   const [err,        setErr]        = useState('')
+  const [catalog,    setCatalog]    = useState<CatalogExamOption[]>([])
 
   const [form, setForm] = useState<{
     tipo: TipoExame; exames: string; urgencia: Urgencia
@@ -281,6 +384,7 @@ export default function PedidoExameTab({ patientId, patientName, patientPhone, p
 
   useEffect(() => {
     getPedidosExame(patientId).then(data => { setPedidos(data); setLoading(false) })
+    getCatalogExamOptions().then(setCatalog)
   }, [patientId])
 
   function handleSalvar() {
@@ -386,15 +490,15 @@ export default function PedidoExameTab({ patientId, patientName, patientPhone, p
           {/* Exames */}
           <div>
             <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">
-              Exames solicitados <span className="text-gray-300">(um por linha)</span>
+              Exames solicitados
             </label>
-            <textarea
-              value={form.exames}
-              onChange={e => setForm(f => ({ ...f, exames: e.target.value }))}
-              rows={4}
-              placeholder={"Hemograma completo\nTSH\nGlicemia em jejum"}
-              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            />
+            <div className="mt-1">
+              <ExameAutocomplete
+                value={form.exames}
+                onChange={v => setForm(f => ({ ...f, exames: v }))}
+                catalog={catalog}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

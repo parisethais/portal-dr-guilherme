@@ -4,6 +4,24 @@ import { createClient }        from '@/lib/supabase/server'
 import { createAdminClient }   from '@/lib/supabase/admin'
 import { getCallerTenantId }   from '@/lib/get-caller-tenant'
 
+export interface CatalogExamOption {
+  name:  string
+  group: string
+}
+
+export async function getCatalogExamOptions(): Promise<CatalogExamOption[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('exam_catalog')
+      .select('name, group_name')
+      .eq('active', true)
+      .order('group_name')
+      .order('sort_order')
+    return (data ?? []).map((r: { name: string; group_name: string }) => ({ name: r.name, group: r.group_name }))
+  } catch { return [] }
+}
+
 export type TipoExame  = 'laboratorial' | 'imagem' | 'outro'
 export type Urgencia   = 'rotina' | 'urgente'
 
