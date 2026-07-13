@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import {
   getInternacoes, createInternacao, addVisita, deleteVisita,
   finalizarInternacao, deleteInternacao,
@@ -10,7 +10,7 @@ import { HOSPITAIS, VISITADORES, DIALISE_OPTIONS, hospitalLabel } from '@/lib/in
 import type { Profile } from '@/lib/types'
 import {
   Building2, Plus, ChevronDown, ChevronUp, Loader2,
-  Stethoscope, CheckCircle, Trash2, X,
+  Stethoscope, CheckCircle, Trash2, X, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -423,9 +423,25 @@ export default function InternacaoPanel({ patients, patientId }: Props) {
     })
   }
 
-  const ativas     = internacoes.filter(i => !i.finalizada)
+  const ativas      = internacoes.filter(i => !i.finalizada)
   const finalizadas = internacoes.filter(i => i.finalizada)
   const showPatient = !patientId
+
+  // Resumo consolidado por visitador (só na aba global)
+  const resumoVisitadores = useMemo(() => {
+    if (patientId) return []
+    const map: Record<string, { visitas: number; pacientes: Set<string>; totalFin: number }> = {}
+    for (const i of internacoes) {
+      const nome = i.patient_name ?? '—'
+      for (const v of i.visitas) {
+        if (!map[v.visitador]) map[v.visitador] = { visitas: 0, pacientes: new Set(), totalFin: 0 }
+        map[v.visitador].visitas++
+        map[v.visitador].pacientes.add(nome)
+        if (i.finalizada && i.valor_visita) map[v.visitador].totalFin += i.valor_visita
+      }
+    }
+    return Object.entries(map).sort((a, b) => b[1].visitas - a[1].visitas)
+  }, [internacoes, patientId])
 
   if (loading) {
     return (
@@ -528,6 +544,32 @@ export default function InternacaoPanel({ patients, patientId }: Props) {
               Registrar internação
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Resumo por visitador (só na aba global com internações) */}
+      {resumoVisitadores.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Resumo por visitador</p>
+          </div>
+          {resumoVisitadores.map(([visitador, dados]) => (
+            <div key={visitador} className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-gray-800">{visitador}</span>
+                <span className="text-xs text-gray-400 ml-2">
+                  {dados.visitas} {dados.visitas === 1 ? 'visita' : 'visitas'}
+                  {' · '}{[...dados.pacientes].join(', ')}
+                </span>
+              </div>
+              {dados.totalFin > 0 && (
+                <span className="text-xs font-semibold text-emerald-700 flex-shrink-0">
+                  {dados.totalFin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
