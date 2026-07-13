@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient }              from '@/lib/supabase/server'
 import { createAdminClient }         from '@/lib/supabase/admin-client'
 import { gerarProntuarioPdf }        from '@/lib/pdf/gerar-prontuario'
-import { birdIdAuth, birdIdSign }    from '@/lib/birdid-api'
+import { birdIdAuth, birdIdSign, userDiscovery } from '@/lib/birdid-api'
 import { createHash }                from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -110,10 +110,17 @@ export async function POST(req: NextRequest) {
   // ── 2. Hash SHA256 do PDF ─────────────────────────────────────
   const hashHex = createHash('sha256').update(pdfBuffer).digest('hex')
 
-  // ── 3. Autentica com BirdID ───────────────────────────────────
+  // ── 3. Descobre plataforma e autentica ───────────────────────
+  const discovered = await userDiscovery(profile.cpf)
+
   let authResult: Awaited<ReturnType<typeof birdIdAuth>>
   try {
-    authResult = await birdIdAuth({ cpf: profile.cpf, otp: body.otp })
+    authResult = await birdIdAuth({
+      cpf:      profile.cpf,
+      otp:      body.otp,
+      apiUrl:   discovered?.apiUrl,
+      platform: discovered?.platform,
+    })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     // OTP inválido ou expirado é o erro mais comum
@@ -135,6 +142,7 @@ export async function POST(req: NextRequest) {
       certificate_alias: authResult.certificate_alias,
       documentId:        consulta.id,
       hashHex,
+      apiUrl:            authResult.apiUrl,
     })
   } catch (err) {
     console.error('[assinar] BirdID sign erro:', err)

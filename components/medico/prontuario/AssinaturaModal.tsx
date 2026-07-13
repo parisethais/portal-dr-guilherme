@@ -3,27 +3,38 @@
 import { useState } from 'react'
 import { Loader2, ShieldCheck, X, Smartphone, ExternalLink, Download } from 'lucide-react'
 
+type AssinaturaType = 'prontuario' | 'prescricao'
+
 interface Props {
-  consultaId: string
-  onClose:    () => void
-  onSuccess:  (pdfUrl: string, assinaturaUrl: string) => void
+  consultaId?:  string   // prontuário
+  patientId?:   string   // prescrição
+  tipo?:        AssinaturaType
+  onClose:      () => void
+  onSuccess:    (pdfUrl: string, assinaturaUrl: string) => void
 }
 
-export default function AssinaturaModal({ consultaId, onClose, onSuccess }: Props) {
+export default function AssinaturaModal({ consultaId, patientId, tipo = 'prontuario', onClose, onSuccess }: Props) {
   const [otp,      setOtp]      = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
+  const isPrescricao = tipo === 'prescricao'
+  const titulo       = isPrescricao ? 'Assinar prescrição' : 'Assinar prontuário'
+  const endpoint     = isPrescricao ? '/api/prescricao/assinar' : '/api/prontuario/assinar'
+  const bodyPayload  = isPrescricao
+    ? { patientId, otp: otp.trim() }
+    : { consultaId, otp: otp.trim() }
+
   async function handleAssinar() {
-    if (!otp.trim()) { setError('Digite o código OTP do app BirdID.'); return }
+    if (!otp.trim()) { setError('Digite o código OTP do app BirdID ou VaultID.'); return }
     setError('')
     setLoading(true)
 
     try {
-      const res  = await fetch('/api/prontuario/assinar', {
+      const res  = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ consultaId, otp: otp.trim() }),
+        body:    JSON.stringify(bodyPayload),
       })
       const json = await res.json()
 
@@ -51,8 +62,8 @@ export default function AssinaturaModal({ consultaId, onClose, onSuccess }: Prop
               <ShieldCheck className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Assinar prontuário</h2>
-              <p className="text-xs text-gray-400">Assinatura digital ICP-Brasil via BirdID</p>
+              <h2 className="text-base font-bold text-gray-900">{titulo}</h2>
+              <p className="text-xs text-gray-400">Assinatura digital ICP-Brasil — BirdID ou VaultID</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -67,7 +78,7 @@ export default function AssinaturaModal({ consultaId, onClose, onSuccess }: Prop
             <p className="text-xs font-semibold text-blue-800">Como obter o código OTP</p>
           </div>
           <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
-            <li>Abra o app <strong>BirdID</strong> no seu celular</li>
+            <li>Abra o app <strong>BirdID</strong> ou <strong>VaultID</strong> no celular</li>
             <li>Toque em <strong>"Gerar código"</strong></li>
             <li>Digite o código de 6 dígitos abaixo</li>
           </ol>
@@ -125,10 +136,12 @@ export default function AssinaturaModal({ consultaId, onClose, onSuccess }: Prop
 interface SuccessProps {
   pdfUrl:        string
   assinaturaUrl: string
+  tipo?:         AssinaturaType
   onClose:       () => void
 }
 
-export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, onClose }: SuccessProps) {
+export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, tipo = 'prontuario', onClose }: SuccessProps) {
+  const isPrescricao = tipo === 'prescricao'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
@@ -137,7 +150,7 @@ export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, onClose }: Succe
           <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
             <ShieldCheck className="w-7 h-7 text-emerald-600" />
           </div>
-          <h2 className="text-base font-bold text-gray-900">Prontuário assinado!</h2>
+          <h2 className="text-base font-bold text-gray-900">{isPrescricao ? 'Prescrição assinada!' : 'Prontuário assinado!'}</h2>
           <p className="text-xs text-gray-500">
             Assinatura digital ICP-Brasil aplicada com sucesso.
             Valide em{' '}
@@ -155,7 +168,7 @@ export function AssinaturaSuccessModal({ pdfUrl, assinaturaUrl, onClose }: Succe
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
           >
-            <Download className="w-4 h-4" /> Baixar PDF do prontuário
+            <Download className="w-4 h-4" /> {isPrescricao ? 'Baixar PDF da prescrição' : 'Baixar PDF do prontuário'}
           </a>
           <a
             href={assinaturaUrl}
