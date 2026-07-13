@@ -20,6 +20,7 @@ import MemedPrescricao from './prontuario/MemedPrescricao'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 import { updateObsPessoal } from '@/app/actions/profile'
 import { getOrCreateExameToken } from '@/app/actions/exame-upload'
+import { getOrCreateCadastroToken } from '@/app/actions/cadastro-link'
 import InternacaoPanel from './InternacaoPanel'
 import PedidoExameTab from './prontuario/PedidoExameTab'
 
@@ -88,9 +89,10 @@ export default function PatientDetail({
   }
 
   // ── Links do paciente ─────────────────────────────────────────
-  const [linkExameCopied,  setLinkExameCopied]  = useState(false)
-  const [linkLgpdCopied,   setLinkLgpdCopied]   = useState(false)
-  const [linkPending,      startLinkTransition]  = useTransition()
+  const [linkExameCopied,    setLinkExameCopied]    = useState(false)
+  const [linkLgpdCopied,     setLinkLgpdCopied]     = useState(false)
+  const [linkCadastroCopied, setLinkCadastroCopied] = useState(false)
+  const [linkPending,        startLinkTransition]    = useTransition()
 
   function handleCopyExameLink() {
     startLinkTransition(async () => {
@@ -111,6 +113,17 @@ export default function PatientDetail({
       await navigator.clipboard.writeText(url)
       setLinkLgpdCopied(true)
       setTimeout(() => setLinkLgpdCopied(false), 2500)
+    })
+  }
+
+  function handleCopyCadastroLink() {
+    startLinkTransition(async () => {
+      const res = await getOrCreateCadastroToken(patient.id)
+      if (!res.success || !res.data) return
+      const url = `${window.location.origin}/p/${res.data.token}/cadastro`
+      await navigator.clipboard.writeText(url)
+      setLinkCadastroCopied(true)
+      setTimeout(() => setLinkCadastroCopied(false), 2500)
     })
   }
 
@@ -174,6 +187,16 @@ export default function PatientDetail({
                 >
                   {linkPending ? <Loader2 className="w-3 h-3 animate-spin" /> : linkExameCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
                   {linkExameCopied ? 'Copiado!' : 'Enviar exames'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyCadastroLink}
+                  disabled={linkPending}
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50"
+                  title="Copiar link de cadastro para o paciente"
+                >
+                  {linkCadastroCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
+                  {linkCadastroCopied ? 'Copiado!' : 'Cadastro'}
                 </button>
                 {!patient.lgpd_accepted && (
                   <button
