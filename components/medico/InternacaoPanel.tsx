@@ -13,6 +13,9 @@ import {
   Stethoscope, CheckCircle, Trash2, X, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts'
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -497,21 +500,82 @@ export default function InternacaoPanel({ patients, patientId }: Props) {
   const finalizadas = internacoes.filter(i => i.finalizada)
   const showPatient = !patientId
 
+  const now = new Date()
+  const mesAtual = now.getFullYear() * 100 + (now.getMonth() + 1)
+  const anoAtual = now.getFullYear()
+
+  function anoMes(d: string) {
+    const [y, m] = d.split('-').map(Number)
+    return y * 100 + m
+  }
+
   // Resumo consolidado por visitador (só na aba global)
   const resumoVisitadores = useMemo(() => {
     if (patientId) return []
-    const map: Record<string, { visitas: number; pacientes: Set<string>; totalFin: number }> = {}
+    const map: Record<string, { visitas: number; pacientes: Set<string>; totalFin: number; totalPagar: number }> = {}
     for (const i of internacoes) {
       const nome = i.patient_name ?? '—'
       for (const v of i.visitas) {
-        if (!map[v.visitador]) map[v.visitador] = { visitas: 0, pacientes: new Set(), totalFin: 0 }
+        if (!map[v.visitador]) map[v.visitador] = { visitas: 0, pacientes: new Set(), totalFin: 0, totalPagar: 0 }
         map[v.visitador].visitas++
         map[v.visitador].pacientes.add(nome)
-        if (i.finalizada && i.valor_visita) map[v.visitador].totalFin += i.valor_visita
+        if (i.finalizada && i.valor_visita) {
+          map[v.visitador].totalFin += i.valor_visita
+          // valor específico para este visitador, ou padrão
+          const rateEsp = i.valor_por_visitador?.[v.visitador]
+          map[v.visitador].totalPagar += rateEsp ?? i.valor_visita
+        }
       }
     }
     return Object.entries(map).sort((a, b) => b[1].visitas - a[1].visitas)
   }, [internacoes, patientId])
+
+  // Analytics (só global)
+  const analytics = useMemo(() => {
+    if (patientId) return null
+    const fin = internacoes.filter(i => i.finalizada && i.data_alta)
+
+    const filtrar = (lista: Internacao[], periodo: 'mes' | 'ano') =>
+      lista.filter(i => {
+        const am = anoMes(i.data_alta!)
+        return periodo === 'mes' ? am === mesAtual : Math.floor(am / 100) === anoAtual
+      })
+
+    function calcMetrics(lista: Internacao[]) {
+      const receita  = lista.reduce((s, i) => s + (i.valor_visita ?? 0) * i.visitas.length, 0)
+      const visitas  = lista.reduce((s, i) => s + i.visitas.length, 0)
+      const pacs     = new Set(lista.map(i => i.patient_id)).size
+      return { internacoes: lista.length, receita, visitas, pacs }
+    }
+
+    const mes = calcMetrics(filtrar(fin, 'mes'))
+    const ano = calcMetrics(filtrar(fin, 'ano'))
+
+    // Por hospital (ano)
+    const porHospital: Record<string, { receita: number; visitas: number }> = {}
+    for (const i of filtrar(fin, 'ano')) {
+      const label = hospitalLabel(i.hospital, i.hospital_outro)
+      if (!porHospital[label]) porHospital[label] = { receita: 0, visitas: 0 }
+      porHospital[label].receita  += (i.valor_visita ?? 0) * i.visitas.length
+      porHospital[label].visitas  += i.visitas.length
+    }
+
+    // Por visitador (ano)
+    const porVisitador: Record<string, { visitas: number; receita: number }> = {}
+    for (const i of filtrar(fin, 'ano')) {
+      for (const v of i.visitas) {
+        if (!porVisitador[v.visitador]) porVisitador[v.visitador] = { visitas: 0, receita: 0 }
+        porVisitador[v.visitador].visitas++
+        porVisitador[v.visitador].receita += i.valor_visita ?? 0
+      }
+    }
+
+    return {
+      mes, ano,
+      hospitalData:   Object.entries(porHospital).map(([name, d]) => ({ name, ...d })),
+      visitadorData:  Object.entries(porVisitador).map(([name, d]) => ({ name, ...d })),
+    }
+  }, [internacoes, patientId, mesAtual, anoAtual])
 
   if (loading) {
     return (
@@ -617,7 +681,81 @@ export default function InternacaoPanel({ patients, patientId }: Props) {
         </div>
       )}
 
-      {/* Resumo por visitador (só na aba global com internações) */}
+      {/* Analytics (só na aba global) */}
+      {analytics && (analytics.mes.internacoes > 0 || analytics.ano.internacoes > 0) && (() => {
+        const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        const COLORS = ['#2D2B6B', '#4F8EF7', '#10B981', '#F59E0B', '#EF4444']
+
+        return (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+            {/* Título */}
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Financeiro de internações</p>
+
+            {/* Tiles este mês / acumulado no ano */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Este mês', data: analytics.mes },
+                { label: 'Este ano', data: analytics.ano },
+              ].map(({ label, data }) => (
+                <div key={label} className="rounded-lg bg-gray-50 border border-gray-100 p-3 space-y-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-gray-400">Receita</p>
+                      <p className="text-sm font-bold text-primary">{fmt(data.receita)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400">Internações</p>
+                      <p className="text-sm font-bold text-gray-800">{data.internacoes}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400">Visitas</p>
+                      <p className="text-sm font-bold text-gray-800">{data.visitas}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400">Pacientes</p>
+                      <p className="text-sm font-bold text-gray-800">{data.pacs}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gráficos */}
+            {analytics.hospitalData.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Receita por hospital (ano)</p>
+                <ResponsiveContainer width="100%" height={120}>
+                  <BarChart data={analytics.hospitalData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} />
+                    <YAxis tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: any) => fmt(v as number)} labelStyle={{ fontSize: 11 }} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                    <Bar dataKey="receita" radius={[4, 4, 0, 0]}>
+                      {analytics.hospitalData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {analytics.visitadorData.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Visitas por médico (ano)</p>
+                <ResponsiveContainer width="100%" height={100}>
+                  <BarChart data={analytics.visitadorData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} />
+                    <YAxis tick={{ fontSize: 9, fill: '#9CA3AF' }} allowDecimals={false} />
+                    <Tooltip formatter={(v: any) => `${v} visita${(v as number) !== 1 ? 's' : ''}`} labelStyle={{ fontSize: 11 }} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                    <Bar dataKey="visitas" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Resumo por visitador */}
       {resumoVisitadores.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-2">
           <div className="flex items-center gap-2 mb-1">
@@ -633,11 +771,18 @@ export default function InternacaoPanel({ patients, patientId }: Props) {
                   {' · '}{[...dados.pacientes].join(', ')}
                 </span>
               </div>
-              {dados.totalFin > 0 && (
-                <span className="text-xs font-semibold text-emerald-700 flex-shrink-0">
-                  {dados.totalFin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-              )}
+              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                {dados.totalFin > 0 && (
+                  <span className="text-xs font-semibold text-emerald-700">
+                    {dados.totalFin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                )}
+                {visitador !== 'Guilherme' && dados.totalPagar > 0 && dados.totalPagar !== dados.totalFin && (
+                  <span className="text-[10px] text-amber-600 font-medium">
+                    pagar: {dados.totalPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
