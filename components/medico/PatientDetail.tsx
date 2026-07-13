@@ -87,9 +87,10 @@ export default function PatientDetail({
     })
   }
 
-  // ── Link de exames ────────────────────────────────────────────
-  const [linkCopied, setLinkCopied] = useState(false)
-  const [linkPending, startLinkTransition] = useTransition()
+  // ── Links do paciente ─────────────────────────────────────────
+  const [linkExameCopied,  setLinkExameCopied]  = useState(false)
+  const [linkLgpdCopied,   setLinkLgpdCopied]   = useState(false)
+  const [linkPending,      startLinkTransition]  = useTransition()
 
   function handleCopyExameLink() {
     startLinkTransition(async () => {
@@ -97,8 +98,19 @@ export default function PatientDetail({
       if (!res.success || !res.data) return
       const url = `${window.location.origin}/p/${res.data.token}/exames`
       await navigator.clipboard.writeText(url)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2500)
+      setLinkExameCopied(true)
+      setTimeout(() => setLinkExameCopied(false), 2500)
+    })
+  }
+
+  function handleCopyLgpdLink() {
+    startLinkTransition(async () => {
+      const res = await getOrCreateExameToken(patient.id)
+      if (!res.success || !res.data) return
+      const url = `${window.location.origin}/p/${res.data.token}/lgpd`
+      await navigator.clipboard.writeText(url)
+      setLinkLgpdCopied(true)
+      setTimeout(() => setLinkLgpdCopied(false), 2500)
     })
   }
 
@@ -152,16 +164,30 @@ export default function PatientDetail({
               </span>
             )}
             {canSeeProntuario && (
-              <button
-                type="button"
-                onClick={handleCopyExameLink}
-                disabled={linkPending}
-                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50"
-                title="Copiar link de envio de exames"
-              >
-                {linkPending ? <Loader2 className="w-3 h-3 animate-spin" /> : linkCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
-                {linkCopied ? 'Copiado!' : 'Link exames'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleCopyExameLink}
+                  disabled={linkPending}
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-50"
+                  title="Copiar link de envio de exames para o paciente"
+                >
+                  {linkPending ? <Loader2 className="w-3 h-3 animate-spin" /> : linkExameCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
+                  {linkExameCopied ? 'Copiado!' : 'Enviar exames'}
+                </button>
+                {!patient.lgpd_accepted && (
+                  <button
+                    type="button"
+                    onClick={handleCopyLgpdLink}
+                    disabled={linkPending}
+                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-amber-200 text-amber-600 hover:border-amber-400 hover:text-amber-700 transition-colors disabled:opacity-50"
+                    title="Copiar link para aceite de LGPD (paciente sem aceite)"
+                  >
+                    {linkLgpdCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}
+                    {linkLgpdCopied ? 'Copiado!' : 'Aceite LGPD'}
+                  </button>
+                )}
+              </>
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">

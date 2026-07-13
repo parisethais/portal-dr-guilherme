@@ -1,12 +1,12 @@
 import { getPatientByToken } from '@/app/actions/exame-upload'
-import ExameUploadClient from './ExameUploadClient'
+import LgpdConsentClient from './LgpdConsentClient'
 import { ShieldX } from 'lucide-react'
 
 interface Props {
   params: Promise<{ token: string }>
 }
 
-export default async function ExameUploadPage({ params }: Props) {
+export default async function LgpdConsentPage({ params }: Props) {
   const { token } = await params
   const patient = await getPatientByToken(token)
 
@@ -27,9 +27,10 @@ export default async function ExameUploadPage({ params }: Props) {
   }
 
   return (
-    <ExameUploadClient
+    <LgpdConsentClient
       token={token}
       patientName={patient.full_name ?? 'Paciente'}
+      alreadyAccepted={patient.lgpd_accepted}
     />
   )
 }
