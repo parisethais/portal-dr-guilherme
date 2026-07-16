@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { TIPO_LABEL } from '@/components/medico/ConsultaModal'
 import PatientCombobox from '@/components/ui/PatientCombobox'
+import NfUploadButton from '@/components/medico/NfUploadButton'
 
 // ── Preços fixos por tipo de consulta ────────────────────────────────────
 // Valores do consultório do Dr. Guilherme (retorno gratuito)
@@ -1098,6 +1099,13 @@ export default function FinanceiroTab({ initialEntries, doctorId, doctorName = n
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
+                      <NfUploadButton
+                        source="financial"
+                        recordId={e.id}
+                        filePath={e.nf_file_path ?? null}
+                        onUploaded={fp => setEntries(prev => prev.map(x => x.id === e.id ? { ...x, nf_file_path: fp } : x))}
+                        onDeleted={() => setEntries(prev => prev.map(x => x.id === e.id ? { ...x, nf_file_path: null } : x))}
+                      />
                       <button
                         onClick={() => { setEditingEntry(e); setShowForm(false) }}
                         className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"

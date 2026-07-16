@@ -6,6 +6,7 @@ import {
   getHonorarios, createHonorario, updateHonorario, deleteHonorario,
   type Honorario,
 } from '@/app/actions/honorarios'
+import NfUploadButton from './NfUploadButton'
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -201,13 +202,14 @@ export default function HonorariosPanel() {
         <div className="rounded-xl border border-gray-200 overflow-hidden">
           {/* Header */}
           <div className="hidden sm:grid text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-2 bg-gray-50 border-b border-gray-100"
-            style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 36px' }}>
+            style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 72px 36px' }}>
             <span>Data</span>
             <span>Descrição / Fonte</span>
             <span>Valor</span>
             <span className="text-center">NF emitida</span>
             <span className="text-center">Pago</span>
             <span>Obs</span>
+            <span>PDF NF</span>
             <span></span>
           </div>
 
@@ -215,7 +217,7 @@ export default function HonorariosPanel() {
             {rows.map(r => (
               <div key={r.id}
                 className="hidden sm:grid items-center px-4 py-2.5 hover:bg-gray-50/60 transition-colors"
-                style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 36px' }}
+                style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 72px 36px' }}
               >
                 <span className="text-xs text-gray-500">{fmtDate(r.data)}</span>
                 <div className="min-w-0 pr-3">
@@ -255,6 +257,13 @@ export default function HonorariosPanel() {
                   </button>
                 </div>
                 <span className="text-[11px] text-gray-400 truncate pr-2">{r.obs ?? ''}</span>
+                <NfUploadButton
+                  source="honorario"
+                  recordId={r.id}
+                  filePath={r.nf_file_path ?? null}
+                  onUploaded={fp => setRows(prev => prev.map(x => x.id === r.id ? { ...x, nf_file_path: fp } : x))}
+                  onDeleted={() => setRows(prev => prev.map(x => x.id === r.id ? { ...x, nf_file_path: null } : x))}
+                />
                 <button
                   type="button"
                   onClick={() => handleDelete(r.id)}
@@ -286,6 +295,13 @@ export default function HonorariosPanel() {
                     className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${r.pago ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                     <Check className="w-3 h-3" /> Pago
                   </button>
+                  <NfUploadButton
+                    source="honorario"
+                    recordId={r.id}
+                    filePath={r.nf_file_path ?? null}
+                    onUploaded={fp => setRows(prev => prev.map(x => x.id === r.id ? { ...x, nf_file_path: fp } : x))}
+                    onDeleted={() => setRows(prev => prev.map(x => x.id === r.id ? { ...x, nf_file_path: null } : x))}
+                  />
                   <button type="button" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id}
                     className="ml-auto p-1 text-gray-300 hover:text-red-400 disabled:opacity-40">
                     <Trash2 className="w-3.5 h-3.5" />

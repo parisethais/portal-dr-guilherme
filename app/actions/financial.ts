@@ -26,6 +26,7 @@ export interface FinancialEntry {
   payment_method:      string | null
   status:              'pago' | 'pendente' | 'cancelado'
   nota_fiscal_status:  NotaFiscalStatus
+  nf_file_path:        string | null
   notes:               string | null
   created_at:          string
   updated_at:          string

@@ -15,6 +15,7 @@ export interface Honorario {
   fonte_pagadora: string
   valor:          number
   valor_pago:     number | null  // valor líquido após impostos
+  nf_file_path:   string | null
   nota_emitida:   boolean
   pago:           boolean
   obs:            string | null
