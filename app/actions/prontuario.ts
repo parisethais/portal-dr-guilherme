@@ -369,8 +369,8 @@ export async function getDiagnosisHistory(): Promise<string[]> {
         for (const entry of parsed) {
           const nome = entry?.nome?.trim()
           if (!nome) continue
-          const clean = extractNome(nome)
-          if (clean.length >= 2) seen.add(clean)
+          // Nomes de diagnóstico são curtos; strings longas são descrições clínicas do campo antigo
+          if (nome.length >= 2 && nome.length <= 80) seen.add(nome)
         }
       }
     } catch { /* ignore */ }

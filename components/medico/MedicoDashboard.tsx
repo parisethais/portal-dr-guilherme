@@ -7,11 +7,12 @@ import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight, Building2 } from 'lucide-react'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight, Building2, FileText, ChevronDown, ChevronUp, Star } from 'lucide-react'
 import InternacaoPanel from './InternacaoPanel'
 import { TIPO_LABEL } from './ConsultaModal'
 import RelatoriosTab from './RelatoriosTab'
 import FinanceiroTab from './FinanceiroTab'
+import KpiSecretariaTab from './KpiSecretariaTab'
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
 import type { FinancialEntry } from '@/app/actions/financial'
@@ -41,9 +42,9 @@ interface MedicoDashboardProps {
   patientsWithExames?: string[]
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro' | 'hospitais'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro' | 'hospitais' | 'kpi'
 
-const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro', 'hospitais']
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro', 'hospitais', 'kpi']
 
 // Lê o tab inicial da URL sem chamar useSearchParams (evita re-render do servidor)
 function getInitialTab(): Tab {
@@ -82,6 +83,7 @@ export default function MedicoDashboard({
   // ── Estado local — sem useRouter/useSearchParams ──────────────
   const [activeTab,        setActiveTabState]   = useState<Tab>(getInitialTab)
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(getInitialPatientId)
+  const [showEmAberto,     setShowEmAberto]      = useState(false)
 
   function setActiveTab(tab: Tab) {
     guardNavigation(() => {
@@ -119,6 +121,12 @@ export default function MedicoDashboard({
     .filter(c => c.status === 'em_atendimento')
     .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
 
+  // Consultas realizadas com prontuário não finalizado (banner âmbar)
+  const consultasEmAberto = consultas
+    .filter(c => !c.prontuario_finalizado && c.status === 'realizada')
+    .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
+    .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'panorama',    label: 'Panorama',    icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'pacientes',   label: 'Pacientes',   icon: <Users           className="w-4 h-4" /> },
@@ -127,6 +135,7 @@ export default function MedicoDashboard({
     { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2       className="w-4 h-4" /> },
     { id: 'financeiro',  label: 'Financeiro',  icon: <DollarSign      className="w-4 h-4" /> },
     { id: 'hospitais',   label: 'Hospitais',   icon: <Building2       className="w-4 h-4" /> },
+    { id: 'kpi',         label: 'KPI Sec.',    icon: <Star            className="w-4 h-4" /> },
   ]
 
   const tabHeaders: Record<Tab, { title: string; sub: string }> = {
@@ -137,6 +146,7 @@ export default function MedicoDashboard({
     relatorios: { title: 'Relatórios',         sub: 'Análise de dados dos seus pacientes. Filtre e cruze informações.' },
     financeiro: { title: 'Financeiro',         sub: 'Controle receitas e despesas da clínica e renda pessoal profissional.' },
     hospitais:  { title: 'Hospitais',          sub: 'Controle de internações hospitalares: visitas, diálise e resumo financeiro por internação.' },
+    kpi:        { title: 'KPI Secretária',     sub: 'Score de desempenho mensal e calculadora de bônus variável.' },
   }
 
   return (
@@ -212,6 +222,75 @@ export default function MedicoDashboard({
         </div>
       )}
 
+      {/* Banner: prontuários em aberto — apenas para médico */}
+      {currentRole === 'medico' && consultasEmAberto.length > 0 && (
+        <div className="border-b border-amber-200 bg-amber-50">
+          {consultasEmAberto.length === 1 ? (
+            <button
+              type="button"
+              onClick={() => handleRetornarConsulta(consultasEmAberto[0].patient_id, consultasEmAberto[0].id)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 sm:px-6 hover:bg-amber-100 transition-colors text-left"
+            >
+              <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+              <FileText className="w-4 h-4 text-amber-700 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-amber-900">Prontuário em aberto</span>
+                {consultasEmAberto[0].patient && (
+                  <span className="text-sm text-amber-700 ml-2">
+                    — {consultasEmAberto[0].patient.full_name}
+                    <span className="text-amber-600 font-normal ml-1 text-xs">
+                      ({new Date(consultasEmAberto[0].data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })})
+                    </span>
+                  </span>
+                )}
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 flex-shrink-0">
+                Finalizar <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowEmAberto(v => !v)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 sm:px-6 hover:bg-amber-100 transition-colors text-left"
+              >
+                <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                <FileText className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                <span className="flex-1 text-sm font-semibold text-amber-900">
+                  {consultasEmAberto.length} prontuários em aberto
+                </span>
+                {showEmAberto
+                  ? <ChevronUp className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  : <ChevronDown className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                }
+              </button>
+              {showEmAberto && (
+                <div className="border-t border-amber-200">
+                  {consultasEmAberto.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleRetornarConsulta(c.patient_id, c.id)}
+                      className="w-full flex items-center gap-3 px-6 py-2 sm:px-8 hover:bg-amber-100 transition-colors text-left"
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-300 flex-shrink-0" />
+                      <span className="flex-1 text-sm text-amber-900">
+                        {c.patient?.full_name ?? '—'}
+                      </span>
+                      <span className="text-xs text-amber-600">
+                        {new Date(c.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Content */}
       <div className="p-3 pt-3 sm:p-6 sm:pt-4">
         {activeTab === 'panorama' && (
@@ -280,6 +359,9 @@ export default function MedicoDashboard({
         )}
         {activeTab === 'hospitais' && (
           <InternacaoPanel patients={patients} />
+        )}
+        {activeTab === 'kpi' && (
+          <KpiSecretariaTab />
         )}
       </div>
     </div>

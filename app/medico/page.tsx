@@ -170,6 +170,8 @@ export default async function MedicoPage({
         .select('id, patient_id, title, file_type, file_size, file_url, created_at, patient:profiles!patient_id(id, full_name)')
         .order('created_at', { ascending: false })
       if (tenantId) q = q.eq('tenant_id', tenantId)
+      // Secretaria só vê documentos que ela mesma enviou
+      if (currentRole === 'secretaria') q = q.eq('uploaded_by', userId)
       return q
     })(),
     (() => {

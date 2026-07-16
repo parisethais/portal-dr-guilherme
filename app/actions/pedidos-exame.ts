@@ -10,6 +10,12 @@ export interface CatalogExamOption {
 }
 
 export async function getCatalogExamOptions(): Promise<CatalogExamOption[]> {
+  // Catálogo estático (sempre disponível)
+  const { EXAM_CATALOG } = await import('@/lib/lab-catalog')
+  const base: CatalogExamOption[] = EXAM_CATALOG.map(e => ({ name: e.name, group: e.group }))
+  const seen = new Set(base.map(e => e.name))
+
+  // Complementa com entradas personalizadas do banco (adicionadas pelo médico)
   try {
     const supabase = await createClient()
     const { data } = await supabase
@@ -18,8 +24,15 @@ export async function getCatalogExamOptions(): Promise<CatalogExamOption[]> {
       .eq('active', true)
       .order('group_name')
       .order('sort_order')
-    return (data ?? []).map((r: { name: string; group_name: string }) => ({ name: r.name, group: r.group_name }))
-  } catch { return [] }
+    for (const r of data ?? []) {
+      if (!seen.has(r.name)) {
+        base.push({ name: r.name, group: r.group_name })
+        seen.add(r.name)
+      }
+    }
+  } catch { /* fallback to base only */ }
+
+  return base
 }
 
 export type TipoExame  = 'laboratorial' | 'imagem' | 'outro'
@@ -94,6 +107,22 @@ export async function createPedidoExame(input: {
     return { success: true, id: data.id }
   } catch (e: any) {
     return { success: false, error: e.message }
+  }
+}
+
+export async function quickAddExamToCatalog(name: string): Promise<{ success: boolean }> {
+  try {
+    const { admin } = await getCtx()
+    await admin.from('exam_catalog').insert({
+      name:       name.trim(),
+      group_name: 'Outros',
+      unit:       '',
+      active:     true,
+      sort_order: 999,
+    })
+    return { success: true }
+  } catch {
+    return { success: true }
   }
 }
 

@@ -6,6 +6,7 @@ import {
   finalizarInternacao, deleteInternacao, updateNfStatus,
   type Internacao, type VisitaHospitalar,
 } from '@/app/actions/internacoes'
+import { solicitarNFInternacao } from '@/app/actions/financial'
 import { HOSPITAIS, VISITADORES, DIALISE_OPTIONS, hospitalLabel } from '@/lib/internacao-constants'
 import type { Profile } from '@/lib/types'
 import {
@@ -27,6 +28,12 @@ function fmtDate(d: string | null) {
 function todayStr() {
   const n = new Date()
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+}
+
+function nextDayStr(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 function calcResumo(internacao: Internacao) {
@@ -107,6 +114,27 @@ function InternacaoCard({
     valor_por_visitador:    {} as Record<string, string>,
   })
   const [err, setErr] = useState('')
+
+  function openAddVisita() {
+    const visitas = internacao.visitas
+    const lastVisita = visitas.length > 0
+      ? visitas[visitas.length - 1].data_visita
+      : null
+    const defaultDate = lastVisita
+      ? nextDayStr(lastVisita)
+      : internacao.data_internacao
+    setVisitaForm(f => ({ ...f, data_visita: defaultDate }))
+    setShowAddVisita(true)
+  }
+
+  function openFinalizar() {
+    const visitas = internacao.visitas
+    const lastVisita = visitas.length > 0
+      ? visitas[visitas.length - 1].data_visita
+      : internacao.data_internacao
+    setFinForm(f => ({ ...f, data_alta: lastVisita }))
+    setShowFinalizar(true)
+  }
 
   function handleDeleteVisita(visitaId: string) {
     setInternacao(prev => ({ ...prev, visitas: prev.visitas.filter(v => v.id !== visitaId) }))
@@ -195,27 +223,23 @@ function InternacaoCard({
             ) : (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold animate-pulse">Internado</span>
             )}
-            {/* Badge NF clicável */}
+            {/* Badge NF — apenas exibição */}
             {internacao.finalizada && (
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); handleNfCycle() }}
-                disabled={nfPending}
-                title="Clique para avançar status da NF"
+              <span
                 className={cn(
-                  'text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 transition-colors',
+                  'text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1',
                   internacao.nf_status === 'paga'       && 'bg-emerald-100 text-emerald-700',
                   internacao.nf_status === 'emitida'    && 'bg-blue-100 text-blue-700',
                   internacao.nf_status === 'solicitada' && 'bg-amber-100 text-amber-700',
-                  !internacao.nf_status                 && 'bg-gray-100 text-gray-400 hover:bg-amber-50 hover:text-amber-600',
+                  !internacao.nf_status                 && 'bg-gray-100 text-gray-400',
                 )}
               >
                 <Receipt className="w-2.5 h-2.5" />
-                {internacao.nf_status === 'paga'       ? 'NF paga'
-                  : internacao.nf_status === 'emitida'  ? 'NF emitida'
+                {internacao.nf_status === 'paga'         ? 'NF paga'
+                  : internacao.nf_status === 'emitida'   ? 'NF emitida'
                   : internacao.nf_status === 'solicitada' ? 'NF solicitada'
                   : 'NF pendente'}
-              </button>
+              </span>
             )}
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
@@ -272,6 +296,62 @@ function InternacaoCard({
 
           {internacao.finalizada && internacao.diagnostico_internacao && (
             <p className="text-xs text-gray-500"><span className="font-semibold">Diagnóstico:</span> {internacao.diagnostico_internacao}</p>
+          )}
+
+          {/* Controle de NF — só em internações finalizadas */}
+          {internacao.finalizada && (
+            <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                <Receipt className="w-3 h-3" /> Nota Fiscal
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Status atual */}
+                <span className={cn(
+                  'text-xs px-2.5 py-1 rounded-full font-semibold',
+                  internacao.nf_status === 'paga'         && 'bg-emerald-100 text-emerald-700',
+                  internacao.nf_status === 'emitida'      && 'bg-blue-100 text-blue-700',
+                  internacao.nf_status === 'solicitada'   && 'bg-amber-100 text-amber-700',
+                  !internacao.nf_status                   && 'bg-gray-100 text-gray-500',
+                )}>
+                  {internacao.nf_status === 'paga'         ? '✓ NF paga'
+                    : internacao.nf_status === 'emitida'   ? 'NF emitida'
+                    : internacao.nf_status === 'solicitada' ? 'NF solicitada'
+                    : 'NF pendente'}
+                </span>
+
+                {/* Botão para avançar status */}
+                {internacao.nf_status !== 'paga' && (
+                  <button
+                    type="button"
+                    disabled={nfPending}
+                    onClick={() => {
+                      const cur = internacao.nf_status ?? null
+                      if (cur === null) {
+                        if (!confirm('Enviar e-mail de solicitação de NF para o contador?')) return
+                        startNf(async () => {
+                          const res = await solicitarNFInternacao(internacao.id)
+                          if (res.error) { setErr(res.error); return }
+                          setInternacao(prev => ({ ...prev, nf_status: 'solicitada' }))
+                        })
+                      } else {
+                        const msgs: Record<string, string> = {
+                          solicitada: 'Marcar NF como emitida?',
+                          emitida:    'Marcar internação como paga?',
+                        }
+                        if (!confirm(msgs[cur] ?? 'Avançar status?')) return
+                        handleNfCycle()
+                      }
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-primary/30 text-primary font-medium hover:bg-primary/5 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {nfPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {internacao.nf_status === null          ? 'Solicitar NF'
+                      : internacao.nf_status === 'solicitada' ? 'Marcar como emitida'
+                      : 'Marcar como paga'}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Excluir internação finalizada */}
@@ -342,7 +422,7 @@ function InternacaoCard({
                   </div>
                 </div>
               ) : (
-                <button type="button" onClick={() => setShowAddVisita(true)}
+                <button type="button" onClick={openAddVisita}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-dashed border-primary/40 text-primary font-medium hover:bg-primary/5 transition-colors">
                   <Plus className="w-3.5 h-3.5" /> Adicionar visita
                 </button>
@@ -470,7 +550,7 @@ function InternacaoCard({
                 </div>
               ) : (
                 <div className="flex gap-2 items-center">
-                  <button type="button" onClick={() => setShowFinalizar(true)}
+                  <button type="button" onClick={openFinalizar}
                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 font-medium hover:bg-amber-50 transition-colors">
                     <CheckCircle className="w-3.5 h-3.5" /> Encerrar seguimento
                   </button>

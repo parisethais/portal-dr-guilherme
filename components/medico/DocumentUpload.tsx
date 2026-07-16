@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import { uploadDocument } from '@/app/actions/documents'
 import Button from '@/components/ui/Button'
@@ -13,6 +14,7 @@ interface DocumentUploadProps {
 }
 
 export default function DocumentUpload({ patients }: DocumentUploadProps) {
+  const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -67,6 +69,7 @@ export default function DocumentUpload({ patients }: DocumentUploadProps) {
         formRef.current?.reset()
         if (fileRef.current) fileRef.current.value = ''
         setTimeout(() => setSuccess(false), 4000)
+        router.refresh()
       }
     })
   }

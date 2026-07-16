@@ -20,10 +20,11 @@ interface NewRow {
   descricao:      string
   fonte_pagadora: string
   valor:          string
+  valor_pago:     string
   obs:            string
 }
 
-const EMPTY: NewRow = { data: '', descricao: '', fonte_pagadora: '', valor: '', obs: '' }
+const EMPTY: NewRow = { data: '', descricao: '', fonte_pagadora: '', valor: '', valor_pago: '', obs: '' }
 
 export default function HonorariosPanel() {
   const [rows, setRows]              = useState<Honorario[]>([])
@@ -55,11 +56,13 @@ export default function HonorariosPanel() {
     if (isNaN(valor))           { setFormError('Valor inválido.'); return }
     setFormError('')
     startTransition(async () => {
+      const valorPago = newRow.valor_pago ? parseFloat(newRow.valor_pago.replace(',', '.')) : null
       const res = await createHonorario({
         data:           newRow.data,
         descricao:      newRow.descricao,
         fonte_pagadora: newRow.fonte_pagadora,
         valor,
+        valor_pago:     (!valorPago || isNaN(valorPago)) ? null : valorPago,
         obs:            newRow.obs || null,
       })
       if (!res.success) { setFormError(res.error); return }
@@ -86,7 +89,7 @@ export default function HonorariosPanel() {
   }
 
   const totalPendente = rows.filter(r => !r.pago).reduce((s, r) => s + r.valor, 0)
-  const totalRecebido = rows.filter(r => r.pago).reduce((s, r) => s + r.valor, 0)
+  const totalRecebido = rows.filter(r => r.pago).reduce((s, r) => s + (r.valor_pago ?? r.valor), 0)
 
   if (loading) {
     return (
@@ -141,15 +144,20 @@ export default function HonorariosPanel() {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-600">Data</label>
               <input type="date" value={newRow.data} onChange={set('data')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Valor (R$)</label>
+              <label className="text-xs font-medium text-gray-600">Valor bruto (R$)</label>
               <input type="text" inputMode="decimal" value={newRow.valor} onChange={set('valor')} placeholder="1500,00"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Valor pago líquido <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <input type="text" inputMode="decimal" value={newRow.valor_pago} onChange={set('valor_pago')} placeholder="1200,00"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
@@ -193,7 +201,7 @@ export default function HonorariosPanel() {
         <div className="rounded-xl border border-gray-200 overflow-hidden">
           {/* Header */}
           <div className="hidden sm:grid text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-2 bg-gray-50 border-b border-gray-100"
-            style={{ gridTemplateColumns: '80px 1fr 140px 90px 100px 90px 36px' }}>
+            style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 36px' }}>
             <span>Data</span>
             <span>Descrição / Fonte</span>
             <span>Valor</span>
@@ -207,14 +215,19 @@ export default function HonorariosPanel() {
             {rows.map(r => (
               <div key={r.id}
                 className="hidden sm:grid items-center px-4 py-2.5 hover:bg-gray-50/60 transition-colors"
-                style={{ gridTemplateColumns: '80px 1fr 140px 90px 100px 90px 36px' }}
+                style={{ gridTemplateColumns: '80px 1fr 180px 90px 100px 90px 36px' }}
               >
                 <span className="text-xs text-gray-500">{fmtDate(r.data)}</span>
                 <div className="min-w-0 pr-3">
                   <p className="text-xs font-semibold text-gray-800 truncate">{r.descricao}</p>
                   <p className="text-[11px] text-gray-400 truncate">{r.fonte_pagadora}</p>
                 </div>
-                <span className="text-sm font-bold text-gray-800">{fmtValor(r.valor)}</span>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">{fmtValor(r.valor)}</p>
+                  {r.valor_pago != null && (
+                    <p className="text-[11px] text-green-600 font-medium">líq. {fmtValor(r.valor_pago)}</p>
+                  )}
+                </div>
                 {/* NF emitida toggle */}
                 <div className="flex justify-center">
                   <button

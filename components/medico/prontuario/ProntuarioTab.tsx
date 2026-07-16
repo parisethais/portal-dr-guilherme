@@ -259,6 +259,7 @@ export default function ProntuarioTab({
     startIniciarTrans(async () => {
       await updateConsultaStatus(selectedConsulta.id, 'em_atendimento')
       setIniciadosSet(prev => new Set(prev).add(selectedConsulta.id))
+      router.refresh()
     })
   }
 
@@ -276,6 +277,12 @@ export default function ProntuarioTab({
   const selectedConsulta = realizadas.find(c => c.id === selectedId) ?? null
   const isFinalized      = selectedConsulta?.prontuario_finalizado ?? false
   const finalizedAt      = selectedConsulta?.prontuario_finalizado_at
+  // Consulta "aberta" = em andamento, já realizada (prontuário pendente), ou iniciada nesta sessão
+  const isOpen = selectedConsulta?.status === 'em_atendimento'
+    || selectedConsulta?.status === 'realizada'
+    || iniciadosSet.has(selectedId)
+  // Bloqueia edição para consultas agendadas/confirmadas/falta que ainda não aconteceram
+  const isLocked = isFinalized || !isOpen
 
   // Seletor de consulta aparece nas abas clínicas (não no histórico)
   const isClinicTab = activeTab === 'diagnosticos' || activeTab === 'evolucao'
@@ -435,6 +442,14 @@ export default function ProntuarioTab({
 
       </div>
 
+      {/* Banner: consulta não iniciada — prontuário bloqueado */}
+      {!isHistorico && !isFinalized && selectedConsulta && !isOpen && (
+        <div className="flex items-center gap-2.5 mx-5 mt-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+          <Stethoscope className="w-4 h-4 flex-shrink-0 text-amber-600" />
+          <p className="text-sm font-semibold">Inicie o atendimento para editar o prontuário</p>
+        </div>
+      )}
+
       {/* Banner de prontuário finalizado */}
       {!isHistorico && isFinalized && (
         <div className="flex items-center gap-2.5 mx-5 mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800">
@@ -459,7 +474,7 @@ export default function ProntuarioTab({
           <DiagnosticosPanel
             consulta={selectedConsulta}
             consultas={realizadas}
-            isFinalized={isFinalized}
+            isFinalized={isLocked}
             patientId={patientId}
             antCirurgicos={patientAntCirurgicos}
             antFamiliares={patientAntFamiliares}
@@ -472,7 +487,7 @@ export default function ProntuarioTab({
           <EvolucaoPanel
             consulta={selectedConsulta}
             consultas={realizadas}
-            isFinalized={isFinalized}
+            isFinalized={isLocked}
             patientId={patientId}
             retornoPrevisto={patientRetorno}
             onDirtyChange={setHasDirty}

@@ -55,6 +55,7 @@ export const EXAM_CATALOG: ExamDef[] = [
   // ── METABOLISMO ÓSSEO / MINERAL ───────────────────────────────
   { group: 'Metabolismo Ósseo', name: 'PTH', unit: 'pg/mL', refMin: 15, refMax: 65, warnHigh: 150, critHigh: 300 },
   { group: 'Metabolismo Ósseo', name: 'Vitamina D 25-OH', unit: 'ng/mL', refMin: 30, refMax: 100, warnLow: 20, warnHigh: 150, critLow: 10, critHigh: 200, higherBetter: true },
+  { group: 'Metabolismo Ósseo', name: '1,25(OH)₂ Vitamina D', unit: 'pg/mL', refMin: 18, refMax: 72, warnLow: 10, warnHigh: 120, critLow: 5, critHigh: 200, higherBetter: true },
   { group: 'Metabolismo Ósseo', name: 'Fosfatase alcalina', unit: 'U/L', refMin: 40, refMax: 130, warnHigh: 300, critHigh: 500 },
 
   // ── GLICEMIA ──────────────────────────────────────────────────
@@ -75,7 +76,9 @@ export const EXAM_CATALOG: ExamDef[] = [
   { group: 'Proteínas Séricas', name: 'Eletroforese: pico monoclonal', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg' },
   { group: 'Proteínas Séricas', name: 'Eletroforese: conc. pico monoclonal', unit: 'g/dL', altUnits: ['g/L'], refMax: 0, warnHigh: 1.0, critHigh: 2.0,
     unitRanges: { 'g/L': { refMax: 0, warnHigh: 10, critHigh: 20 } } },
-  { group: 'Proteínas Séricas', name: 'Imunofixação proteínas séricas', unit: 'neg/pos', qualitative: true, normalAnswer: 'neg', noRef: false },
+  { group: 'Proteínas Séricas', name: 'Imunofixação proteínas séricas', unit: 'resultado', noRef: true },
+  { group: 'Proteínas Séricas', name: 'Imunofixação: cadeia pesada', unit: 'neg/IgA/IgG/IgM', qualitative: true, normalAnswer: 'neg' },
+  { group: 'Proteínas Séricas', name: 'Imunofixação: cadeia leve', unit: 'neg/Kappa/Lambda', qualitative: true, normalAnswer: 'neg' },
 
   // ── LIPÍDIOS ─────────────────────────────────────────────────
   { group: 'Lipídios', name: 'Colesterol total', unit: 'mg/dL', refMax: 200, warnHigh: 239, critHigh: 300 },
@@ -269,9 +272,10 @@ export function classifyValue(
 
     // Aliases para variações laboratoriais de resultados negativos/normais
     const NORMAL_ALIASES: Record<string, string[]> = {
-      'neg':     ['neg', 'negativo', 'negative', 'não detectado', 'nao detectado',
+      'neg':     ['neg', 'negativo', 'negativa', 'negative', 'não detectado', 'nao detectado',
                   'ausente', 'normal', 'não reagente', 'nao reagente', 'nao reag', 'não reag',
-                  'sem alteração', 'sem alteracao'],
+                  'sem alteração', 'sem alteracao', 'não identificado', 'nao identificado',
+                  'não identificada', 'nao identificada'],
       'n.react': ['n.react', 'não reagente', 'nao reagente', 'nao reag', 'não reag',
                   'não reativo', 'nao reativo', 'negativo', 'neg', 'nr'],
     }

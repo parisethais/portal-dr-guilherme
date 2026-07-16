@@ -605,8 +605,8 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
     const futureConsultas: typeof consultas = []  // após hoje
 
     consultas.forEach(c => {
-      // Última + primeira consulta realizada
-      if (c.status === 'realizada') {
+      // Última + primeira consulta realizada ou em andamento
+      if (c.status === 'realizada' || c.status === 'em_atendimento') {
         const ult = ultimaConsultaMap.get(c.patient_id)
         if (!ult || c.data_hora > ult) {
           ultimaConsultaMap.set(c.patient_id, c.data_hora)
@@ -614,7 +614,9 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
         }
         const pri = primeiraConsultaMap.get(c.patient_id)
         if (!pri || c.data_hora < pri) primeiraConsultaMap.set(c.patient_id, c.data_hora)
-        // Bucket por mês para o gráfico
+      }
+      // Bucket por mês para o gráfico (apenas realizadas)
+      if (c.status === 'realizada') {
         const key = c.data_hora.slice(0, 7)
         mesesBuckets[key] = (mesesBuckets[key] ?? 0) + 1
       }

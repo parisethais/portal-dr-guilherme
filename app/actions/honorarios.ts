@@ -14,6 +14,7 @@ export interface Honorario {
   descricao:      string
   fonte_pagadora: string
   valor:          number
+  valor_pago:     number | null  // valor líquido após impostos
   nota_emitida:   boolean
   pago:           boolean
   obs:            string | null
@@ -50,7 +51,7 @@ export async function getHonorarios(): Promise<ActionResult<Honorario[]>> {
 }
 
 export async function createHonorario(
-  input: Pick<Honorario, 'data' | 'descricao' | 'fonte_pagadora' | 'valor' | 'obs'>
+  input: Pick<Honorario, 'data' | 'descricao' | 'fonte_pagadora' | 'valor' | 'valor_pago' | 'obs'>
 ): Promise<ActionResult<Honorario>> {
   try {
     const supabase = await createClient()
@@ -75,7 +76,7 @@ export async function createHonorario(
 
 export async function updateHonorario(
   id: string,
-  patch: Partial<Pick<Honorario, 'data' | 'descricao' | 'fonte_pagadora' | 'valor' | 'nota_emitida' | 'pago' | 'obs'>>
+  patch: Partial<Pick<Honorario, 'data' | 'descricao' | 'fonte_pagadora' | 'valor' | 'valor_pago' | 'nota_emitida' | 'pago' | 'obs'>>
 ): Promise<ActionResult> {
   try {
     const adminClient = createAdminClient()

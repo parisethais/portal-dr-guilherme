@@ -182,6 +182,8 @@ function EntryForm({
   const [nfSending, setNfSending] = useState(false)
   const [nfSent, setNfSent] = useState(false)
   const [nfError, setNfError] = useState('')
+  const [newCatInput, setNewCatInput] = useState('')
+  const [showNewCat, setShowNewCat] = useState(false)
   const set = <K extends keyof EntryInput>(k: K, v: EntryInput[K]) =>
     setForm(f => ({ ...f, [k]: v }))
 
@@ -263,13 +265,67 @@ function EntryForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Categoria *</label>
-          <select
-            value={form.category}
-            onChange={e => set('category', e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-          >
-            {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          {showNewCat ? (
+            <div className="flex gap-1.5">
+              <input
+                autoFocus
+                type="text"
+                value={newCatInput}
+                onChange={e => setNewCatInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newCatInput.trim()) {
+                    set('category', newCatInput.trim())
+                    setShowNewCat(false)
+                    setNewCatInput('')
+                  }
+                  if (e.key === 'Escape') {
+                    setShowNewCat(false)
+                    setNewCatInput('')
+                  }
+                }}
+                placeholder="Nome da categoria..."
+                className="flex-1 text-sm border border-primary/40 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (newCatInput.trim()) {
+                    set('category', newCatInput.trim())
+                    setShowNewCat(false)
+                    setNewCatInput('')
+                  }
+                }}
+                className="px-2.5 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary-light transition-colors"
+              >
+                OK
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowNewCat(false); setNewCatInput('') }}
+                className="px-2 py-2 text-gray-400 hover:text-gray-600 rounded-lg border border-gray-200 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <select
+              value={cats.some(c => c.value === form.category) ? form.category : '__custom__'}
+              onChange={e => {
+                if (e.target.value === '__new__') {
+                  setShowNewCat(true)
+                } else {
+                  set('category', e.target.value)
+                }
+              }}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+            >
+              {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {form.category && !cats.some(c => c.value === form.category) && (
+                <option value="__custom__">{form.category}</option>
+              )}
+              <option value="__new__">+ Nova categoria...</option>
+            </select>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Valor (R$) *</label>

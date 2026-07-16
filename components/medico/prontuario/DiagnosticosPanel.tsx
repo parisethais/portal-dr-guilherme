@@ -315,7 +315,6 @@ export default function DiagnosticosPanel({
   if (isFinalized) {
     return (
       <div className="space-y-3">
-        {antecedentesBlock}
         {/* Observação da consulta */}
         {consulta.obs_consulta && (
           <p className="text-xs italic text-gray-400 border-l-2 border-gray-200 pl-3 py-0.5 whitespace-pre-wrap">
@@ -352,6 +351,7 @@ export default function DiagnosticosPanel({
             {entries.length} diagnóstico{entries.length !== 1 ? 's' : ''} · prontuário finalizado
           </div>
         </div>
+        {antecedentesBlock}
       </div>
     )
   }
@@ -359,8 +359,6 @@ export default function DiagnosticosPanel({
   // ── Modo edição ───────────────────────────────────────────
   return (
     <div className="space-y-4">
-
-      {antecedentesBlock}
 
       {/* Observação da consulta */}
       <div className="relative">
@@ -549,6 +547,8 @@ export default function DiagnosticosPanel({
           )}
         </button>
       </div>
+
+      {antecedentesBlock}
 
     </div>
   )

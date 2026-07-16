@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef } from 'react'
+import { useState, useEffect, useTransition, useRef, useMemo } from 'react'
 import {
   getPedidosExame, createPedidoExame, deletePedidoExame, enviarDocumentoViaCopilot,
-  getCatalogExamOptions,
+  getCatalogExamOptions, quickAddExamToCatalog,
   type PedidoExame, type TipoExame, type Urgencia, type CatalogExamOption,
 } from '@/app/actions/pedidos-exame'
 import {
   Plus, FlaskConical, ScanLine, FileText, Trash2, Loader2,
   ShieldCheck, Download, Printer, Send, ChevronDown, ChevronUp, AlertCircle,
+  Search, Check, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AssinaturaModal, { AssinaturaSuccessModal } from './AssinaturaModal'
@@ -264,103 +265,196 @@ function PedidoCard({
   )
 }
 
-// ── Autocomplete de exames ───────────────────────────────────────
-function ExameAutocomplete({
-  value, onChange,
-  catalog,
+// ── Seletor de exames por checkbox ──────────────────────────────
+function ExamePicker({
+  value, onChange, catalog,
 }: {
-  value: string
+  value:    string
   onChange: (v: string) => void
-  catalog: CatalogExamOption[]
+  catalog:  CatalogExamOption[]
 }) {
-  const [query,       setQuery]       = useState('')
-  const [suggestions, setSuggestions] = useState<CatalogExamOption[]>([])
-  const [open,        setOpen]        = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const [open,       setOpen]       = useState(false)
+  const [search,     setSearch]     = useState('')
+  const [newExam,    setNewExam]    = useState('')
+  const [showNew,    setShowNew]    = useState(false)
+  const [addPending, startAdd]      = useTransition()
+  const searchRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+  const selected = useMemo(() => new Set(value.split('\n').filter(Boolean)), [value])
+
+  const groups = useMemo(() => {
+    const lower = search.toLowerCase()
+    const filtered = search
+      ? catalog.filter(e => e.name.toLowerCase().includes(lower))
+      : catalog
+    const map = new Map<string, string[]>()
+    for (const e of filtered) {
+      if (!map.has(e.group)) map.set(e.group, [])
+      map.get(e.group)!.push(e.name)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+    return map
+  }, [catalog, search])
 
-  function handleQueryChange(q: string) {
-    setQuery(q)
-    if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
-    const lower = q.toLowerCase()
-    const hits = catalog.filter(e => e.name.toLowerCase().includes(lower)).slice(0, 8)
-    setSuggestions(hits)
-    setOpen(hits.length > 0)
+  function toggle(name: string) {
+    const next = new Set(selected)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    onChange(Array.from(next).join('\n'))
   }
 
-  function addExam(name: string) {
-    const lines = value ? value.split('\n').filter(Boolean) : []
-    if (!lines.includes(name)) {
-      onChange(lines.concat(name).join('\n'))
-    }
-    setQuery('')
-    setSuggestions([])
-    setOpen(false)
+  function remove(name: string) {
+    onChange(Array.from(selected).filter(n => n !== name).join('\n'))
   }
 
-  const lines = value.split('\n').filter(Boolean)
+  function handleOpenPanel() {
+    setOpen(o => !o)
+    setTimeout(() => searchRef.current?.focus(), 80)
+  }
+
+  function handleAddNew() {
+    const name = newExam.trim()
+    if (!name) return
+    startAdd(async () => {
+      await quickAddExamToCatalog(name)
+      toggle(name)
+      setNewExam('')
+      setShowNew(false)
+    })
+  }
+
+  const selectedArr = Array.from(selected)
 
   return (
-    <div ref={wrapRef} className="space-y-2">
-      {/* Chips dos exames já adicionados */}
-      {lines.length > 0 && (
+    <div className="space-y-2">
+      {/* Chips dos exames selecionados */}
+      {selectedArr.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {lines.map((ex, i) => (
-            <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/8 text-primary font-medium">
-              {ex}
-              <button
-                type="button"
-                onClick={() => onChange(lines.filter((_, j) => j !== i).join('\n'))}
-                className="text-primary/50 hover:text-red-500 leading-none ml-0.5"
-              >×</button>
+          {selectedArr.map(name => (
+            <span key={name} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/8 text-primary font-medium">
+              {name}
+              <button type="button" onClick={() => remove(name)} className="text-primary/50 hover:text-red-500 leading-none ml-0.5">
+                <X className="w-2.5 h-2.5" />
+              </button>
             </span>
           ))}
         </div>
       )}
 
-      {/* Campo de busca */}
-      <div className="relative">
-        <input
-          type="text"
-          value={query}
-          onChange={e => handleQueryChange(e.target.value)}
-          onFocus={() => query.trim().length >= 2 && setOpen(suggestions.length > 0)}
-          placeholder="Buscar exame do catálogo ou digitar manualmente..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-        {open && (
-          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                onMouseDown={() => addExam(s.name)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-primary/5 text-left"
-              >
-                <span className="font-medium text-gray-800">{s.name}</span>
-                <span className="text-xs text-gray-400 ml-2">{s.group}</span>
-              </button>
-            ))}
-          </div>
+      {/* Botão de abrir painel */}
+      <button
+        type="button"
+        onClick={handleOpenPanel}
+        className={cn(
+          'flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border text-sm transition-colors',
+          open
+            ? 'border-primary/40 bg-primary/5 text-primary font-medium'
+            : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
         )}
-      </div>
+      >
+        <FlaskConical className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="flex-1 text-left">
+          {selectedArr.length > 0
+            ? `${selectedArr.length} exame${selectedArr.length > 1 ? 's' : ''} selecionado${selectedArr.length > 1 ? 's' : ''}`
+            : 'Selecionar exames do catálogo'}
+        </span>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
 
-      {/* Textarea para digitação livre (exames que não estão no catálogo) */}
-      <textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        rows={3}
-        placeholder={"Ou escreva exames adicionais aqui (um por linha)…"}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-      />
-      <p className="text-[10px] text-gray-400">Busque no catálogo ou escreva livremente. Um exame por linha.</p>
+      {/* Painel de checkboxes */}
+      {open && (
+        <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+          {/* Busca */}
+          <div className="px-3 pt-3 pb-2 border-b border-gray-100">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar exame..."
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+
+          {/* Lista por grupo */}
+          <div className="max-h-56 overflow-y-auto">
+            {groups.size === 0 ? (
+              <p className="text-center text-xs text-gray-400 py-6">Nenhum exame encontrado</p>
+            ) : (
+              Array.from(groups.entries()).map(([group, names]) => (
+                <div key={group}>
+                  <p className="px-3 pt-2.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide sticky top-0 bg-white border-b border-gray-50">
+                    {group}
+                  </p>
+                  {names.map(name => (
+                    <label
+                      key={name}
+                      className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-primary/4 transition-colors"
+                    >
+                      <div className={cn(
+                        'w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 transition-colors',
+                        selected.has(name)
+                          ? 'bg-primary border-primary'
+                          : 'border-gray-300'
+                      )}>
+                        {selected.has(name) && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={selected.has(name)}
+                        onChange={() => toggle(name)}
+                      />
+                      <span className="text-sm text-gray-800">{name}</span>
+                    </label>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Adicionar novo */}
+          <div className="border-t border-gray-100 px-3 py-2.5">
+            {showNew ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newExam}
+                  onChange={e => setNewExam(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddNew()}
+                  placeholder="Nome do novo exame..."
+                  autoFocus
+                  className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddNew}
+                  disabled={addPending || !newExam.trim()}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                >
+                  {addPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Salvar
+                </button>
+                <button type="button" onClick={() => { setShowNew(false); setNewExam('') }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNew(true)}
+                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar novo exame
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -493,7 +587,7 @@ export default function PedidoExameTab({ patientId, patientName, patientPhone, p
               Exames solicitados
             </label>
             <div className="mt-1">
-              <ExameAutocomplete
+              <ExamePicker
                 value={form.exames}
                 onChange={v => setForm(f => ({ ...f, exames: v }))}
                 catalog={catalog}

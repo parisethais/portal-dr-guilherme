@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import type { Document } from '@/lib/types'
 import { deleteDocument } from '@/app/actions/documents'
 import { formatDate } from '@/lib/utils'
@@ -20,6 +20,8 @@ export default function MedicoDocumentList({ documents: initialDocs }: MedicoDoc
   const [docs, setDocs] = useState(initialDocs)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+
+  useEffect(() => { setDocs(initialDocs) }, [initialDocs])
 
   function handleDelete(docId: string) {
     if (!confirm('Deseja remover este documento? Esta ação não pode ser desfeita.')) return

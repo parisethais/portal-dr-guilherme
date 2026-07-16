@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin-client'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
@@ -29,7 +30,9 @@ export async function uploadDocument(formData: FormData): Promise<ActionResult> 
   const ext = file.name.split('.').pop()
   const fileName = `${patientId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-  const { error: storageError } = await supabase.storage
+  const admin = createAdminClient()
+
+  const { error: storageError } = await admin.storage
     .from('documents')
     .upload(fileName, file)
 
@@ -39,11 +42,11 @@ export async function uploadDocument(formData: FormData): Promise<ActionResult> 
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from('documents').getPublicUrl(fileName)
+  } = admin.storage.from('documents').getPublicUrl(fileName)
 
   const tenantId = await getCallerTenantId(user.id)
 
-  const { error: dbError } = await supabase.from('documents').insert({
+  const { error: dbError } = await admin.from('documents').insert({
     patient_id:  patientId,
     uploaded_by: user.id,
     title,
@@ -70,7 +73,8 @@ export async function deleteDocument(documentId: string): Promise<ActionResult> 
   } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  const { error } = await supabase.from('documents').delete().eq('id', documentId)
+  const admin = createAdminClient()
+  const { error } = await admin.from('documents').delete().eq('id', documentId)
 
   if (error) return { success: false, error: error.message }
 

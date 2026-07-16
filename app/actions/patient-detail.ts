@@ -1,6 +1,5 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import type { Consulta, LabResult, ImagingResult, BiopsiaResult, Invoice, PatientExam, CarePlan, CarePlanAttachment, Prescricao } from '@/lib/types'
 
@@ -17,18 +16,8 @@ export interface PatientDetailData {
 }
 
 export async function getPatientDetailData(patientId: string): Promise<PatientDetailData> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Usa adminClient se for superadmin, senão client normal (RLS)
-  let db = supabase
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role === 'superadmin') db = createAdminClient()
-  }
-
   const adminClient = createAdminClient()
+  const db = adminClient
 
   const [
     { data: consultas },
