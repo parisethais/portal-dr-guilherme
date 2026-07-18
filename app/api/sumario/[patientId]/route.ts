@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 import { computeLabAlerts } from '@/lib/lab-alerts'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -40,18 +40,15 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ patientId: string }> },
 ) {
-  // Autenticação via session cookie
-  try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-    }
-  } catch {
-    // Em ambiente de dev pode não ter cookie — continua com admin
-  }
+  // Somente staff (médico/secretária/superadmin) do tenant do paciente
+  const ctx = await requireStaff()
+  if (!ctx) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
   const { patientId } = await params
+  if (!(await assertPatientInTenant(patientId, ctx))) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+  }
+
   const db = createAdminClient()
 
   // ── 1. Paciente ───────────────────────────────────────────────────────

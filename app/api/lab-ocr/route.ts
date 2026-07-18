@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Path do arquivo não informado.' })
     }
 
+    // Só permite acessar o próprio diretório temporário de OCR (ver getLabOcrUploadUrl)
+    if (!path.startsWith(`lab-ocr-temp/${user.id}/`) || path.includes('..')) {
+      return NextResponse.json({ success: false, error: 'Não autorizado.' }, { status: 403 })
+    }
+
     const admin = createAdminClient()
     const { data: fileData, error: downloadError } = await admin.storage
       .from('exames')

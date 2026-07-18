@@ -5,10 +5,10 @@ import type { ClinicAutomation } from '@/lib/automation-catalog'
 
 export const maxDuration = 300 // 5 min para processar todas as automações
 
-// Protegido por CRON_SECRET (Vercel injeta automaticamente em prod)
-// Em chamadas manuais (admin "Testar agora"), aceita INTERNAL_SECRET também.
+// Protegido por CRON_SECRET (Vercel injeta automaticamente em prod).
+// Execução manual pelo admin usa a server action runAutomacoesManual (não esta rota).
 const CRON_SECRET     = process.env.CRON_SECRET
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET ?? 'meden-internal-2026'
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET
 
 function isAuthorized(req: NextRequest): boolean {
   const auth = req.headers.get('authorization') ?? ''
@@ -17,8 +17,8 @@ function isAuthorized(req: NextRequest): boolean {
   // Vercel cron injeta Authorization: Bearer <CRON_SECRET>
   if (CRON_SECRET && bearer === CRON_SECRET) return true
 
-  // Chamadas internas do admin panel
-  if (bearer === INTERNAL_SECRET) return true
+  // Integrações internas apenas se o secret estiver configurado no env
+  if (INTERNAL_SECRET && bearer === INTERNAL_SECRET) return true
 
   // Em desenvolvimento local sem secret configurado, permite tudo
   if (!CRON_SECRET && process.env.NODE_ENV !== 'production') return true

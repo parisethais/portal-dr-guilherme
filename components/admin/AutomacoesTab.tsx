@@ -7,12 +7,10 @@ import {
   type AutomationParams,
   type AutomationDef,
 } from '@/lib/automation-catalog'
-import { upsertClinicAutomation } from '@/app/actions/automations'
+import { upsertClinicAutomation, runAutomacoesManual } from '@/app/actions/automations'
 import AutomacaoLogsPanel from './AutomacaoLogsPanel'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, Crown, Loader2, Zap, Play, Clock, CheckCircle2, XCircle, MinusCircle, History } from 'lucide-react'
-
-const INTERNAL_SECRET = 'meden-internal-2026'
 
 // ── Card individual de automação ──────────────────────────────────────────
 
@@ -279,16 +277,8 @@ export default function AutomacoesTab({
   async function handleRunNow() {
     setRunning(true); setRunError(''); setRunResults(null)
     try {
-      const res = await fetch('/api/cron/automacoes', {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${INTERNAL_SECRET}`,
-        },
-        body: JSON.stringify({ clinicId }),
-      })
-      const json = await res.json()
-      if (!res.ok) { setRunError(json.error ?? 'Erro ao executar.'); return }
+      const json = await runAutomacoesManual(clinicId)
+      if (json.error) { setRunError(json.error); return }
       setRunResults(json.resultados ?? [])
       setRunTs(json.executado_em ?? new Date().toISOString())
     } catch (e) {

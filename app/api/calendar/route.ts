@@ -2,12 +2,17 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
+import { calendarFeedKey } from '@/lib/calendar-key'
 
 // Gera feed iCal para o tenant — URL usada para sincronizar com Google Agenda / iOS
-// GET /api/calendar?tid=TENANT_ID
+// GET /api/calendar?tid=TENANT_ID&key=CHAVE_DERIVADA
 export async function GET(req: NextRequest) {
   const tenantId = req.nextUrl.searchParams.get('tid')
+  const key      = req.nextUrl.searchParams.get('key')
   if (!tenantId) return new NextResponse('Missing tid', { status: 400 })
+  if (!key || key !== calendarFeedKey(tenantId)) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
 
   const admin = createAdminClient()
 

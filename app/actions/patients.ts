@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 
 export async function createPatient(
   fullName: string,
@@ -100,9 +101,11 @@ export async function createPlaceholderPatient(
 }
 
 export async function deletePatient(patientId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const ctx = await requireStaff()
+  if (!ctx) return { success: false, error: 'Não autorizado.' }
+  if (!(await assertPatientInTenant(patientId, ctx))) {
+    return { success: false, error: 'Não autorizado.' }
+  }
 
   const admin = createAdminClient()
 

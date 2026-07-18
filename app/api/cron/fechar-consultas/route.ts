@@ -4,12 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin-client'
 export const maxDuration = 60
 
 const CRON_SECRET     = process.env.CRON_SECRET
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET ?? 'meden-internal-2026'
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET
 
 function isAuthorized(req: NextRequest): boolean {
   const bearer = (req.headers.get('authorization') ?? '').replace('Bearer ', '')
   if (CRON_SECRET && bearer === CRON_SECRET) return true
-  if (bearer === INTERNAL_SECRET) return true
+  if (INTERNAL_SECRET && bearer === INTERNAL_SECRET) return true
   if (!CRON_SECRET && process.env.NODE_ENV !== 'production') return true
   return false
 }

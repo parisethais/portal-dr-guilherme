@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse }      from 'next/server'
 import { createClient }                   from '@/lib/supabase/server'
 import { createAdminClient }              from '@/lib/supabase/admin-client'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 import { gerarPrescricaoPdf }             from '@/lib/pdf/gerar-prescricao'
 import { birdIdAuth, birdIdSign, userDiscovery } from '@/lib/birdid-api'
 import { createHash }                     from 'crypto'
@@ -12,9 +13,18 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
+  const ctx = await requireStaff()
+  if (!ctx || ctx.role === 'secretaria') {
+    return NextResponse.json({ error: 'Apenas médicos podem assinar.' }, { status: 403 })
+  }
+
   const body = await req.json() as { patientId?: string; otp?: string }
   if (!body.patientId || !body.otp) {
     return NextResponse.json({ error: 'patientId e otp são obrigatórios.' }, { status: 400 })
+  }
+
+  if (!(await assertPatientInTenant(body.patientId, ctx))) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
   }
 
   const db = createAdminClient()

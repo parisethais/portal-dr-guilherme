@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient }         from '@/lib/supabase/admin-client'
+import { createClient }              from '@/lib/supabase/server'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -16,6 +17,14 @@ export async function GET(req: NextRequest) {
 
   if (error || !code || !userId) {
     return NextResponse.redirect(`${base}/medico/configuracoes?google=error`)
+  }
+
+  // Anti-CSRF: o state precisa ser o usuário da sessão atual — impede
+  // plantar tokens do Google na conta de outro usuário via link forjado.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== userId) {
+    return NextResponse.redirect(`${base}/medico/configuracoes?google=error&reason=state_mismatch`)
   }
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {

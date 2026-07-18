@@ -80,11 +80,15 @@ export async function updateHonorario(
   patch: Partial<Pick<Honorario, 'data' | 'descricao' | 'fonte_pagadora' | 'valor' | 'valor_pago' | 'nota_emitida' | 'pago' | 'obs'>>
 ): Promise<ActionResult> {
   try {
+    const tenantId = await getTenantId()
+    if (!tenantId) return { success: false, error: 'Não autorizado.' }
+
     const adminClient = createAdminClient()
     const { error } = await adminClient
       .from('honorarios')
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('tenant_id', tenantId)
 
     if (error) return { success: false, error: error.message }
     revalidatePath('/medico')
@@ -96,8 +100,15 @@ export async function updateHonorario(
 
 export async function deleteHonorario(id: string): Promise<ActionResult> {
   try {
+    const tenantId = await getTenantId()
+    if (!tenantId) return { success: false, error: 'Não autorizado.' }
+
     const adminClient = createAdminClient()
-    const { error } = await adminClient.from('honorarios').delete().eq('id', id)
+    const { error } = await adminClient
+      .from('honorarios')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
     if (error) return { success: false, error: error.message }
     revalidatePath('/medico')
     return { success: true }

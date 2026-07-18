@@ -18,19 +18,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient }              from '@/lib/supabase/server'
 import { createAdminClient }         from '@/lib/supabase/admin-client'
+import { requireStaff, assertRowInTenant } from '@/lib/auth-guard'
 import { gerarProntuarioPdf }        from '@/lib/pdf/gerar-prontuario'
 import { birdIdAuth, birdIdSign, userDiscovery } from '@/lib/birdid-api'
 import { createHash }                from 'crypto'
 
 export async function POST(req: NextRequest) {
-  // ── Auth ─────────────────────────────────────────────────────
+  // ── Auth: apenas médico, e a consulta precisa ser do tenant dele ──
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
+  const ctx = await requireStaff()
+  if (!ctx || ctx.role === 'secretaria') {
+    return NextResponse.json({ error: 'Apenas médicos podem assinar.' }, { status: 403 })
+  }
+
   const body = await req.json() as { consultaId?: string; otp?: string }
   if (!body.consultaId || !body.otp) {
     return NextResponse.json({ error: 'consultaId e otp são obrigatórios.' }, { status: 400 })
+  }
+
+  if (!(await assertRowInTenant('consultas', body.consultaId, ctx))) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
   }
 
   const db = createAdminClient()

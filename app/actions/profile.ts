@@ -2,8 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, StatusPaciente } from '@/lib/types'
+
+// Guard das actions de staff sobre um paciente: sessão staff + paciente no tenant
+async function guardStaffPatient(patientId: string): Promise<string | null> {
+  const ctx = await requireStaff()
+  if (!ctx) return 'Não autorizado.'
+  if (!(await assertPatientInTenant(patientId, ctx))) return 'Não autorizado.'
+  return null
+}
 
 // ── Paciente preenche o próprio perfil ────────────────────────
 export async function completeProfile(formData: FormData): Promise<ActionResult> {
@@ -100,9 +109,8 @@ export async function updatePatientFull(
     perfil_completo?: boolean
   }
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -130,9 +138,8 @@ export async function updatePatientTracking(
     obs_secretaria?: string
   }
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -150,9 +157,8 @@ export async function updatePatientTracking(
 export async function resetPatientPassword(
   patientId: string
 ): Promise<ActionResult<{ password: string }>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const digits      = Math.floor(1000 + Math.random() * 9000)
   const newPassword = `Portal${digits}`
@@ -173,9 +179,8 @@ export async function updateRetornoPrevisto(
   retorno_previsto: string | null,
   opts?: { consultaId?: string; notificar?: boolean }
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const admin = createAdminClient()
 
@@ -214,9 +219,8 @@ export async function updateObsPessoal(
   patientId: string,
   obs_pessoal: string | null,
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -239,9 +243,8 @@ export async function updateAntecedentes(
     habitos?: string | null
   },
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado.' }
+  const guardError = await guardStaffPatient(patientId)
+  if (guardError) return { success: false, error: guardError }
 
   const admin = createAdminClient()
   const { error } = await admin

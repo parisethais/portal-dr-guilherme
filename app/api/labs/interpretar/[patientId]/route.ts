@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
-import { createClient } from '@/lib/supabase/server'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 import { computeLabAlerts } from '@/lib/lab-alerts'
 import { EXAM_CATALOG } from '@/lib/lab-catalog'
 import Anthropic from '@anthropic-ai/sdk'
@@ -20,14 +20,14 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ patientId: string }> },
 ) {
-  // Auth check
-  try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-  } catch { /* dev fallback */ }
+  // Somente staff do tenant do paciente
+  const ctx = await requireStaff()
+  if (!ctx) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
   const { patientId } = await params
+  if (!(await assertPatientInTenant(patientId, ctx))) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+  }
   const date = req.nextUrl.searchParams.get('date') // YYYY-MM-DD
 
   const db = createAdminClient()

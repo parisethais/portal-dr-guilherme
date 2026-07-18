@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 export const maxDuration = 60
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
+import { calendarFeedKey } from '@/lib/calendar-key'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
@@ -354,7 +355,7 @@ export default async function MedicoPage({
           doctorId={userId}
           doctorName={rawDoctorName}
           doctorCrm={rawDoctorCrm}
-          calendarUrl={tenantId ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}` : null}
+          calendarUrl={tenantId ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}&key=${calendarFeedKey(tenantId)}` : null}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}

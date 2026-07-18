@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin-client'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 import type { Consulta, LabResult, ImagingResult, BiopsiaResult, Invoice, PatientExam, CarePlan, CarePlanAttachment, Prescricao } from '@/lib/types'
 
 export interface PatientDetailData {
@@ -15,7 +16,18 @@ export interface PatientDetailData {
   prescricoes:          { ativas: Prescricao[]; inativas: Prescricao[] }
 }
 
+const EMPTY: PatientDetailData = {
+  consultas: [], labResults: [], imagingResults: [], biopsiaResults: [],
+  invoices: [], patientExams: [], carePlans: [], carePlanAttachments: [],
+  prescricoes: { ativas: [], inativas: [] },
+}
+
 export async function getPatientDetailData(patientId: string): Promise<PatientDetailData> {
+  // Somente staff, e o paciente precisa pertencer ao tenant do caller
+  const ctx = await requireStaff()
+  if (!ctx) return EMPTY
+  if (!(await assertPatientInTenant(patientId, ctx))) return EMPTY
+
   const adminClient = createAdminClient()
   const db = adminClient
 
