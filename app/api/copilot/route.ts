@@ -69,11 +69,16 @@ export async function POST(req: NextRequest) {
 
     const patient = matches[0]
 
+    // Médico responsável: o médico da clínica do tenant do copilot
+    const { resolveDoctorForTenant } = await import('@/lib/resolve-doctor')
+    const doctorId = await resolveDoctorForTenant(COPILOT_TENANT)
+
     // Cria a consulta
     const { data: novaConsulta, error: insertError } = await admin
       .from('consultas')
       .insert({
         patient_id:   patient.id,
+        doctor_id:    doctorId,
         tipo:         consulta.tipo         ?? 'retorno',
         local:        consulta.local        ?? 'consultorio',
         data_hora:    consulta.data_hora,

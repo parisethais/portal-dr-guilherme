@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { resolvePermissions, type MemberPermissions } from '@/lib/admin-constants'
 
 /**
  * Guard central de autorização multi-tenant.
@@ -14,9 +15,12 @@ import { getCallerTenantId } from '@/lib/get-caller-tenant'
  * superadmin tem tenantId null = acesso global (painel admin).
  */
 
+const STAFF_ROLES = ['medico', 'secretaria', 'recepcionista', 'administrativo', 'superadmin'] as const
+export type StaffRole = (typeof STAFF_ROLES)[number]
+
 export interface StaffContext {
   userId:   string
-  role:     'medico' | 'secretaria' | 'superadmin'
+  role:     StaffRole
   tenantId: string | null   // null apenas para superadmin (acesso global)
 }
 
@@ -33,13 +37,64 @@ export async function requireStaff(): Promise<StaffContext | null> {
     .eq('id', user.id)
     .single()
 
-  const role = profile?.role
-  if (role !== 'medico' && role !== 'secretaria' && role !== 'superadmin') return null
+  const role = profile?.role as StaffRole | undefined
+  if (!role || !STAFF_ROLES.includes(role)) return null
 
   if (role === 'superadmin') return { userId: user.id, role, tenantId: null }
 
   const tenantId = await getCallerTenantId(user.id)
   return { userId: user.id, role, tenantId }
+}
+
+// ── Contexto completo de membro (papel na clínica + permissões efetivas) ──
+
+export interface MemberContext extends StaffContext {
+  clinicId:      string | null
+  memberRole:    string            // papel em clinic_members (owner|medico|secretaria|recepcionista|administrativo)
+  permissions:   MemberPermissions
+  /** A clínica tem mais de um médico? (liga o escopo por médico) */
+  isMultiMedico: boolean
+}
+
+export async function getMemberContext(): Promise<MemberContext | null> {
+  const ctx = await requireStaff()
+  if (!ctx) return null
+
+  const admin = createAdminClient()
+
+  // Superadmin: acesso total, sem clínica
+  if (ctx.role === 'superadmin') {
+    return {
+      ...ctx,
+      clinicId: null,
+      memberRole: 'owner',
+      permissions: resolvePermissions('owner', null),
+      isMultiMedico: false,
+    }
+  }
+
+  const { data: membership } = await admin
+    .from('clinic_members')
+    .select('clinic_id, role, permissions')
+    .eq('user_id', ctx.userId)
+    .limit(1)
+    .single()
+
+  const clinicId   = membership?.clinic_id ?? null
+  const memberRole = membership?.role ?? ctx.role
+  const permissions = resolvePermissions(memberRole, membership?.permissions as Partial<MemberPermissions> | null)
+
+  let isMultiMedico = false
+  if (clinicId) {
+    const { count } = await admin
+      .from('clinic_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('clinic_id', clinicId)
+      .in('role', ['owner', 'medico'])
+    isMultiMedico = (count ?? 0) > 1
+  }
+
+  return { ...ctx, clinicId, memberRole, permissions, isMultiMedico }
 }
 
 /** Sessão válida de qualquer usuário (staff ou paciente). */

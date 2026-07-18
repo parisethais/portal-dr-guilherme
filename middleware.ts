@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse
     }
 
-    const isStaff = role === 'medico' || role === 'secretaria' || role === 'superadmin'
+    const isStaff = ['medico', 'secretaria', 'recepcionista', 'administrativo', 'superadmin'].includes(role)
 
     // Helper: cria resposta com user headers injetados + cookies do Supabase preservados
     // Os headers são injetados no REQUEST (não no response) para que o Server Component possa lê-los via headers()

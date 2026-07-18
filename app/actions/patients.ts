@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { resolveDoctorForTenant } from '@/lib/resolve-doctor'
 import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 
 export async function createPatient(
@@ -45,11 +46,13 @@ export async function createPatient(
   // Garante o perfil com role correto e tenant_id correto
   if (data.user) {
     const tenantId = await getCallerTenantId(user.id)
+    const doctorId = await resolveDoctorForTenant(tenantId, user.id)
     await admin.from('profiles').upsert({
       id:        data.user.id,
       full_name: fullName.trim(),
       role:      'paciente',
       tenant_id: tenantId,
+      doctor_id: doctorId,
     }, { onConflict: 'id' })
   }
 
@@ -73,6 +76,7 @@ export async function createPlaceholderPatient(
 
   const admin = createAdminClient()
   const tenantId = await getCallerTenantId(user.id)
+  const doctorId = await resolveDoctorForTenant(tenantId, user.id)
 
   // E-mail placeholder nunca usado para login
   const placeholderEmail = `provisorio-${Date.now()}@interno.portal`
@@ -92,6 +96,7 @@ export async function createPlaceholderPatient(
     full_name:       fullName.trim(),
     role:            'paciente',
     tenant_id:       tenantId,
+    doctor_id:       doctorId,
     status_paciente: 'lead',
     ...(phone?.trim() ? { phone: phone.trim() } : {}),
   }, { onConflict: 'id' })

@@ -6,6 +6,7 @@ export const maxDuration = 60
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import { calendarFeedKey } from '@/lib/calendar-key'
+import { resolvePermissions, type MemberPermissions } from '@/lib/admin-constants'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
@@ -97,7 +98,8 @@ export default async function MedicoPage({
   // Médico usa client normal (RLS garante isolamento adicional pela session)
   const supabase = await createClient()
   const adminDb  = createAdminClient()
-  const db       = (currentRole === 'superadmin' || currentRole === 'secretaria') ? adminDb : supabase
+  const isStaffNaoMedico = ['secretaria', 'recepcionista', 'administrativo'].includes(currentRole)
+  const db       = (currentRole === 'superadmin' || isStaffNaoMedico) ? adminDb : supabase
 
   // Resolve tenant_id
   //   - Médico/secretaria   → clínica do próprio clinic_members
@@ -106,15 +108,29 @@ export default async function MedicoPage({
   //   - Superadmin sem pista → null = vê tudo (acesso irrestrito no painel /admin)
   let tenantId: string | null = null
   let clinicName: string | null = null
+  let memberRole: string = currentRole
+  let memberPermissions: MemberPermissions = resolvePermissions(currentRole, null)
+  let isMultiMedico = false
   if (currentRole !== 'superadmin') {
     const { data: membership } = await adminDb
       .from('clinic_members')
-      .select('clinic_id, clinics!clinic_id(tenant_id, name)')
+      .select('clinic_id, role, permissions, clinics!clinic_id(tenant_id, name)')
       .eq('user_id', userId)
       .limit(1)
       .single()
     tenantId  = (membership?.clinics as any)?.tenant_id ?? 'dr_guilherme'
     clinicName = (membership?.clinics as any)?.name ?? null
+    memberRole = membership?.role ?? currentRole
+    memberPermissions = resolvePermissions(memberRole, membership?.permissions as Partial<MemberPermissions> | null)
+
+    if (membership?.clinic_id) {
+      const { count } = await adminDb
+        .from('clinic_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', membership.clinic_id)
+        .in('role', ['owner', 'medico'])
+      isMultiMedico = (count ?? 0) > 1
+    }
   } else if (params.tenant) {
     // Superadmin abrindo CRM de uma clínica específica via ?tenant=xxx
     tenantId = params.tenant
@@ -146,6 +162,10 @@ export default async function MedicoPage({
     }
   }
 
+  // Escopo por médico: em clínica com 2+ médicos, cada médico vê só os próprios
+  // pacientes/consultas/finanças. Clínica de médico único (Gui) fica como sempre foi.
+  const scopeByDoctor = currentRole === 'medico' && isMultiMedico
+
   // Carrega só o essencial para a lista e agenda.
   // Dados pesados (consultas completas, lab, imagem, faturas) são
   // buscados por paciente via getPatientDetailData() quando o usuário abre um paciente.
@@ -164,6 +184,7 @@ export default async function MedicoPage({
         .eq('role', 'paciente')
         .order('full_name', { ascending: true })
       if (tenantId) q = q.eq('tenant_id', tenantId)
+      if (scopeByDoctor) q = q.eq('doctor_id', userId)
       return q
     })(),
     (() => {
@@ -171,15 +192,18 @@ export default async function MedicoPage({
         .select('id, patient_id, title, file_type, file_size, file_url, created_at, patient:profiles!patient_id(id, full_name)')
         .order('created_at', { ascending: false })
       if (tenantId) q = q.eq('tenant_id', tenantId)
-      // Secretaria só vê documentos que ela mesma enviou
-      if (currentRole === 'secretaria') q = q.eq('uploaded_by', userId)
+      // Staff não-médico só vê documentos que ele mesmo enviou
+      if (isStaffNaoMedico) q = q.eq('uploaded_by', userId)
       return q
     })(),
     (() => {
+      // Sem permissão de financeiro → não carrega nada
+      if (!memberPermissions.financeiro) return Promise.resolve({ data: [] as any[] })
       let q = db.from('financial_entries')
         .select('*')
         .order('date', { ascending: false })
       if (tenantId) q = q.eq('tenant_id', tenantId)
+      if (scopeByDoctor) q = q.eq('doctor_id', userId)
       return q
     })(),
     // Consultas leves: só campos para lista, panorama e agenda (sem textos longos nem diagnosticos JSON)
@@ -188,6 +212,7 @@ export default async function MedicoPage({
         .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
         .order('data_hora', { ascending: true })
       if (tenantId) q = q.eq('tenant_id', tenantId)
+      if (scopeByDoctor) q = q.eq('doctor_id', userId)
       return q
     })(),
     // Perfil do usuário logado (para saudação personalizada e dados do médico)
@@ -195,7 +220,7 @@ export default async function MedicoPage({
     // Notificações para a secretaria
     tenantId ? getNotificacoes(tenantId) : Promise.resolve([]),
     // Perfil do médico da clínica (usado pela secretaria na nota fiscal)
-    currentRole === 'secretaria' && tenantId
+    isStaffNaoMedico && tenantId
       ? adminDb.from('profiles').select('full_name, crm, especialidade').eq('role', 'medico').eq('tenant_id', tenantId).limit(1).single()
       : Promise.resolve({ data: null }),
   ])
@@ -235,9 +260,9 @@ export default async function MedicoPage({
   const displayName = getDisplayName(currentProfile?.full_name ?? null, currentProfile?.sexo ?? null, currentRole)
 
   // Dados do médico para o card de identidade da clínica
-  const rawDoctorName    = (currentRole === 'secretaria' ? medicoProfile?.full_name    : currentProfile?.full_name)    ?? null
-  const rawDoctorCrm     = (currentRole === 'secretaria' ? medicoProfile?.crm          : currentProfile?.crm)          ?? null
-  const rawDoctorSpecialty = (currentRole === 'secretaria' ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null
+  const rawDoctorName    = (isStaffNaoMedico ? medicoProfile?.full_name    : currentProfile?.full_name)    ?? null
+  const rawDoctorCrm     = (isStaffNaoMedico ? medicoProfile?.crm          : currentProfile?.crm)          ?? null
+  const rawDoctorSpecialty = (isStaffNaoMedico ? medicoProfile?.especialidade : currentProfile?.especialidade) ?? null
 
   const cardName      = stripTitle(rawDoctorName)
   const cardCrm       = formatCrm(rawDoctorCrm)
@@ -352,6 +377,9 @@ export default async function MedicoPage({
       <Suspense fallback={<div className="h-96 flex items-center justify-center text-gray-400 text-sm">Carregando...</div>}>
         <MedicoDashboard
           currentRole={currentRole}
+          memberRole={memberRole}
+          permissions={memberPermissions}
+          isMultiMedico={isMultiMedico}
           doctorId={userId}
           doctorName={rawDoctorName}
           doctorCrm={rawDoctorCrm}

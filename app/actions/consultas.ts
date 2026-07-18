@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notificarCopilot } from '@/lib/copilot'
 import type { ActionResult, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { resolveDoctorForTenant } from '@/lib/resolve-doctor'
 import { syncConsultaCreate, syncConsultaUpdate, syncConsultaCancel, syncConsultaDelete } from '@/lib/sync-google-calendar'
 
 async function buscarPerfil(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -25,6 +26,7 @@ export async function createConsulta(data: {
   duracao_min:  number
   observacoes?: string | null
   status?:      ConsultaStatus
+  doctor_id?:   string | null   // clínica multi-médico: a UI passa o médico
 }): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,6 +40,10 @@ export async function createConsulta(data: {
   const db = createAdminClient()
   const tenantId = await getCallerTenantId(user.id)
 
+  // Médico responsável: explícito (multi-médico), o próprio caller (médico),
+  // ou o médico único da clínica (secretária agendando)
+  const doctorId = data.doctor_id ?? await resolveDoctorForTenant(tenantId, user.id)
+
   const { data: result, error } = await db
     .from('consultas')
     .insert({
@@ -50,6 +56,7 @@ export async function createConsulta(data: {
       status:      data.status ?? 'agendada',
       created_by:  user.id,
       tenant_id:   tenantId,
+      doctor_id:   doctorId,
     })
     .select('id')
     .single()

@@ -60,9 +60,14 @@ export async function submitCadastro(
     return { success: false, error: error.message }
   }
 
+  // Médico responsável: o médico da clínica do tenant (autocadastro público)
+  const { resolveDoctorForTenant } = await import('@/lib/resolve-doctor')
+  const doctor_id = await resolveDoctorForTenant(tenant_id)
+
   // Salva todos os dados no profile
   const { error: profileError } = await admin.from('profiles').upsert({
     id:               data.user!.id,
+    doctor_id,
     full_name,
     email,
     role:             'paciente',

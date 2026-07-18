@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Profile, Document, Consulta } from '@/lib/types'
+import { resolvePermissions, type MemberPermissions } from '@/lib/admin-constants'
 import { guardNavigation } from '@/lib/prontuario-dirty'
 import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
@@ -31,6 +32,9 @@ const PanoramaTab = dynamic(() => import('./PanoramaTab'), {
 
 interface MedicoDashboardProps {
   currentRole: string
+  memberRole?: string
+  permissions?: MemberPermissions
+  isMultiMedico?: boolean
   doctorId: string
   doctorName?:  string | null
   doctorCrm?:   string | null
@@ -70,6 +74,9 @@ function pushUrl(params: Record<string, string | null>) {
 
 export default function MedicoDashboard({
   currentRole,
+  memberRole,
+  permissions,
+  isMultiMedico = false,
   doctorId,
   doctorName,
   doctorCrm,
@@ -80,6 +87,9 @@ export default function MedicoDashboard({
   financialEntries,
   patientsWithExames = [],
 }: MedicoDashboardProps) {
+  // Permissões efetivas (fallback: preset do papel — superadmin cai em 'owner')
+  const perms = permissions ?? resolvePermissions(currentRole === 'superadmin' ? 'owner' : currentRole, null)
+  const role  = memberRole ?? currentRole
   // ── Estado local — sem useRouter/useSearchParams ──────────────
   const [activeTab,        setActiveTabState]   = useState<Tab>(getInitialTab)
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(getInitialPatientId)
@@ -127,16 +137,23 @@ export default function MedicoDashboard({
     .sort((a, b) => b.data_hora.localeCompare(a.data_hora))
     .map(c => ({ ...c, patient: patients.find(p => p.id === c.patient_id) }))
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'panorama',    label: 'Panorama',    icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'pacientes',   label: 'Pacientes',   icon: <Users           className="w-4 h-4" /> },
-    { id: 'agenda',      label: 'Agenda',      icon: <CalendarDays    className="w-4 h-4" /> },
-    { id: 'documentos',  label: 'Documentos',  icon: <Upload          className="w-4 h-4" /> },
-    { id: 'relatorios',  label: 'Relatórios',  icon: <BarChart2       className="w-4 h-4" /> },
-    { id: 'financeiro',  label: 'Financeiro',  icon: <DollarSign      className="w-4 h-4" /> },
-    { id: 'hospitais',   label: 'Hospitais',   icon: <Building2       className="w-4 h-4" /> },
-    { id: 'kpi',         label: 'KPI Sec.',    icon: <Star            className="w-4 h-4" /> },
-  ]
+  // Visibilidade das abas por papel + permissões (máscaras)
+  const isRecepOuAdm = role === 'recepcionista' || role === 'administrativo'
+  const isMedicoLike = role === 'medico' || role === 'owner' || currentRole === 'superadmin'
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = ([
+    perms.pacientes  && { id: 'panorama' as Tab,   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },
+    perms.pacientes  && { id: 'pacientes' as Tab,  label: 'Pacientes',  icon: <Users           className="w-4 h-4" /> },
+    perms.agenda     && { id: 'agenda' as Tab,     label: 'Agenda',     icon: <CalendarDays    className="w-4 h-4" /> },
+    !isRecepOuAdm    && { id: 'documentos' as Tab, label: 'Documentos', icon: <Upload          className="w-4 h-4" /> },
+    !isRecepOuAdm    && { id: 'relatorios' as Tab, label: 'Relatórios', icon: <BarChart2       className="w-4 h-4" /> },
+    perms.financeiro && { id: 'financeiro' as Tab, label: 'Financeiro', icon: <DollarSign      className="w-4 h-4" /> },
+    !isRecepOuAdm    && { id: 'hospitais' as Tab,  label: 'Hospitais',  icon: <Building2       className="w-4 h-4" /> },
+    isMedicoLike     && { id: 'kpi' as Tab,        label: 'KPI Sec.',   icon: <Star            className="w-4 h-4" /> },
+  ] as (false | { id: Tab; label: string; icon: React.ReactNode })[]).filter(Boolean) as { id: Tab; label: string; icon: React.ReactNode }[]
+
+  // Aba ativa validada: se a aba da URL não é visível para este papel, cai na primeira
+  const shownTab: Tab = tabs.some(t => t.id === activeTab) ? activeTab : (tabs[0]?.id ?? 'pacientes')
 
   const tabHeaders: Record<Tab, { title: string; sub: string }> = {
     panorama:   { title: 'Panorama',          sub: 'Visão geral da clínica: pacientes, consultas e indicações.' },
@@ -169,7 +186,7 @@ export default function MedicoDashboard({
             onClick={() => setActiveTab(tab.id)}
             className={cn(
               'flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm whitespace-nowrap relative border-b-2 transition-all duration-150',
-              activeTab === tab.id
+              shownTab ===tab.id
                 ? 'text-primary font-semibold border-primary-light'
                 : 'text-gray-400 font-medium border-transparent hover:text-gray-600 hover:bg-black/[0.018]'
             )}
@@ -185,8 +202,8 @@ export default function MedicoDashboard({
         <div className="flex items-start gap-3">
           <div className="w-0.5 h-9 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: '#7A9E7E' }} />
           <div>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">{tabHeaders[activeTab].title}</h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 hidden sm:block">{tabHeaders[activeTab].sub}</p>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">{tabHeaders[shownTab].title}</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 hidden sm:block">{tabHeaders[shownTab].sub}</p>
           </div>
         </div>
       </div>
@@ -293,7 +310,7 @@ export default function MedicoDashboard({
 
       {/* Content */}
       <div className="p-3 pt-3 sm:p-6 sm:pt-4">
-        {activeTab === 'panorama' && (
+        {shownTab ==='panorama' && (
           <PanoramaTab
             patients={patients}
             consultas={consultas}
@@ -303,7 +320,7 @@ export default function MedicoDashboard({
             currentRole={currentRole}
           />
         )}
-        {activeTab === 'pacientes' && (
+        {shownTab ==='pacientes' && (
           <PatientList
             currentRole={currentRole}
             patients={patients}
@@ -312,7 +329,7 @@ export default function MedicoDashboard({
             onSelectPatient={handleSelectPatient}
           />
         )}
-        {activeTab === 'agenda' && (
+        {shownTab ==='agenda' && (
           <AgendaTab
             consultas={consultas}
             patients={patients}
@@ -323,7 +340,7 @@ export default function MedicoDashboard({
             doctorName={doctorName ?? null}
           />
         )}
-        {activeTab === 'documentos' && (
+        {shownTab ==='documentos' && (
           <div className="grid lg:grid-cols-2 gap-8">
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
@@ -339,7 +356,7 @@ export default function MedicoDashboard({
             </div>
           </div>
         )}
-        {activeTab === 'relatorios' && (
+        {shownTab ==='relatorios' && (
           <RelatoriosTab
             patients={patients}
             consultas={consultas}
@@ -347,7 +364,7 @@ export default function MedicoDashboard({
             imagingResults={[]}
           />
         )}
-        {activeTab === 'financeiro' && (
+        {shownTab ==='financeiro' && (
           <FinanceiroTab
             initialEntries={financialEntries}
             doctorId={doctorId}
@@ -357,10 +374,10 @@ export default function MedicoDashboard({
             patients={patients}
           />
         )}
-        {activeTab === 'hospitais' && (
+        {shownTab ==='hospitais' && (
           <InternacaoPanel patients={patients} />
         )}
-        {activeTab === 'kpi' && (
+        {shownTab ==='kpi' && (
           <KpiSecretariaTab />
         )}
       </div>
