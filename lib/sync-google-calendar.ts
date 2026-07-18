@@ -28,38 +28,21 @@ interface ConsultaSync {
   status:      ConsultaStatus
   observacoes?: string | null
   google_calendar_event_id?: string | null
+  doctor_id?:  string | null
 }
 
-async function getTokenForTenant(tenantId: string) {
+// Token do Google de UM médico específico (com refresh automático)
+async function getTokenForUser(userId: string) {
   const db = createAdminClient()
-
-  const { data: clinic } = await db
-    .from('clinics')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .single()
-
-  if (!clinic) return null
-
-  const { data: member } = await db
-    .from('clinic_members')
-    .select('user_id')
-    .eq('clinic_id', clinic.id)
-    .in('role', ['medico', 'owner'])
-    .limit(1)
-    .single()
-
-  if (!member) return null
 
   const { data: tokenRow } = await db
     .from('google_tokens')
     .select('access_token, refresh_token, token_expiry, preferred_calendar_id')
-    .eq('user_id', member.user_id)
+    .eq('user_id', userId)
     .single()
 
   if (!tokenRow?.refresh_token) return null
 
-  // Refresca token se necessário
   const expiry = tokenRow.token_expiry ? new Date(tokenRow.token_expiry) : null
   if (!expiry || expiry.getTime() < Date.now() + 60_000) {
     try {
@@ -68,11 +51,11 @@ async function getTokenForTenant(tenantId: string) {
         access_token: refreshed.access_token,
         token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
         updated_at:   new Date().toISOString(),
-      }).eq('user_id', member.user_id)
+      }).eq('user_id', userId)
       return {
         accessToken:  refreshed.access_token,
         calendarId:   tokenRow.preferred_calendar_id ?? 'primary',
-        doctorUserId: member.user_id,
+        doctorUserId: userId,
       }
     } catch {
       return null
@@ -82,8 +65,42 @@ async function getTokenForTenant(tenantId: string) {
   return {
     accessToken:  tokenRow.access_token!,
     calendarId:   tokenRow.preferred_calendar_id ?? 'primary',
-    doctorUserId: member.user_id,
+    doctorUserId: userId,
   }
+}
+
+/**
+ * Resolve o token do calendário para uma consulta:
+ * 1. Pelo médico responsável da consulta (doctor_id) — multi-médico correto
+ * 2. Fallback legado: primeiro médico da clínica do tenant
+ */
+async function getTokenForConsulta(tenantId: string, doctorId?: string | null) {
+  if (doctorId) {
+    const direto = await getTokenForUser(doctorId)
+    if (direto) return direto
+    // médico da consulta não conectou o Google → não sincroniza no calendário de outro
+    return null
+  }
+
+  // Legado (consulta sem doctor_id): médico único da clínica
+  const db = createAdminClient()
+  const { data: clinic } = await db
+    .from('clinics')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .single()
+  if (!clinic) return null
+
+  const { data: member } = await db
+    .from('clinic_members')
+    .select('user_id')
+    .eq('clinic_id', clinic.id)
+    .in('role', ['medico', 'owner'])
+    .limit(1)
+    .single()
+  if (!member) return null
+
+  return getTokenForUser(member.user_id)
 }
 
 function buildEventBody(consulta: ConsultaSync, patientName: string) {
@@ -112,7 +129,7 @@ export async function syncConsultaCreate(
   consulta:    ConsultaSync,
 ): Promise<void> {
   try {
-    const token = await getTokenForTenant(tenantId)
+    const token = await getTokenForConsulta(tenantId, consulta.doctor_id)
     if (!token) return
 
     const db = createAdminClient()
@@ -141,7 +158,7 @@ export async function syncConsultaUpdate(
   consulta:  ConsultaSync,
 ): Promise<void> {
   try {
-    const token = await getTokenForTenant(tenantId)
+    const token = await getTokenForConsulta(tenantId, consulta.doctor_id)
     if (!token) return
 
     const db = createAdminClient()
@@ -180,16 +197,16 @@ export async function syncConsultaCancel(
   consultaId: string,
 ): Promise<void> {
   try {
-    const token = await getTokenForTenant(tenantId)
-    if (!token) return
-
     const { data: row } = await createAdminClient()
       .from('consultas')
-      .select('google_calendar_event_id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes')
+      .select('google_calendar_event_id, doctor_id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes')
       .eq('id', consultaId)
       .single()
 
     if (!row?.google_calendar_event_id) return
+
+    const token = await getTokenForConsulta(tenantId, row.doctor_id)
+    if (!token) return
 
     // Marca como cancelado (não deleta — mantém no histórico do Google Agenda)
     await updateGoogleEvent(token.accessToken, token.calendarId, row.google_calendar_event_id, {
@@ -203,9 +220,10 @@ export async function syncConsultaCancel(
 export async function syncConsultaDelete(
   tenantId:      string,
   googleEventId: string,
+  doctorId?:     string | null,
 ): Promise<void> {
   try {
-    const token = await getTokenForTenant(tenantId)
+    const token = await getTokenForConsulta(tenantId, doctorId)
     if (!token) return
 
     await deleteGoogleEvent(token.accessToken, token.calendarId, googleEventId)

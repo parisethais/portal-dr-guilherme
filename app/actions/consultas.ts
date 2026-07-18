@@ -73,6 +73,7 @@ export async function createConsulta(data: {
     duracao_min: data.duracao_min ?? 30,
     status:      data.status ?? 'agendada',
     observacoes: data.observacoes ?? null,
+    doctor_id:   doctorId,
   })
 
   buscarPerfil(supabase, data.patient_id).then(paciente => {
@@ -107,7 +108,7 @@ export async function updateConsultaStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
     .eq('tenant_id', tenantId)
-    .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
+    .select('id, patient_id, doctor_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
     .single()
 
   if (error) return { success: false, error: error.message }
@@ -184,7 +185,7 @@ export async function updateConsulta(
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
     .eq('tenant_id', tenantId)
-    .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
+    .select('id, patient_id, doctor_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
     .single()
 
   if (error) return { success: false, error: error.message }
@@ -210,7 +211,7 @@ export async function deleteConsulta(consultaId: string): Promise<ActionResult> 
   // Busca o google_calendar_event_id antes de deletar (depois da exclusão não tem mais como)
   const { data: row } = await db
     .from('consultas')
-    .select('google_calendar_event_id')
+    .select('google_calendar_event_id, doctor_id')
     .eq('id', consultaId)
     .eq('tenant_id', tenantId)
     .single()
@@ -220,7 +221,7 @@ export async function deleteConsulta(consultaId: string): Promise<ActionResult> 
 
   // Remove do Google Calendar (fire-and-forget)
   if (row?.google_calendar_event_id) {
-    syncConsultaDelete(tenantId, row.google_calendar_event_id)
+    syncConsultaDelete(tenantId, row.google_calendar_event_id, row.doctor_id)
   }
 
   revalidatePath('/medico')

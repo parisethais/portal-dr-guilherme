@@ -1,12 +1,84 @@
 /**
  * GET /api/google/calendars?timeMin=ISO&timeMax=ISO
- * Retorna todos os calendários e eventos do Google Calendar do médico autenticado.
+ * Retorna calendários e eventos do Google Calendar.
+ *
+ * - Médico/superadmin → o próprio calendário conectado
+ * - Secretária/recepcionista → calendários de TODOS os médicos da clínica
+ *   que conectaram o Google (eventos etiquetados com o nome do médico)
  */
 
 import { NextRequest, NextResponse }                        from 'next/server'
 import { createClient }                                     from '@/lib/supabase/server'
 import { createAdminClient }                                from '@/lib/supabase/admin-client'
 import { refreshGoogleToken, getCalendars, getEvents }      from '@/lib/google-calendar'
+
+interface TokenTarget {
+  userId: string
+  label:  string | null   // nome do médico (só quando agregando vários)
+}
+
+async function fetchGoogleFor(
+  db: ReturnType<typeof createAdminClient>,
+  target: TokenTarget,
+  timeMin: string,
+  timeMax: string,
+) {
+  const { data: tokenRow } = await db
+    .from('google_tokens')
+    .select('access_token, refresh_token, token_expiry')
+    .eq('user_id', target.userId)
+    .single()
+
+  if (!tokenRow?.refresh_token) return null
+
+  let accessToken = tokenRow.access_token ?? ''
+  const expiry    = tokenRow.token_expiry ? new Date(tokenRow.token_expiry) : null
+  if (!expiry || expiry.getTime() < Date.now() + 60_000) {
+    try {
+      const refreshed = await refreshGoogleToken(tokenRow.refresh_token)
+      accessToken     = refreshed.access_token
+      await db.from('google_tokens').update({
+        access_token: refreshed.access_token,
+        token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+        updated_at:   new Date().toISOString(),
+      }).eq('user_id', target.userId)
+    } catch {
+      return null
+    }
+  }
+
+  let calendars
+  try {
+    calendars = await getCalendars(accessToken)
+  } catch {
+    return null
+  }
+
+  const prefix = target.label ? `${target.label} · ` : ''
+
+  const eventGroups = await Promise.allSettled(
+    calendars.map(async cal => {
+      const items = await getEvents(accessToken, cal.id, timeMin, timeMax)
+      return items.map((ev: any) => ({
+        id:            `${target.userId}::${cal.id}::${ev.id}`,
+        summary:       ev.summary ?? '(sem título)',
+        description:   ev.description ?? null,
+        location:      ev.location ?? null,
+        start:         ev.start,
+        end:           ev.end,
+        htmlLink:      ev.htmlLink ?? null,
+        calendarId:    cal.id,
+        calendarName:  `${prefix}${cal.name}`,
+        calendarColor: cal.color,
+      }))
+    }),
+  )
+
+  return {
+    calendars: calendars.map(c => ({ ...c, name: `${prefix}${c.name}` })),
+    events:    eventGroups.flatMap(r => r.status === 'fulfilled' ? r.value : []),
+  }
+}
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
@@ -22,91 +94,54 @@ export async function GET(req: NextRequest) {
 
   const db = createAdminClient()
 
-  // Resolve qual user_id tem o token do Google:
-  // - médico/superadmin → próprio ID
-  // - secretaria → médico da clínica dela
   const { data: selfProfile } = await db
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  let tokenUserId = user.id
-  if (selfProfile?.role === 'secretaria') {
+  // Monta a lista de calendários a buscar
+  let targets: TokenTarget[] = [{ userId: user.id, label: null }]
+
+  if (selfProfile?.role === 'secretaria' || selfProfile?.role === 'recepcionista') {
     const { data: membership } = await db
       .from('clinic_members')
       .select('clinic_id')
       .eq('user_id', user.id)
       .limit(1)
       .single()
+
     if (membership?.clinic_id) {
-      const { data: doctor } = await db
+      const { data: doctors } = await db
         .from('clinic_members')
-        .select('user_id')
+        .select('user_id, profiles!user_id(full_name)')
         .eq('clinic_id', membership.clinic_id)
-        .eq('role', 'medico')
-        .limit(1)
-        .single()
-      if (doctor?.user_id) tokenUserId = doctor.user_id
+        .in('role', ['medico', 'owner'])
+
+      if (doctors?.length) {
+        const multi = doctors.length > 1
+        targets = doctors.map(d => ({
+          userId: d.user_id,
+          label:  multi ? ((d.profiles as any)?.full_name ?? 'Médico') : null,
+        }))
+      }
     }
   }
 
-  const { data: tokenRow } = await db
-    .from('google_tokens')
-    .select('access_token, refresh_token, token_expiry')
-    .eq('user_id', tokenUserId)
-    .single()
+  const results = await Promise.allSettled(
+    targets.map(t => fetchGoogleFor(db, t, timeMin, timeMax))
+  )
 
-  if (!tokenRow?.refresh_token) {
+  const ok = results
+    .flatMap(r => r.status === 'fulfilled' && r.value ? [r.value] : [])
+
+  if (ok.length === 0) {
     return NextResponse.json({ connected: false, calendars: [], events: [] })
   }
 
-  // Refresca o token se expirado ou expirando em < 60 s
-  let accessToken = tokenRow.access_token ?? ''
-  const expiry    = tokenRow.token_expiry ? new Date(tokenRow.token_expiry) : null
-  if (!expiry || expiry.getTime() < Date.now() + 60_000) {
-    try {
-      const refreshed = await refreshGoogleToken(tokenRow.refresh_token)
-      accessToken     = refreshed.access_token
-      await db.from('google_tokens').update({
-        access_token: refreshed.access_token,
-        token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-        updated_at:   new Date().toISOString(),
-      }).eq('user_id', tokenUserId)
-    } catch {
-      return NextResponse.json({ connected: false, calendars: [], events: [], error: 'token_expired' })
-    }
-  }
-
-  // Lista calendários
-  let calendars
-  try {
-    calendars = await getCalendars(accessToken)
-  } catch {
-    return NextResponse.json({ connected: false, calendars: [], events: [], error: 'fetch_failed' })
-  }
-
-  // Busca eventos de todos os calendários em paralelo
-  const eventGroups = await Promise.allSettled(
-    calendars.map(async cal => {
-      const items = await getEvents(accessToken, cal.id, timeMin, timeMax)
-      return items.map((ev: any) => ({
-        id:            `${cal.id}::${ev.id}`,
-        summary:       ev.summary ?? '(sem título)',
-        description:   ev.description ?? null,
-        location:      ev.location ?? null,
-        start:         ev.start,
-        end:           ev.end,
-        htmlLink:      ev.htmlLink ?? null,
-        calendarId:    cal.id,
-        calendarName:  cal.name,
-        calendarColor: cal.color,
-      }))
-    }),
-  )
-
-  const events = eventGroups
-    .flatMap(r => r.status === 'fulfilled' ? r.value : [])
-
-  return NextResponse.json({ connected: true, calendars, events })
+  return NextResponse.json({
+    connected: true,
+    calendars: ok.flatMap(r => r.calendars),
+    events:    ok.flatMap(r => r.events),
+  })
 }
