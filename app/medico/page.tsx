@@ -111,6 +111,7 @@ export default async function MedicoPage({
   let memberRole: string = currentRole
   let memberPermissions: MemberPermissions = resolvePermissions(currentRole, null)
   let isMultiMedico = false
+  let showSalasTab  = false
   if (currentRole !== 'superadmin') {
     const { data: membership } = await adminDb
       .from('clinic_members')
@@ -124,12 +125,22 @@ export default async function MedicoPage({
     memberPermissions = resolvePermissions(memberRole, membership?.permissions as Partial<MemberPermissions> | null)
 
     if (membership?.clinic_id) {
-      const { count } = await adminDb
-        .from('clinic_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('clinic_id', membership.clinic_id)
-        .in('role', ['owner', 'medico'])
+      const [{ count }, { count: roomCount }, { count: shareCount }] = await Promise.all([
+        adminDb.from('clinic_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('clinic_id', membership.clinic_id)
+          .in('role', ['owner', 'medico']),
+        adminDb.from('clinic_rooms')
+          .select('id', { count: 'exact', head: true })
+          .eq('clinic_id', membership.clinic_id)
+          .eq('active', true),
+        adminDb.from('agenda_shares')
+          .select('id', { count: 'exact', head: true })
+          .eq('grantee_clinic_id', membership.clinic_id)
+          .eq('active', true),
+      ])
       isMultiMedico = (count ?? 0) > 1
+      showSalasTab  = isMultiMedico || (roomCount ?? 0) > 0 || (shareCount ?? 0) > 0
     }
   } else if (params.tenant) {
     // Superadmin abrindo CRM de uma clínica específica via ?tenant=xxx
@@ -380,6 +391,7 @@ export default async function MedicoPage({
           memberRole={memberRole}
           permissions={memberPermissions}
           isMultiMedico={isMultiMedico}
+          showSalasTab={showSalasTab}
           doctorId={userId}
           doctorName={rawDoctorName}
           doctorCrm={rawDoctorCrm}

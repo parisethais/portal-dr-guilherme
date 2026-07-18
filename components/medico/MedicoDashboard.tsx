@@ -8,7 +8,8 @@ import PatientList from './PatientList'
 import DocumentUpload from './DocumentUpload'
 import MedicoDocumentList from './MedicoDocumentList'
 import AgendaTab from './AgendaTab'
-import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight, Building2, FileText, ChevronDown, ChevronUp, Star } from 'lucide-react'
+import SalasTab from './SalasTab'
+import { Users, Upload, CalendarDays, LayoutDashboard, BarChart2, DollarSign, Loader2, Stethoscope, ArrowRight, Building2, FileText, ChevronDown, ChevronUp, Star, DoorOpen } from 'lucide-react'
 import InternacaoPanel from './InternacaoPanel'
 import { TIPO_LABEL } from './ConsultaModal'
 import RelatoriosTab from './RelatoriosTab'
@@ -35,6 +36,7 @@ interface MedicoDashboardProps {
   memberRole?: string
   permissions?: MemberPermissions
   isMultiMedico?: boolean
+  showSalasTab?: boolean
   doctorId: string
   doctorName?:  string | null
   doctorCrm?:   string | null
@@ -46,9 +48,9 @@ interface MedicoDashboardProps {
   patientsWithExames?: string[]
 }
 
-type Tab = 'panorama' | 'pacientes' | 'agenda' | 'documentos' | 'relatorios' | 'financeiro' | 'hospitais' | 'kpi'
+type Tab = 'panorama' | 'pacientes' | 'agenda' | 'salas' | 'documentos' | 'relatorios' | 'financeiro' | 'hospitais' | 'kpi'
 
-const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'documentos', 'relatorios', 'financeiro', 'hospitais', 'kpi']
+const VALID_TABS: Tab[] = ['panorama', 'pacientes', 'agenda', 'salas', 'documentos', 'relatorios', 'financeiro', 'hospitais', 'kpi']
 
 // Lê o tab inicial da URL sem chamar useSearchParams (evita re-render do servidor)
 function getInitialTab(): Tab {
@@ -77,6 +79,7 @@ export default function MedicoDashboard({
   memberRole,
   permissions,
   isMultiMedico = false,
+  showSalasTab = false,
   doctorId,
   doctorName,
   doctorCrm,
@@ -145,6 +148,7 @@ export default function MedicoDashboard({
     perms.pacientes  && { id: 'panorama' as Tab,   label: 'Panorama',   icon: <LayoutDashboard className="w-4 h-4" /> },
     perms.pacientes  && { id: 'pacientes' as Tab,  label: 'Pacientes',  icon: <Users           className="w-4 h-4" /> },
     perms.agenda     && { id: 'agenda' as Tab,     label: 'Agenda',     icon: <CalendarDays    className="w-4 h-4" /> },
+    (showSalasTab && perms.salas) && { id: 'salas' as Tab, label: 'Clínica', icon: <DoorOpen className="w-4 h-4" /> },
     !isRecepOuAdm    && { id: 'documentos' as Tab, label: 'Documentos', icon: <Upload          className="w-4 h-4" /> },
     !isRecepOuAdm    && { id: 'relatorios' as Tab, label: 'Relatórios', icon: <BarChart2       className="w-4 h-4" /> },
     perms.financeiro && { id: 'financeiro' as Tab, label: 'Financeiro', icon: <DollarSign      className="w-4 h-4" /> },
@@ -159,6 +163,7 @@ export default function MedicoDashboard({
     panorama:   { title: 'Panorama',          sub: 'Visão geral da clínica: pacientes, consultas e indicações.' },
     pacientes:  { title: 'Lista de Pacientes', sub: 'Clique em um paciente para ver exames e gerenciar o plano de cuidados.' },
     agenda:     { title: 'Agenda',             sub: 'Clique em um dia para ver as consultas. Clique em uma consulta para ver detalhes.' },
+    salas:      { title: 'Agenda da Clínica',  sub: 'Visão do dia por sala e por médico — inclui agendas compartilhadas.' },
     documentos: { title: 'Documentos',         sub: 'Envie laudos, receitas e orientações para pacientes.' },
     relatorios: { title: 'Relatórios',         sub: 'Análise de dados dos seus pacientes. Filtre e cruze informações.' },
     financeiro: { title: 'Financeiro',         sub: 'Controle receitas e despesas da clínica e renda pessoal profissional.' },
@@ -339,6 +344,9 @@ export default function MedicoDashboard({
             onNavigateToPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
             doctorName={doctorName ?? null}
           />
+        )}
+        {shownTab ==='salas' && (
+          <SalasTab canManageRooms={['owner', 'medico', 'secretaria'].includes(role) || currentRole === 'superadmin'} />
         )}
         {shownTab ==='documentos' && (
           <div className="grid lg:grid-cols-2 gap-8">

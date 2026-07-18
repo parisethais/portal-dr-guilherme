@@ -9,6 +9,7 @@ import Badge from '@/components/ui/Badge'
 import { createConsulta, updateConsulta, updateConsultaStatus, deleteConsulta, gerarLinksLembrete } from '@/app/actions/consultas'
 import { createPlaceholderPatient } from '@/app/actions/patients'
 import { getConsultationTypes } from '@/app/actions/consultation-types'
+import { getClinicDoctors } from '@/app/actions/clinic-agenda'
 import type { ConsultationTypeDB } from '@/app/actions/consultation-types'
 import type { Profile, Consulta, ConsultaTipo, ConsultaLocal, ConsultaStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -239,10 +240,15 @@ export default function ConsultaModal({
 
   // Tipos de consulta carregados do DB (fallback para hardcoded)
   const [tipoOptions, setTipoOptions] = useState(TIPO_OPTIONS_FALLBACK)
+  // Médicos da clínica — seletor aparece só quando há 2+ (clínica multi-médico)
+  const [clinicDoctors, setClinicDoctors] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
     getConsultationTypes()
       .then(types => { if (types.length > 0) setTipoOptions(tipoOptionsFromDB(types)) })
+      .catch(() => {})
+    getClinicDoctors()
+      .then(docs => setClinicDoctors(docs))
       .catch(() => {})
   }, [])
 
@@ -253,6 +259,7 @@ export default function ConsultaModal({
   const [dataHora, setDataHora] = useState('')
   const [duracao, setDuracao]   = useState(30)
   const [obs, setObs]           = useState('')
+  const [doctorId, setDoctorId] = useState<string>('')
 
   // Reset on open — only fires when the modal transitions from closed → open,
   // not when props like `patients` update while it's already open (avoids
@@ -320,6 +327,7 @@ export default function ConsultaModal({
           data_hora:   dataHoraISO,
           duracao_min: duracao,
           observacoes: obs || null,
+          doctor_id:   doctorId || null,
         })
         if (!result.success) { setError(result.error); return }
         if (isPlaceholder && placeholderPhone) {
@@ -661,6 +669,26 @@ export default function ConsultaModal({
                   className="w-full pl-8 pr-3 py-2 border border-amber-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-gray-400"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Médico responsável (clínica multi-médico) */}
+          {mode === 'create' && clinicDoctors.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Médico <span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <select
+                value={doctorId}
+                onChange={e => setDoctorId(e.target.value)}
+                required
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              >
+                <option value="">Selecione o médico…</option>
+                {clinicDoctors.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
             </div>
           )}
 
