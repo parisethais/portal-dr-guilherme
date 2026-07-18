@@ -204,7 +204,7 @@ export default function SalasTab({ canManageRooms }: Props) {
         </div>
       )}
 
-      {slots.length === 0 ? (
+      {view === 'salas' && slots.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm bg-gray-50 rounded-xl border border-gray-200">
           Nenhuma consulta neste dia.
         </div>
@@ -236,20 +236,25 @@ export default function SalasTab({ canManageRooms }: Props) {
           )}
         </div>
       ) : (
-        /* ── Grade por médico ── */
+        /* ── Grade por médico (todos, mesmo sem consulta no dia) ── */
         <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(200px, 1fr))` }}>
           {(data?.doctors ?? []).map(doc => {
             const doDoc = slots.filter(s => s.doctor_id === doc.id)
-            if (doDoc.length === 0) return null
             return (
               <div key={doc.id} className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 space-y-2">
                 <p className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: doctorColor.get(doc.id) }} />
                   {doc.name}
-                  {doc.shared && <Share2 className="w-3 h-3 text-purple-400" />}
+                  {doc.shared && (
+                    <span title="Agenda compartilhada (médico externo)" className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-purple-50 text-purple-600 font-semibold">
+                      <Share2 className="w-2.5 h-2.5" /> ext
+                    </span>
+                  )}
                   <span className="text-gray-400 font-medium">({doDoc.length})</span>
                 </p>
-                {doDoc.map(s => <SlotCard key={s.id} slot={s} />)}
+                {doDoc.length === 0
+                  ? <p className="text-[11px] text-gray-300 py-4 text-center">Sem consultas neste dia</p>
+                  : doDoc.map(s => <SlotCard key={s.id} slot={s} />)}
               </div>
             )
           })}

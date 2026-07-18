@@ -163,6 +163,8 @@ export interface Consulta {
   prontuario_pdf_url:        string | null
   prontuario_assinatura_url: string | null
   created_by:                string | null
+  doctor_id?:                string | null   // médico responsável (multi-médico)
+  room_id?:                  string | null   // sala da clínica
   created_at:   string
   updated_at:   string
   patient?:     Profile

@@ -220,7 +220,7 @@ export default async function MedicoPage({
     // Consultas leves: só campos para lista, panorama e agenda (sem textos longos nem diagnosticos JSON)
     (() => {
       let q = db.from('consultas')
-        .select('id, patient_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
+        .select('id, patient_id, doctor_id, room_id, tipo, local, data_hora, duracao_min, status, prontuario_finalizado, prontuario_finalizado_at, pas, pad, fc, created_at, updated_at')
         .order('data_hora', { ascending: true })
       if (tenantId) q = q.eq('tenant_id', tenantId)
       if (scopeByDoctor) q = q.eq('doctor_id', userId)
@@ -267,6 +267,20 @@ export default async function MedicoPage({
     })
     .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())
     .map(toSummary)
+
+  // Nomes dos médicos da clínica (para chips no panorama/agenda em clínica multi-médico)
+  let doctorNames: Record<string, string> = {}
+  if (isMultiMedico && tenantId) {
+    const { data: docs } = await adminDb
+      .from('clinic_members')
+      .select('user_id, role, clinics!clinic_id(tenant_id), profiles!user_id(full_name)')
+      .in('role', ['owner', 'medico'])
+    doctorNames = Object.fromEntries(
+      (docs ?? [])
+        .filter(d => (d.clinics as any)?.tenant_id === tenantId)
+        .map(d => [d.user_id, (d.profiles as any)?.full_name ?? 'Médico'])
+    )
+  }
 
   const displayName = getDisplayName(currentProfile?.full_name ?? null, currentProfile?.sexo ?? null, currentRole)
 
@@ -395,7 +409,8 @@ export default async function MedicoPage({
           doctorId={userId}
           doctorName={rawDoctorName}
           doctorCrm={rawDoctorCrm}
-          calendarUrl={tenantId ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}&key=${calendarFeedKey(tenantId)}` : null}
+          calendarUrl={tenantId && (currentRole === 'medico' || currentRole === 'superadmin') ? `https://${headersList.get('host')}/api/calendar?tid=${tenantId}&key=${calendarFeedKey(tenantId)}` : null}
+          doctorNames={doctorNames}
           patients={(patients ?? []) as any}
           documents={(documents ?? []) as any}
           consultas={(consultas ?? []) as any}

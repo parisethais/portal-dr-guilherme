@@ -558,9 +558,10 @@ interface PanoramaTabProps {
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
   patientsWithExames?: string[]
   currentRole?: string
+  doctorNames?: Record<string, string>
 }
 
-export default function PanoramaTab({ patients, consultas, onSelectPatient, onIniciarAtendimento, patientsWithExames = [], currentRole }: PanoramaTabProps) {
+export default function PanoramaTab({ patients, consultas, onSelectPatient, onIniciarAtendimento, patientsWithExames = [], currentRole, doctorNames = {} }: PanoramaTabProps) {
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'inativos' | 'todos'>('ativo')
   const [filterAlerta, setFilterAlerta] = useState<'all' | 'atrasado' | 'chegando'>('all')
   const [search, setSearch] = useState('')
@@ -997,7 +998,14 @@ export default function PanoramaTab({ patients, consultas, onSelectPatient, onIn
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold flex-shrink-0">Exames</span>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-400">{TIPO_LABEL[c.tipo] ?? c.tipo}</p>
+                        <p className="text-[11px] text-gray-400">
+                          {TIPO_LABEL[c.tipo] ?? c.tipo}
+                          {c.doctor_id && doctorNames[c.doctor_id] && (
+                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-semibold">
+                              {doctorNames[c.doctor_id]}
+                            </span>
+                          )}
+                        </p>
                       </div>
                       {isToday && onIniciarAtendimento && c.patient ? (
                         <button

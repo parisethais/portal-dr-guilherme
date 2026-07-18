@@ -144,9 +144,10 @@ interface AgendaTabProps {
   onIniciarAtendimento?: (patientId: string, consultaId: string) => void
   onNavigateToPatient?: (patientId: string) => void
   doctorName?: string | null
+  doctorNames?: Record<string, string>
 }
 
-export default function AgendaTab({ consultas, patients, currentRole, calendarUrl, onIniciarAtendimento, onNavigateToPatient, doctorName }: AgendaTabProps) {
+export default function AgendaTab({ consultas, patients, currentRole, calendarUrl, onIniciarAtendimento, onNavigateToPatient, doctorName, doctorNames = {} }: AgendaTabProps) {
   const [createModal, setCreateModal] = useState<{ open: boolean; defaultDateTime: string }>({
     open: false,
     defaultDateTime: '',
@@ -254,10 +255,14 @@ export default function AgendaTab({ consultas, patients, currentRole, calendarUr
     const isDesconto      = c.tipo.includes('desconto')
 
     const prefix = isEmAtendimento ? '⬤ ' : isConfirmada ? '✓ ' : ''
+    // Clínica multi-médico: primeiro nome do médico no título do evento
+    const docFirst = c.doctor_id && doctorNames[c.doctor_id]
+      ? ` · ${doctorNames[c.doctor_id].replace(/^Dr[a]?\.\s*/i, '').split(' ')[0]}`
+      : ''
 
     return {
       id:              c.id,
-      title:           `${prefix}${hora} · ${patientName}${isDesconto ? ' %' : ''}`,
+      title:           `${prefix}${hora} · ${patientName}${isDesconto ? ' %' : ''}${docFirst}`,
       start:           startDate.toISOString(),
       end:             endDate.toISOString(),
       backgroundColor: isEmAtendimento ? '#ea580c' : isConfirmada ? '#16a34a' : (isPast ? '#9ca3af' : localColors.bg),

@@ -37,6 +37,7 @@ interface MedicoDashboardProps {
   permissions?: MemberPermissions
   isMultiMedico?: boolean
   showSalasTab?: boolean
+  doctorNames?: Record<string, string>
   doctorId: string
   doctorName?:  string | null
   doctorCrm?:   string | null
@@ -80,6 +81,7 @@ export default function MedicoDashboard({
   permissions,
   isMultiMedico = false,
   showSalasTab = false,
+  doctorNames = {},
   doctorId,
   doctorName,
   doctorCrm,
@@ -320,9 +322,10 @@ export default function MedicoDashboard({
             patients={patients}
             consultas={consultas}
             onSelectPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
-            onIniciarAtendimento={handleIniciarAtendimento}
+            onIniciarAtendimento={isMedicoLike ? handleIniciarAtendimento : undefined}
             patientsWithExames={patientsWithExames}
             currentRole={currentRole}
+            doctorNames={doctorNames}
           />
         )}
         {shownTab ==='pacientes' && (
@@ -340,9 +343,10 @@ export default function MedicoDashboard({
             patients={patients}
             currentRole={currentRole}
             calendarUrl={calendarUrl ?? undefined}
-            onIniciarAtendimento={handleIniciarAtendimento}
+            onIniciarAtendimento={isMedicoLike ? handleIniciarAtendimento : undefined}
             onNavigateToPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
             doctorName={doctorName ?? null}
+            doctorNames={doctorNames}
           />
         )}
         {shownTab ==='salas' && (
