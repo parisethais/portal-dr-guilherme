@@ -117,6 +117,18 @@ export default function MedicoDashboard({
     }
   }
 
+  // Navegação atômica para a ficha de um paciente vindo de outra aba.
+  // IMPORTANTE: um único pushUrl — dois history.pushState em sequência fazem
+  // o Next descartar a resposta da server action disparada no mount
+  // (a ficha ficava em "Carregando..." para sempre).
+  function handleGoToPatient(patientId: string) {
+    guardNavigation(() => {
+      setActiveTabState('pacientes')
+      setSelectedPatientId(patientId)
+      pushUrl({ tab: 'pacientes', p: patientId, dtab: null, stab: null, consulta: null })
+    })
+  }
+
   function handleIniciarAtendimento(patientId: string, consultaId: string) {
     // Marca como "em atendimento" para aparecer na agenda (fire-and-forget)
     updateConsultaStatus(consultaId, 'em_atendimento').catch(console.error)
@@ -321,7 +333,7 @@ export default function MedicoDashboard({
           <PanoramaTab
             patients={patients}
             consultas={consultas}
-            onSelectPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
+            onSelectPatient={handleGoToPatient}
             onIniciarAtendimento={isMedicoLike ? handleIniciarAtendimento : undefined}
             patientsWithExames={patientsWithExames}
             currentRole={currentRole}
@@ -344,7 +356,7 @@ export default function MedicoDashboard({
             currentRole={currentRole}
             calendarUrl={calendarUrl ?? undefined}
             onIniciarAtendimento={isMedicoLike ? handleIniciarAtendimento : undefined}
-            onNavigateToPatient={(patientId) => { setActiveTab('pacientes'); handleSelectPatient(patientId) }}
+            onNavigateToPatient={handleGoToPatient}
             doctorName={doctorName ?? null}
             doctorNames={doctorNames}
           />
