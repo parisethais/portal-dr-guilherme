@@ -31,8 +31,8 @@ export default async function MedicoLayout({ children }: { children: React.React
     currentRole = profile?.role ?? ''
   }
 
-  // Apenas staff pode acessar /medico (médico, secretaria, superadmin)
-  const isStaff = ['medico', 'secretaria', 'superadmin'].includes(currentRole)
+  // Apenas staff pode acessar /medico
+  const isStaff = ['medico', 'secretaria', 'recepcionista', 'administrativo', 'superadmin'].includes(currentRole)
   if (!isStaff) redirect('/')
 
   const adminDb = createAdminClient()
