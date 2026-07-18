@@ -67,7 +67,8 @@ export default function PatientDetail({
   onBack,
   onRefresh,
 }: PatientDetailProps) {
-  const canSeeProntuario = currentRole !== 'secretaria'
+  // Prontuário e dados clínicos: apenas médico (staff não-médico vê NF/cadastro)
+  const canSeeProntuario = currentRole === 'medico' || currentRole === 'superadmin'
   const defaultTab: DetailTab = canSeeProntuario ? 'consultas' : 'faturas'
 
   // ── Obs. do paciente — edição inline ─────────────────────────

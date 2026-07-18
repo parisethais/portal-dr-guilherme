@@ -28,6 +28,11 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
   if (!ctx) return EMPTY
   if (!(await assertPatientInTenant(patientId, ctx))) return EMPTY
 
+  // Dados clínicos só saem do banco para médico/superadmin.
+  // Staff não-médico (secretária/recepcionista/administrativo) recebe apenas
+  // consultas (agenda), faturas e exames administrativos.
+  const clinico = ctx.role === 'medico' || ctx.role === 'superadmin'
+
   const adminClient = createAdminClient()
   const db = adminClient
 
@@ -47,18 +52,24 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
       .eq('patient_id', patientId)
       .neq('status', 'cancelada')
       .order('data_hora', { ascending: false }),
-    db.from('lab_results')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('collected_at', { ascending: false }),
-    db.from('imaging_results')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('data_realizado', { ascending: false }),
-    db.from('biopsia_results')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('data_realizado', { ascending: false }),
+    clinico
+      ? db.from('lab_results')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('collected_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    clinico
+      ? db.from('imaging_results')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('data_realizado', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    clinico
+      ? db.from('biopsia_results')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('data_realizado', { ascending: false })
+      : Promise.resolve({ data: [] }),
     db.from('invoices')
       .select('*')
       .eq('patient_id', patientId)
@@ -67,17 +78,23 @@ export async function getPatientDetailData(patientId: string): Promise<PatientDe
       .select('*')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false }),
-    db.from('care_plans')
-      .select('*')
-      .eq('patient_id', patientId),
-    db.from('care_plan_attachments')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('created_at', { ascending: false }),
-    adminClient.from('prescricoes')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('data_inicio', { ascending: false }),
+    clinico
+      ? db.from('care_plans')
+          .select('*')
+          .eq('patient_id', patientId)
+      : Promise.resolve({ data: [] }),
+    clinico
+      ? db.from('care_plan_attachments')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    clinico
+      ? adminClient.from('prescricoes')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('data_inicio', { ascending: false })
+      : Promise.resolve({ data: [] }),
   ])
 
   const allPrescricoes = (prescricoesRaw ?? []) as Prescricao[]
