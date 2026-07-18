@@ -90,6 +90,7 @@ const MEDEN_ADMIN_HOSTS = ['app.meden.health', 'localhost', '127.0.0.1']
 
 function BrandPanel() {
   const [clinicName, setClinicName] = useState<string | null>(null)
+  const [clinicLabel, setClinicLabel] = useState('Consultório')
   const [isAdminDomain, setIsAdminDomain] = useState(false)
 
   useEffect(() => {
@@ -100,7 +101,10 @@ function BrandPanel() {
       // Busca o nome da clínica pelo domínio atual
       fetch(`/api/clinic-by-domain?host=${encodeURIComponent(host)}`)
         .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d?.name) setClinicName(d.name) })
+        .then(d => {
+          if (d?.name) setClinicName(d.name)
+          if (d?.label) setClinicLabel(d.label)
+        })
         .catch(() => {})
     }
   }, [])
@@ -177,7 +181,7 @@ function BrandPanel() {
                   textTransform: 'uppercase',
                   margin: '0 0 5px',
                 }}>
-                  Consultório
+                  {clinicLabel}
                 </p>
                 <p style={{
                   fontFamily: 'var(--font-jakarta)',
@@ -558,6 +562,7 @@ export default function LoginSplit() {
   const [isAdmin,    setIsAdmin]    = useState(false)
   const [isMobile,   setIsMobile]   = useState(false)
   const [clinicName, setClinicName] = useState<string | null>(null)
+  const [clinicLabel, setClinicLabel] = useState('Consultório')
 
   useEffect(() => {
     const host = window.location.hostname
@@ -567,7 +572,10 @@ export default function LoginSplit() {
     if (!isAdminHost) {
       fetch(`/api/clinic-by-domain?host=${encodeURIComponent(host)}`)
         .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d?.name) setClinicName(d.name) })
+        .then(d => {
+          if (d?.name) setClinicName(d.name)
+          if (d?.label) setClinicLabel(d.label)
+        })
         .catch(() => {})
     }
 
@@ -619,7 +627,7 @@ export default function LoginSplit() {
               <div style={{ width: 20, height: 2, backgroundColor: '#7A9E7E', borderRadius: 2, opacity: 0.7, flexShrink: 0 }} />
               <div>
                 <p style={{ fontFamily: 'var(--font-jakarta)', fontSize: 9, fontWeight: 600, letterSpacing: '0.13em', color: 'rgba(45,43,107,0.38)', textTransform: 'uppercase', margin: '0 0 2px' }}>
-                  Consultório
+                  {clinicLabel}
                 </p>
                 <p style={{ fontFamily: 'var(--font-jakarta)', fontSize: 14, fontWeight: 600, color: '#2D2B6B', margin: 0, letterSpacing: '-0.01em' }}>
                   {clinicName}
