@@ -146,7 +146,7 @@ export default function PatientDetail({
     ...(canSeeProntuario ? [{ id: 'laboratoriais' as DetailTab, label: 'Laboratoriais',       icon: <FlaskConical className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'imagem'        as DetailTab, label: 'Imagem',              icon: <ScanLine     className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'biopsias'      as DetailTab, label: 'Biópsias',             icon: <Microscope   className="w-4 h-4" /> }] : []),
-    { id: 'monitoramento', label: 'Monitoramento', icon: <Activity  className="w-4 h-4" /> },
+    ...(canSeeProntuario ? [{ id: 'monitoramento' as DetailTab, label: 'Monitoramento', icon: <Activity  className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'prescricao'    as DetailTab, label: 'Prescrição',    icon: <Pill         className="w-4 h-4" /> }] : []),
     ...(canSeeProntuario ? [{ id: 'pedidos_exame' as DetailTab, label: 'Ped. Exame',  icon: <FlaskConical className="w-4 h-4" /> }] : []),
     { id: 'faturas',       label: 'NF',            icon: <Receipt   className="w-4 h-4" /> },
