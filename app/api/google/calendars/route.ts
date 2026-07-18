@@ -54,6 +54,18 @@ async function fetchGoogleFor(
     return null
   }
 
+  // Remove calendários de sistema do Google (feriados, aniversários, semanas)
+  calendars = calendars.filter(c =>
+    !c.id.includes('holiday@group.v.calendar.google.com') &&
+    !c.id.includes('#contacts@') &&
+    !c.id.includes('#weeknum@')
+  )
+
+  // O calendário principal vem com o e-mail como nome — troca por algo legível
+  calendars = calendars.map(c =>
+    c.primary || /@.+\./.test(c.name) ? { ...c, name: 'Agenda pessoal' } : c
+  )
+
   const prefix = target.label ? `${target.label} · ` : ''
 
   const eventGroups = await Promise.allSettled(
