@@ -27,13 +27,17 @@ export async function salvarConsultaFields(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
-  // Guard: prontuário já finalizado não pode ser editado
+  const tenantId = await getCallerTenantId(user.id)
+
+  // Guard: prontuário já finalizado não pode ser editado; consulta precisa ser do tenant
   const { data: consulta } = await supabase
     .from('consultas')
     .select('prontuario_finalizado, patient_id')
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
     .single()
-  if (consulta?.prontuario_finalizado) {
+  if (!consulta) return { success: false, error: 'Não autorizado.' }
+  if (consulta.prontuario_finalizado) {
     return { success: false, error: 'Este prontuário já foi finalizado e não pode ser editado.' }
   }
 
@@ -43,6 +47,7 @@ export async function salvarConsultaFields(
     .from('consultas')
     .update({ ...fields, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
 
   if (error) return { success: false, error: error.message }
 
@@ -82,6 +87,7 @@ export async function salvarConsultaFields(
       .from('profiles')
       .update({ diagnostico: syncedDiag })
       .eq('id', consulta.patient_id)
+      .eq('tenant_id', tenantId)
   }
 
   revalidatePath('/medico')
@@ -94,6 +100,7 @@ export async function finalizarProntuario(consultaId: string): Promise<ActionRes
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  const tenantId = await getCallerTenantId(user.id)
   const adminDb = createAdminClient()
   const { error } = await adminDb
     .from('consultas')
@@ -103,6 +110,7 @@ export async function finalizarProntuario(consultaId: string): Promise<ActionRes
       updated_at:               new Date().toISOString(),
     })
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
 
   if (error) return { success: false, error: error.message }
 
@@ -278,7 +286,8 @@ export async function deleteImagingResult(id: string): Promise<ActionResult> {
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const db = createAdminClient()
-  const { error } = await db.from('imaging_results').delete().eq('id', id)
+  const tenantId = await getCallerTenantId(user.id)
+  const { error } = await db.from('imaging_results').delete().eq('id', id).eq('tenant_id', tenantId)
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/medico')
@@ -319,7 +328,8 @@ export async function deleteBiopsiaResult(id: string): Promise<ActionResult> {
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const db = createAdminClient()
-  const { error } = await db.from('biopsia_results').delete().eq('id', id)
+  const tenantId = await getCallerTenantId(user.id)
+  const { error } = await db.from('biopsia_results').delete().eq('id', id).eq('tenant_id', tenantId)
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/medico')

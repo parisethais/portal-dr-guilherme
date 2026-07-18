@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import type { ActionResult } from '@/lib/types'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 
 // ── Lookup público por form_token ─────────────────────────────
 export async function getPatientByToken(token: string): Promise<{
@@ -24,6 +25,10 @@ export async function getPatientByToken(token: string): Promise<{
 export async function getOrCreateExameToken(
   patientId: string,
 ): Promise<ActionResult<{ token: string }>> {
+  const ctx = await requireStaff()
+  if (!ctx) return { success: false, error: 'Não autorizado.' }
+  if (!(await assertPatientInTenant(patientId, ctx))) return { success: false, error: 'Não autorizado.' }
+
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')

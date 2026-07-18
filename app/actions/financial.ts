@@ -43,10 +43,16 @@ export async function getFinancialEntries(filters?: {
   type?:  'receita' | 'despesa' | 'all'
 }): Promise<FinancialEntry[]> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
 
-  let q = supabase
+  const tenantId = await getCallerTenantId(user.id)
+  const db = createAdminClient()
+
+  let q = db
     .from('financial_entries')
     .select('*')
+    .eq('tenant_id', tenantId)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -82,11 +88,13 @@ export async function updateFinancialEntry(id: string, input: Partial<EntryInput
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
+  const tenantId = await getCallerTenantId(user.id)
   const db = createAdminClient()
   const { error } = await db
     .from('financial_entries')
     .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('tenant_id', tenantId)
   if (error) return { error: error.message }
   revalidatePath('/medico')
   return { success: true }
@@ -99,8 +107,9 @@ export async function deleteFinancialEntry(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autorizado.' }
 
+  const tenantId = await getCallerTenantId(user.id)
   const db = createAdminClient()
-  const { error } = await db.from('financial_entries').delete().eq('id', id)
+  const { error } = await db.from('financial_entries').delete().eq('id', id).eq('tenant_id', tenantId)
   if (error) return { error: error.message }
   revalidatePath('/medico')
   return { success: true }
@@ -183,11 +192,12 @@ export async function solicitarNFInternacao(
   const admin = createAdminClient()
   const tenantId = await getCallerTenantId(user.id)
 
-  // Busca internação com visitas
+  // Busca internação com visitas — restrita ao tenant do caller
   const { data: internacao } = await admin
     .from('internacoes')
     .select('*, visitas_hospitalares(*)')
     .eq('id', internacaoId)
+    .eq('tenant_id', tenantId)
     .single()
 
   if (!internacao) return { error: 'Internação não encontrada.' }
@@ -268,6 +278,7 @@ export async function solicitarNFInternacao(
     .from('internacoes')
     .update({ nf_status: 'solicitada', updated_at: new Date().toISOString() })
     .eq('id', internacaoId)
+    .eq('tenant_id', tenantId)
 
   return { success: true }
 }

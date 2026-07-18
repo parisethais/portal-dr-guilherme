@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-
-const SECRET = process.env.COPILOT_SECRET
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
 export async function POST(req: NextRequest) {
   // Valida o secret
-  const secret = req.headers.get('x-copilot-secret')
-  if (secret !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -49,6 +47,7 @@ export async function POST(req: NextRequest) {
       .from('profiles')
       .select('id, full_name')
       .eq('role', 'paciente')
+      .eq('tenant_id', COPILOT_TENANT)
 
     if (paciente.nome) {
       query = query.ilike('full_name', `%${paciente.nome}%`)
@@ -81,6 +80,7 @@ export async function POST(req: NextRequest) {
         duracao_min:  consulta.duracao_min  ?? 30,
         status:       'agendada',
         observacoes:  consulta.observacoes  ?? 'Agendado via WhatsApp pelo Dr. Guilherme',
+        tenant_id:    COPILOT_TENANT,
       })
       .select()
       .single()
@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
       .from('consultas')
       .update({ status: 'cancelada' })
       .eq('id', consulta_id)
+      .eq('tenant_id', COPILOT_TENANT)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
         observacoes: consulta.observacoes ?? 'Remarcado via WhatsApp pelo Dr. Guilherme',
       })
       .eq('id', consulta_id)
+      .eq('tenant_id', COPILOT_TENANT)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -176,6 +178,7 @@ export async function POST(req: NextRequest) {
       .from('internacoes')
       .select('id, hospital, hospital_outro, patient_id, profiles(full_name)')
       .eq('finalizada', false)
+      .eq('tenant_id', COPILOT_TENANT)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -240,6 +243,7 @@ export async function POST(req: NextRequest) {
       .from('internacoes')
       .select('id, tenant_id, finalizada, patient_id, profiles(full_name)')
       .eq('id', internacao_id)
+      .eq('tenant_id', COPILOT_TENANT)
       .single()
 
     if (fetchError || !internacao) {
@@ -278,8 +282,7 @@ export async function POST(req: NextRequest) {
 
 // ── GET /api/copilot — Resumo de visitas por visitador ────────────
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('x-copilot-secret')
-  if (secret !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -288,6 +291,7 @@ export async function GET(req: NextRequest) {
   const { data: internacoes, error } = await admin
     .from('internacoes')
     .select('id, hospital, hospital_outro, finalizada, valor_visita, patient_id, profiles(full_name), visitas_hospitalares(id, visitador, data_visita, dialise)')
+    .eq('tenant_id', COPILOT_TENANT)
     .order('data_internacao', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

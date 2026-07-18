@@ -73,8 +73,9 @@ export async function deleteDocument(documentId: string): Promise<ActionResult> 
   } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado.' }
 
+  const tenantId = await getCallerTenantId(user.id)
   const admin = createAdminClient()
-  const { error } = await admin.from('documents').delete().eq('id', documentId)
+  const { error } = await admin.from('documents').delete().eq('id', documentId).eq('tenant_id', tenantId)
 
   if (error) return { success: false, error: error.message }
 

@@ -1,8 +1,8 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin-client'
-import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireStaff } from '@/lib/auth-guard'
 
 export interface Notificacao {
   id: string
@@ -17,11 +17,18 @@ export interface Notificacao {
 }
 
 export async function getNotificacoes(tenantId: string): Promise<Notificacao[]> {
+  // Deriva o tenant da sessão; ignora o argumento (exceto superadmin, que pode
+  // consultar um tenant específico via painel).
+  const ctx = await requireStaff()
+  if (!ctx) return []
+  const scopeTenant = ctx.tenantId ?? tenantId
+  if (!scopeTenant) return []
+
   const admin = createAdminClient()
   const { data } = await admin
     .from('notificacoes')
     .select('*, patient:profiles!patient_id(full_name)')
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', scopeTenant)
     .order('created_at', { ascending: false })
     .limit(50)
   return (data ?? []) as Notificacao[]
@@ -46,20 +53,30 @@ export async function criarNotificacaoRetorno(opts: {
 }
 
 export async function marcarLida(notificacaoId: string): Promise<void> {
+  const ctx = await requireStaff()
+  if (!ctx) return
+
   const admin = createAdminClient()
-  await admin
+  let q = admin
     .from('notificacoes')
     .update({ lida: true, lida_at: new Date().toISOString() })
     .eq('id', notificacaoId)
+  if (ctx.tenantId) q = q.eq('tenant_id', ctx.tenantId)
+  await q
   revalidatePath('/medico')
 }
 
 export async function marcarTodasLidas(tenantId: string): Promise<void> {
+  const ctx = await requireStaff()
+  if (!ctx) return
+  const scopeTenant = ctx.tenantId ?? tenantId
+  if (!scopeTenant) return
+
   const admin = createAdminClient()
   await admin
     .from('notificacoes')
     .update({ lida: true, lida_at: new Date().toISOString() })
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', scopeTenant)
     .eq('lida', false)
   revalidatePath('/medico')
 }

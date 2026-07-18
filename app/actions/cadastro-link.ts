@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin-client'
 import type { ActionResult } from '@/lib/types'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 
 export interface CadastroPatient {
   id:             string
@@ -26,6 +27,10 @@ export interface CadastroPatient {
 export async function getOrCreateCadastroToken(
   patientId: string,
 ): Promise<ActionResult<{ token: string }>> {
+  const ctx = await requireStaff()
+  if (!ctx) return { success: false, error: 'Não autorizado.' }
+  if (!(await assertPatientInTenant(patientId, ctx))) return { success: false, error: 'Não autorizado.' }
+
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')

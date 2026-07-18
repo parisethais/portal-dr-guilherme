@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { computeLabAlerts } from '@/lib/lab-alerts'
-
-const SECRET = process.env.COPILOT_SECRET
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-copilot-secret') !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -31,11 +30,11 @@ export async function GET(req: NextRequest) {
     { data: consultas },
     { data: labResults },
   ] = await Promise.all([
-    admin.from('profiles').select('id, sexo, data_nascimento, status_paciente, diagnostico, created_at').eq('role', 'paciente'),
+    admin.from('profiles').select('id, sexo, data_nascimento, status_paciente, diagnostico, created_at').eq('role', 'paciente').eq('tenant_id', COPILOT_TENANT),
     dataCorte
-      ? admin.from('consultas').select('id, tipo, local, status, data_hora, patient_id, diagnosticos, evolucao, pas, pad, fc').gte('data_hora', dataCorte)
-      : admin.from('consultas').select('id, tipo, local, status, data_hora, patient_id, diagnosticos, evolucao, pas, pad, fc'),
-    admin.from('lab_results').select('id, patient_id, exam_name, value, unit, collected_at, consulta_id, created_at'),
+      ? admin.from('consultas').select('id, tipo, local, status, data_hora, patient_id, diagnosticos, evolucao, pas, pad, fc').eq('tenant_id', COPILOT_TENANT).gte('data_hora', dataCorte)
+      : admin.from('consultas').select('id, tipo, local, status, data_hora, patient_id, diagnosticos, evolucao, pas, pad, fc').eq('tenant_id', COPILOT_TENANT),
+    admin.from('lab_results').select('id, patient_id, exam_name, value, unit, collected_at, consulta_id, created_at').eq('tenant_id', COPILOT_TENANT),
   ])
 
   const pacs  = pacientes  ?? []

@@ -6,11 +6,16 @@ import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import type { Prescricao } from '@/lib/types'
 import { getCallerTenantId } from '@/lib/get-caller-tenant'
+import { requireStaff, assertPatientInTenant } from '@/lib/auth-guard'
 
 export async function getPrescricoesByPatient(
   patientId: string
 ): Promise<ActionResult<{ ativas: Prescricao[]; inativas: Prescricao[] }>> {
   try {
+    const ctx = await requireStaff()
+    if (!ctx) return { success: false, error: 'Não autorizado.' }
+    if (!(await assertPatientInTenant(patientId, ctx))) return { success: false, error: 'Não autorizado.' }
+
     const adminClient = createAdminClient()
     const { data, error } = await adminClient
       .from('prescricoes')
@@ -113,6 +118,7 @@ export async function inativarPrescricao(id: string): Promise<ActionResult> {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { success: false, error: 'Não autenticado.' }
 
+    const tenantId = await getCallerTenantId(user.id)
     const adminClient = createAdminClient()
     const now = new Date().toISOString()
 
@@ -124,6 +130,7 @@ export async function inativarPrescricao(id: string): Promise<ActionResult> {
         updated_at: now,
       })
       .eq('id', id)
+      .eq('tenant_id', tenantId)
 
     if (error) return { success: false, error: error.message }
 

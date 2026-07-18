@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const SECRET = process.env.COPILOT_SECRET
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-copilot-secret') !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -13,6 +12,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from('invoices')
     .select('id, amount, issue_date, downloaded_at, patient:profiles!patient_id(full_name, phone, email)')
+    .eq('tenant_id', COPILOT_TENANT)
     .is('downloaded_at', null)
     .order('issue_date', { ascending: true })
 

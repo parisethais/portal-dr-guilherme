@@ -65,6 +65,7 @@ export async function deleteMedPrescricao(payload: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autorizado.')
 
+  const tenantId = await getCallerTenantId(user.id)
   const admin = createAdminClient()
 
   // Marca como excluída (soft delete) em vez de remover o registro
@@ -73,6 +74,7 @@ export async function deleteMedPrescricao(payload: {
     .update({ excluida: true, excluida_at: new Date().toISOString() })
     .eq('memed_prescricao_id', payload.memedPrescricaoId)
     .eq('patient_id', payload.patientId)
+    .eq('tenant_id', tenantId)
 
   if (error) throw new Error(`[memed] Erro ao registrar exclusão: ${error.message}`)
 }

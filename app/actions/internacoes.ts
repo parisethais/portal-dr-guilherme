@@ -127,8 +127,8 @@ export async function addVisita(input: {
 
 export async function deleteVisita(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { admin } = await getCtx()
-    const { error } = await admin.from('visitas_hospitalares').delete().eq('id', id)
+    const { tenantId, admin } = await getCtx()
+    const { error } = await admin.from('visitas_hospitalares').delete().eq('id', id).eq('tenant_id', tenantId)
     if (error) throw error
     return { success: true }
   } catch (e: any) {
@@ -143,7 +143,7 @@ export async function finalizarInternacao(id: string, input: {
   valor_por_visitador?:    Record<string, number>
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { admin } = await getCtx()
+    const { tenantId, admin } = await getCtx()
     const { error } = await admin
       .from('internacoes')
       .update({
@@ -155,6 +155,7 @@ export async function finalizarInternacao(id: string, input: {
         updated_at:             new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('tenant_id', tenantId)
     if (error) throw error
     return { success: true }
   } catch (e: any) {
@@ -167,11 +168,12 @@ export async function updateNfStatus(
   nf_status: 'solicitada' | 'emitida' | 'paga' | null,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { admin } = await getCtx()
+    const { tenantId, admin } = await getCtx()
     const { error } = await admin
       .from('internacoes')
       .update({ nf_status, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('tenant_id', tenantId)
     if (error) throw error
     return { success: true }
   } catch (e: any) {
@@ -181,8 +183,8 @@ export async function updateNfStatus(
 
 export async function deleteInternacao(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { admin } = await getCtx()
-    const { error } = await admin.from('internacoes').delete().eq('id', id)
+    const { tenantId, admin } = await getCtx()
+    const { error } = await admin.from('internacoes').delete().eq('id', id).eq('tenant_id', tenantId)
     if (error) throw error
     return { success: true }
   } catch (e: any) {

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
-const SECRET   = process.env.COPILOT_SECRET
 const GI_WHATS = 'https://wa.me/5511934544550'
 
 const MESES_MIN = 6
 const MESES_MAX = 24
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-copilot-secret') !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     .from('profiles')
     .select('id, full_name, phone, retorno_previsto')
     .eq('role', 'paciente')
+    .eq('tenant_id', COPILOT_TENANT)
     .eq('status_paciente', 'ativo')
     .not('retorno_previsto', 'is', null)
     .gte('retorno_previsto', limiteMin.toISOString().slice(0, 10))
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
   const { data: agendados } = await admin
     .from('consultas')
     .select('patient_id')
+    .eq('tenant_id', COPILOT_TENANT)
     .in('patient_id', ids)
     .in('status', ['agendada', 'confirmada'])
     .gte('data_hora', hoje.toISOString())

@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const SECRET = process.env.COPILOT_SECRET
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (req.headers.get('x-copilot-secret') !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const { id } = await params
   const admin = createAdminClient()
 
-  // Busca dados do paciente
+  // Busca dados do paciente — restrito ao tenant do copilot
   const { data: paciente, error: pErr } = await admin
     .from('profiles')
     .select('id, full_name, phone, email, data_nascimento, sexo, diagnostico, status_paciente, retorno_previsto')
     .eq('id', id)
     .eq('role', 'paciente')
+    .eq('tenant_id', COPILOT_TENANT)
     .single()
 
   if (pErr || !paciente) {

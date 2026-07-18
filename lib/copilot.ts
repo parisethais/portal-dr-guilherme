@@ -1,5 +1,5 @@
 const COPILOT_URL = process.env.COPILOT_URL || 'https://dr-copilot.onrender.com'
-const COPILOT_SECRET = process.env.COPILOT_SECRET || 'copilot2026guilherme'
+const COPILOT_SECRET = process.env.COPILOT_SECRET ?? ''
 
 type EventoPortal =
   | { evento: 'consulta_agendada'; paciente: PacientePayload; consulta: { data: string; tipo: string } }

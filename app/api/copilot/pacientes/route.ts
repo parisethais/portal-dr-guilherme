@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const SECRET = process.env.COPILOT_SECRET
+import { isCopilotAuthorized, COPILOT_TENANT } from '@/lib/copilot-auth'
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-copilot-secret') !== SECRET) {
+  if (!isCopilotAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
@@ -14,6 +13,7 @@ export async function GET(req: NextRequest) {
     .from('profiles')
     .select('id, full_name, email, phone, cpf, lgpd_accepted, created_at')
     .eq('role', 'paciente')
+    .eq('tenant_id', COPILOT_TENANT)
     .order('full_name', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -93,11 +93,13 @@ export async function updateConsultaStatus(
 
   // Usa adminClient para bypass de RLS — secretaria não tem policy de UPDATE
   const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
 
   const { data: consulta, error } = await db
     .from('consultas')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
     .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
     .single()
 
@@ -105,7 +107,6 @@ export async function updateConsultaStatus(
 
   // Sync Google Calendar (fire-and-forget)
   if (consulta) {
-    const tenantId = await getCallerTenantId(user.id)
     if (status === 'cancelada') {
       syncConsultaCancel(tenantId, consultaId)
     } else {
@@ -136,6 +137,18 @@ export async function updateConsulta(
 
   // Usa adminClient para bypass de RLS — secretaria não tem policy de UPDATE
   const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
+
+  // Se reatribuindo paciente, o novo paciente precisa ser do mesmo tenant
+  if (data.patient_id) {
+    const { data: p } = await db
+      .from('profiles')
+      .select('id')
+      .eq('id', data.patient_id)
+      .eq('tenant_id', tenantId)
+      .single()
+    if (!p) return { success: false, error: 'Não autorizado.' }
+  }
 
   // Se mudou a data_hora, notifica como remarcação
   if (data.data_hora) {
@@ -143,6 +156,7 @@ export async function updateConsulta(
       .from('consultas')
       .select('data_hora, patient_id')
       .eq('id', consultaId)
+      .eq('tenant_id', tenantId)
       .single()
 
     if (consulta) {
@@ -162,6 +176,7 @@ export async function updateConsulta(
     .from('consultas')
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
     .select('id, patient_id, tipo, local, data_hora, duracao_min, status, observacoes, google_calendar_event_id')
     .single()
 
@@ -169,7 +184,6 @@ export async function updateConsulta(
 
   // Sync Google Calendar (fire-and-forget)
   if (updated) {
-    const tenantId = await getCallerTenantId(user.id)
     syncConsultaUpdate(tenantId, updated)
   }
 
@@ -184,20 +198,21 @@ export async function deleteConsulta(consultaId: string): Promise<ActionResult> 
   if (!user) return { success: false, error: 'Não autorizado.' }
 
   const db = createAdminClient()
+  const tenantId = await getCallerTenantId(user.id)
 
   // Busca o google_calendar_event_id antes de deletar (depois da exclusão não tem mais como)
   const { data: row } = await db
     .from('consultas')
     .select('google_calendar_event_id')
     .eq('id', consultaId)
+    .eq('tenant_id', tenantId)
     .single()
 
-  const { error } = await db.from('consultas').delete().eq('id', consultaId)
+  const { error } = await db.from('consultas').delete().eq('id', consultaId).eq('tenant_id', tenantId)
   if (error) return { success: false, error: error.message }
 
   // Remove do Google Calendar (fire-and-forget)
   if (row?.google_calendar_event_id) {
-    const tenantId = await getCallerTenantId(user.id)
     syncConsultaDelete(tenantId, row.google_calendar_event_id)
   }
 
