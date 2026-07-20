@@ -164,7 +164,7 @@ function PanoramaRow({ patient, ultimaConsulta, proximaConsulta, ultimoTipo, ale
 
   function handleCopyPassword() {
     if (!newPassword || !patient.email) return
-    const texto = `Portal Dr. Guilherme\n\nOlá! Sua senha foi redefinida.\n\nE-mail: ${patient.email}\nNova senha: ${newPassword}\n\nAcesse: https://portal-dr-guilherme.vercel.app`
+    const texto = `Portal Dr. Guilherme\n\nOlá! Sua senha foi redefinida.\n\nE-mail: ${patient.email}\nNova senha: ${newPassword}\n\nAcesse: https://app.meden.health`
     navigator.clipboard.writeText(texto)
     setCopiedPwd(true)
     setTimeout(() => setCopiedPwd(false), 2000)

@@ -101,7 +101,7 @@ export default function InvitePatientModal({ open, onClose }: Props) {
           <div className="flex gap-2">
             <a
               href={`mailto:${email}?subject=${encodeURIComponent('Acesso ao Portal Dr. Guilherme')}&body=${encodeURIComponent(
-                `Olá, ${createdName}!\n\nSeu acesso ao Portal Dr. Guilherme foi criado.\n\nE-mail: ${email}\nSenha temporária: ${tempPassword}\n\nAcesse em: ${process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal-dr-guilherme.vercel.app'}\n\nRecomendamos alterar sua senha após o primeiro acesso.\n\nAtenciosamente,\nConsultório Dr. Guilherme Santa Catharina`
+                `Olá, ${createdName}!\n\nSeu acesso ao Portal Dr. Guilherme foi criado.\n\nE-mail: ${email}\nSenha temporária: ${tempPassword}\n\nAcesse em: https://app.meden.health\n\nRecomendamos alterar sua senha após o primeiro acesso.\n\nAtenciosamente,\nConsultório Dr. Guilherme Santa Catharina`
               )}`}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
             >

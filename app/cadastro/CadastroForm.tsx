@@ -12,7 +12,7 @@ async function fetchViaCep(cep: string) {
   } catch { return null }
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal-dr-guilherme.vercel.app'
+const APP_URL = 'https://app.meden.health'
 
 // ── Input otimizado pra mobile ──────────────────────────────────
 function Field({
@@ -374,7 +374,7 @@ export default function CadastroForm({ tenantId }: { tenantId: string }) {
           <div className="bg-white/10 rounded-2xl px-4 py-3 text-center">
             <p className="text-white/80 text-xs leading-relaxed">
               O paciente acessa o portal em{' '}
-              <span className="font-semibold text-white">portal-dr-guilherme.vercel.app</span>
+              <span className="font-semibold text-white">app.meden.health</span>
               {' '}com as credenciais acima.
             </p>
           </div>
