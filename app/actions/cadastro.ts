@@ -96,16 +96,23 @@ export async function submitCadastro(
   // Mescla automaticamente qualquer perfil placeholder com o mesmo nome
   // (criado quando Gi agendou o paciente antes do cadastro)
   const newId = data.user!.id
-  // Normaliza o nome removendo acentos para casar placeholders onde o nome
-  // pode ter sido digitado sem acento (ex: "Jose" vs "José")
-  const normalizedName = full_name.normalize('NFD').replace(/[̀-ͯ]/g, '')
-  const { data: placeholders } = await admin
+
+  // Comparação robusta: sem acentos, sem caixa, espaços colapsados —
+  // dos DOIS lados (ex: "GonçAlves" digitado casa com "Gonçalves" salvo)
+  const normalize = (s: string) => s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, ' ')
+
+  const { data: candidatos } = await admin
     .from('profiles')
-    .select('id')
-    .ilike('full_name', normalizedName)
+    .select('id, full_name')
     .is('email', null)
+    .eq('role', 'paciente')
     .eq('tenant_id', tenant_id)
     .neq('id', newId)
+
+  const alvo = normalize(full_name)
+  const placeholders = (candidatos ?? []).filter(p => normalize(p.full_name ?? '') === alvo)
 
   if (placeholders && placeholders.length > 0) {
     const TABELAS = [
